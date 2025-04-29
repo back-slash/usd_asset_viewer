@@ -32,6 +32,17 @@ class Filetype(Enum):
 
 
 
+class Icons(Enum):
+    """
+    Enum for icons used in the prototype.
+    """
+    MESH_ICON = "icon_mesh"
+    LIGHT_ICON = "icon_light"
+    CAMERA_ICON = "icon_camera"
+    MATERIAL_ICON = "icon_material"
+    TEXTURE_ICON = "icon_texture"
+    NULL_ICON = "icon_null"
+    CURVE_ICON = "icon_curve"
 
 
 #####################################################################################################################################

@@ -16,34 +16,62 @@ import pxr.Usd as pusd
 # PROJECT
 import core.static.static_core as cstat
 import core.utils_core as cutils
-import core.base_core as base_core
+import core.base_core as cbase
 
 #####################################################################################################################################
 
 
+class USDOutliner(cbase.Frame):
+    """
+    USD Outliner class for managing and displaying a list of items in a prototype window.
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.source_data_object = None
+        self.source_item_list = []
 
-class OutlinerPanel(base_core.Panel):
+    def _init_usd_file(self):
+        """
+        Initialize the USD Stage.
+        """
+        self._create_invisible_root()
+
+    def _set_usd_file(self, file_path: str):
+        """
+        Set the USD file path and initialize.
+        """
+        self._clear_usd_file()
+        self._stage = pusd.Stage.Open(file_path)
+        self._init_usd_file()
+
+
+    def _clear_usd_file(self):
+        """
+        Clear the USD Stage.
+        """
+        self.source_data_object = None
+        self.source_item_list = []
+
+
+
+
+#####################################################################################################################################
+
+class OutlinerPanel(cbase.Panel):
     """
     Outliner class for managing and displaying a list of items in a prototype window.
     """
-    def __init__(self, parent=None, source: cusd.USDPrototypeObject = None):
-        super().__init__(parent, source)
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.parent = parent
         if source:
             self.source_data_object = source
             self.source_item_list = self.source_data_object.usd_skeleton
-        self.outliner_item_list: list[base_core.Node] = []
+        self.outliner_item_list: list[cbase.Node] = []
         self.hierarchy_dict = {}
 
-    def _set_usd_file(self, file_path: str):
-        """
-        Set the USD file path.
-        """
-        self.source_data_object = pusd.Stage.Open(file_path)
-        self.source_item_list = self.source_data_object.usd_skeleton
-
-
-    def create_invisible_root_item(self):
+    def _create_invisible_root(self):
         """
         Create a new item in the outliner.
         """
