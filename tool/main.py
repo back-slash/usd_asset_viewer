@@ -1,93 +1,39 @@
-import imgui
+#####################################################################################################################################
+# USD Outliner | Tool | Main
+# TODO:
+# - Add animation trackbars to the outliner to scrub time
+#####################################################################################################################################
 
-import static.static as stat
-import core.entity_core as cent
-import core.usd_core as cusd
-
-
-
-
-
-class OutlinerEntity(pcore.PrototypeEntity):
-    """
-    Class representing an entity in the outliner.
-    """
-    def __init__(self, source_object: dict, parent_object):
-        super().__init__(source_object, parent_object)
+# PYTHON
 
 
-    def calculate_drop_target_position(self):
-        """
-        Calculate the drop target position for the outliner object.
-        """
-        x = imgui.get_cursor_screen_pos().x
-        y = imgui.get_cursor_screen_pos().y
-        return x, y
+# ADDONS
+from imgui_bundle import imgui
+import glfw
+import OpenGL.GL as gl
+import pxr.Usd as pusd
 
-    def draw(self, x: float, y: float):
-        """
-        Draw the outliner object in the prototype window.
-        """
-        self.draw_list = imgui.get_window_draw_list()
-        imgui.push_id(self.item_name)
-       
-        if self.parent_object:
-            imgui.push_style_var(imgui.STYLE_ITEM_SPACING, pstatic.OUTLINER_ITEM_SPACING)
-            imgui.new_line()
-            imgui.pop_style_var(1)
+# PROJECT
+import core.static.static_core as cstat
+import core.utils_core as cutils
+import core.core as core
 
-        x, y = imgui.get_cursor_screen_pos()
-
-        if not self.floating or self.drop_target:
-            if self.drop_target:
-                x, y = self.calculate_drop_target_position()
-            self.draw_background_line(x, y)
-
-        imgui.pop_id()
+#####################################################################################################################################
 
 
 
-class OutlinerRelationship:
-    """
-    Class representing a relationship between two outliner objects.
-    """
-    def __init__(self, source_object: pcore.PrototypeEntity, target_object: pcore.PrototypeEntity):
-        super().__init__()
-        self.source_object = source_object
-        self.target_object = target_object
-
-
-
-class OutlinerPanel(pcore.PrototypePanel):
+class OutlinerPanel(core.Panel):
     """
     Outliner class for managing and displaying a list of items in a prototype window.
     """
-    def __init__(self, parent=None, source: pusd.USDPrototypeObject = None):
+    def __init__(self, parent=None, source: cusd.USDPrototypeObject = None):
         super().__init__(parent, source)
         self.parent = parent
         if source:
             self.source_data_object = source
             self.source_item_list = self.source_data_object.usd_skeleton
-        self.outliner_item_list: list[OutlinerEntity] = []
+        self.outliner_item_list: list[core.Node] = []
         self.hierarchy_dict = {}
-
-
-
-    def draw_background_line(self, x: float, y: float):
-        """
-        Draw the background line for the outliner object.
-        """
-        
-        backdrop_rect_min_x = x
-        backdrop_rect_min_y = y
-        backdrop_rect_max_x = x + 400
-        backdrop_rect_max_y = backdrop_rect_min_y + 20.0
-
-        line_color = (0.3, 0.3, 0.3, 1.0)
-
-        self.draw_list.add_rect_filled(backdrop_rect_min_x, backdrop_rect_min_y, backdrop_rect_max_x, backdrop_rect_max_y, imgui.get_color_u32_rgba(*line_color), rounding=4.0)
-
-
 
     def create_invisible_root_item(self):
         """
@@ -98,9 +44,8 @@ class OutlinerPanel(pcore.PrototypePanel):
             "type": "InvisibleRoot",
             "path": "/"
         }
-        new_item = OutlinerEntity(fake_data, None)
+        new_item = core.Node(fake_data, None)
         return new_item
-
 
     def create_outliner_item(self, item_data_dict, parent_item_object):
         """
@@ -181,3 +126,90 @@ class OutlinerPanel(pcore.PrototypePanel):
         imgui.end()
 
 
+
+
+
+
+
+
+
+
+
+
+
+def build_prototype(window, renderer: GlfwRenderer):
+    file_path = pstatic.USD_FILE_PATH
+    source_data_object = pusd.USDPrototypeObject(file_path)
+    prototypeWindow = pcore.PrototypeWindow()
+    if source_data_object:
+        invisible_root = None
+        outliner = ocore.OutlinerPanel(invisible_root, source_data_object)
+        item_list = [
+            outliner,
+        ]
+        while not glfw.window_should_close(window):
+            render_tick(window, renderer, item_list)
+
+
+def render_tick(window, renderer: GlfwRenderer, item_list: list[pcore.PrototypePanel]):
+    """
+    Function to be called every frame to render.
+    """
+    glfw_render_prep(renderer)
+
+    imgui.new_frame()
+    for item in item_list:
+        item.draw()
+    imgui.render()
+
+    glfw_render(window, renderer)
+
+
+def init_glfw_window(window_name: str, width: int, height: int):
+    """
+    Initialize GLFW and create a window.
+    """
+    if not glfw.init():
+        return None
+
+    window = glfw.create_window(width, height, window_name, None, None)
+    if not window:
+        glfw.terminate()
+        return None
+
+    glfw.make_context_current(window)
+    glfw.swap_interval(1)  # Enable vsync
+
+    return window
+
+
+def glfw_render_prep(renderer: GlfwRenderer):
+    """
+    Prepare the window for rendering.
+    """
+    glfw.poll_events()
+    renderer.process_inputs()
+
+
+def glfw_render(window, renderer: GlfwRenderer):
+    """
+    Render the window.
+    """
+    gl.glClearColor(0, 0, 0, 1)
+    gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+    renderer.render(imgui.get_draw_data())
+    glfw.swap_buffers(window)
+
+
+def main():
+    prototype_window = init_glfw_window("Prototype Editor", 1280, 720)
+    imgui.create_context()
+    renderer = GlfwRenderer(prototype_window)
+    build_prototype(prototype_window, renderer)
+    renderer.shutdown()
+    glfw.terminate()
+
+
+
+if __name__ == "__main__":
+    main()

@@ -1,10 +1,11 @@
 # USD Outliner
 
-A tool for navigating USD (Universal Scene Description) scene hierarchies.
+- A python tool for navigating USD (Universal Scene Description) scene hierarchies.
 
 ## Features
 
-- Visualize USD data.
+- USD Outliner 
+- Pixar USD/Gf/Vt stubs
 
 ## Installation
 
@@ -22,4 +23,4 @@ A tool for navigating USD (Universal Scene Description) scene hierarchies.
 
 ## License
 
-MIT License
+- MIT License

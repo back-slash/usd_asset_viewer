@@ -1,13 +1,28 @@
+#####################################################################################################################################
+# USD Outliner = USD Core
+# TODO:
+#
+#####################################################################################################################################
 
-import pxr.Gf as pxgf
-from pxr import Usd as pxusd
-import pprint as pp
+# PYTHON
 import os
-import json
+
+# ADDONS
+import pxr.Usd as pusd
+import pxr.Gf as pgf
+import pxr.Vt as pvt
+
+# PROJECT
+import core.static.static_core as cstat
+import core.utils_core as cutils
+
+#####################################################################################################################################
 
 
-from utils import utils
-import statics.statics as cstat
+
+
+
+
 
 
 
@@ -23,22 +38,22 @@ def get_usd_file_dict(directory: str):
     return usd_file_dict
 
 
-def get_usd_object_list(usd_stage: pxusd.Stage) -> list[pxusd.Prim]:
+def get_usd_object_list(usd_stage: pusd.Stage) -> list[pusd.Prim]:
     usd_object_list = []
     for scene_object in usd_stage.Traverse():
-        scene_object: pxusd.Prim
+        scene_object: pusd.Prim
         usd_object_list.append(scene_object)
     return usd_object_list
 
 
-def get_usd_root(usd_stage: pxusd.Stage):
+def get_usd_root(usd_stage: pusd.Stage):
     """
     Get the root of the USD stage.
     """
     return usd_stage.GetPseudoRoot()
 
 
-def get_usd_skeleton(usd_stage: pxusd.Stage) -> list[dict]:
+def get_usd_skeleton(usd_stage: pusd.Stage) -> list[dict]:
     """
     Get the skeleton of the USD stage.
     """
@@ -79,10 +94,13 @@ def get_usd_skeleton(usd_stage: pxusd.Stage) -> list[dict]:
 
 
 
-def get_usd_meshes(usd_stage: pxusd.Stage) -> dict[str, dict]:
+def get_usd_meshes(usd_stage: pusd.Stage) -> dict[str, dict]:
     pass
 
-def get_usd_information_dict(usd_stage: pxusd.Stage):
+
+
+
+def get_usd_information_dict(usd_stage: pusd.Stage):
     """
     Get the information of USD objects in the stage.
     """
@@ -116,13 +134,15 @@ def get_usd_information_dict(usd_stage: pxusd.Stage):
     return usd_information_dict
 
 
+
+
 class USDPrototypeObject:
     """
     Class representing a USD object in the prototype.
     """
     def __init__(self, usd_file_path):
         self.usd_file_path = usd_file_path
-        self.usd_stage = pxusd.Stage.Open(usd_file_path)
+        self.usd_stage = pusd.Stage.Open(usd_file_path)
         self.prepare_usd_data(self.usd_file_path)
 
         
@@ -130,7 +150,7 @@ class USDPrototypeObject:
         """
         Prepare the USD data for use in the prototype.
         """
-        usd_stage = pxusd.Stage.Open(file_path)
+        usd_stage = pusd.Stage.Open(file_path)
         if not usd_stage:
             print(f"Failed to open USD file: {file_path}")
             return
