@@ -16,13 +16,13 @@ import pxr.Usd as pusd
 # PROJECT
 import core.static.static_core as cstat
 import core.utils_core as cutils
-import core.core as core
+import core.base_core as base_core
 
 #####################################################################################################################################
 
 
 
-class OutlinerPanel(core.Panel):
+class OutlinerPanel(base_core.Panel):
     """
     Outliner class for managing and displaying a list of items in a prototype window.
     """
@@ -32,8 +32,16 @@ class OutlinerPanel(core.Panel):
         if source:
             self.source_data_object = source
             self.source_item_list = self.source_data_object.usd_skeleton
-        self.outliner_item_list: list[core.Node] = []
+        self.outliner_item_list: list[base_core.Node] = []
         self.hierarchy_dict = {}
+
+    def _set_usd_file(self, file_path: str):
+        """
+        Set the USD file path.
+        """
+        self.source_data_object = pusd.Stage.Open(file_path)
+        self.source_item_list = self.source_data_object.usd_skeleton
+
 
     def create_invisible_root_item(self):
         """
@@ -44,7 +52,7 @@ class OutlinerPanel(core.Panel):
             "type": "InvisibleRoot",
             "path": "/"
         }
-        new_item = core.Node(fake_data, None)
+        new_item = base_core.Node(fake_data, None)
         return new_item
 
     def create_outliner_item(self, item_data_dict, parent_item_object):
