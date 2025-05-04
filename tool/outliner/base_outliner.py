@@ -9,9 +9,6 @@ from typing import Any
 
 # ADDONS
 from imgui_bundle import imgui
-import glfw
-import OpenGL.GL as gl
-import pxr.Usd as pusd
 
 # PROJECT
 import core.static.static_core as cstat

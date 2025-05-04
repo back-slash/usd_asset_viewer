@@ -1,15 +1,23 @@
 #####################################################################################################################################
 # USD Outliner | Core | Base
 # TODO:
-# - Add animation trackbars to the outliner to scrub time
+#
 #####################################################################################################################################
 # PYTHON
 from typing import Any
+import os
 
 # ADDONS
 from imgui_bundle import imgui
 import pxr.Usd as pusd
 import pxr.Gf as pgf
+import pxr.Sdf as psdf
+import pxr.UsdGeom as pgeo
+import pxr.UsdShade as pshd
+import pxr.UsdLux as plux
+import pxr.UsdSkel as pskl
+import pxr.UsdUtils as putils
+
 
 # PROJECT
 import core.static.static_core as cstat
@@ -45,7 +53,6 @@ class Node:
         """
         Set the default values for the node.
         """
-        self._definition = self._data_object.GetPrimDefinition()
 
     def _attach_pencil(self, pencil_class: 'Pencil', position: tuple[int, int]=None, size: tuple[int, int]=None):
         """
@@ -129,7 +136,7 @@ class PathNode(Node):
         """
         return self._child_list   
 
-    def get_path(self) -> pusd.SdfPath:
+    def get_path(self) -> psdf.Path:
         """
         Get the path of the node.
         """
@@ -148,13 +155,14 @@ class Primative(PathNode):
     _opacity = 1.0
     def __init__(self, data_object: pusd.Prim):
         super().__init__(data_object)
-        self._data_object: pusd.UsdGeomMesh #Hacky
+        self._data_object: pusd.Prim #Hacky
         self._init_node_attributes()
 
     def _init_generic_data(self):
         super()._init_generic_data()
-        self._display_color = self._data_object.GetDisplayColorAttr().Get()
-        self._opacity = self._data_object.GetDisplayOpacityAttr().Get()
+        display_color_attr = self._data_object.GetAttribute('displayColor').Get()
+        visibility_attr = self._data_object.GetAttribute('visibility')
+        self._opacity = visibility_attr.Get() != 'invisible' if visibility_attr else True
 
     def _init_node_attributes(self):
         """
@@ -193,23 +201,23 @@ class Attribute(PathNode):
         super()._init_generic_data()
         self._name = self._data_object.GetName()
 
-    def _init_connections(self) -> list[pusd.SdfPath]:
+    def _init_connections(self) -> list[psdf.Path]:
         """
         Get any connections.
         """
         self._connection_paths = []
-        connection_paths = self._data_object.GetConnectionPaths()
+        connection_paths = self._data_object.GetConnections()
         for path in connection_paths:
             if path.IsPropertyPath():
                 self._add_connection(path)
         if self._connection_paths:
             self._connected = True
 
-    def _add_connection(self, path: pusd.SdfPath):
+    def _add_connection(self, path: psdf.Path):
         """
         Add an input node to the node.
         """
-        attribute = self._scene_manager.get_stage().GetPrimAtPath(path.GetString())
+        attribute = self._scene_manager.get_stage().GetPrimAtPath(path.pathString)
         attribute_node = Attribute(attribute)
         if attribute_node not in self._connection_paths:
             self._connection_paths.append(attribute_node)
@@ -240,17 +248,6 @@ class Attribute(PathNode):
         return data_type_dict[data_type]
 
 
-
-
-class Data(Node):
-    """
-    Class representing a data node.
-    """
-    def __init__(self, data_object_owner: pusd.Prim=None, relative_path: str=None):
-        self._parent_node = data_object_owner
-        self._relative_path = relative_path
-
-
 class Mesh(Primative):
     """
     Class representing a mesh node.
@@ -271,7 +268,7 @@ class Light(Primative):
     """
     Class representing a light node.
     """
-    def __init__(self, data_object: pusd.UsdLuxDistantLight):
+    def __init__(self, data_object: plux.DistantLight):
         super().__init__(data_object)
         self._node_color = (0.9, 0.9, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.LIGHT_ICON
@@ -281,7 +278,7 @@ class Camera(Primative):
     """
     Class representing a camera node.
     """
-    def __init__(self, data_object: pusd.UsdGeomCamera):
+    def __init__(self, data_object: pgeo.Camera):
         super().__init__(data_object)
         self._node_color = (0.4, 0.4, 0.8, 1.0)
         self._node_icon = cstat.NodeIcon.CAMERA_ICON
@@ -291,7 +288,7 @@ class Skeleton(Primative):
     """
     Class representing a skeleton node.
     """
-    def __init__(self, data_object: pusd.UsdSkelSkeleton):
+    def __init__(self, data_object: pskl.Skeleton):
         super().__init__(data_object)
         self._node_color = (0.6, 0.4, 0.8, 1.0)
         self._node_icon = cstat.NodeIcon.SKELETON_ICON
@@ -306,7 +303,7 @@ class Material(Primative):
     """
     Class representing a material node.
     """
-    def __init__(self, data_object: pusd.UsdShadeMaterial):
+    def __init__(self, data_object: pshd.Material):
         super().__init__(data_object)
         self._node_color = (0.8, 0.4, 0.6, 1.0)
         self._node_icon = cstat.NodeIcon.MATERIAL_ICON
@@ -320,35 +317,49 @@ class Curve(Primative):
     """
     Class representing a curve node.
     """
-    def __init__(self, data_object: pusd.UsdGeomBasisCurves):
+    def __init__(self, data_object: pgeo.BasisCurves):
         super().__init__(data_object)
         self._node_color = (0.8, 0.8, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.CURVE_ICON
+
+
+class Data(Node):
+    """
+    Class representing a data node.
+    """
+    def __init__(self, data_object_owner: pusd.Prim=None, relative_path: str=None):
+        self._parent_node = data_object_owner
+        self._relative_path = relative_path
+
+    def get_relateive_path(self) -> str:
+        """
+        Get the relative path of the node.
+        """
+        return self._relative_path
+
 
 class Texture(Data):
     """
     Class representing a texture node.
     """
-    def __init__(self, data_object: str, relative_path: str):
-        super().__init__(data_object, relative_path)
+    def __init__(self, data_object_owner: pusd.Prim, data_object: str, relative_path: str):
+        super().__init__(data_object_owner, data_object, relative_path)
         self._node_color = (0.4, 0.8, 0.8, 1.0)
         self._node_icon = cstat.NodeIcon.TEXTURE_ICON
+
 
 class Bone(Data):
     """
     Class representing a bone node.
     """
-    def __init__(self, data_object: dict, relative_path: str):
-        super().__init__(data_object, relative_path)
+    def __init__(self, data_object_owner: pusd.Prim, data_object: dict, relative_path: str):
+        super().__init__(data_object_owner, data_object, relative_path)
         self._node_color = (0.8, 0.6, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.BONE_ICON
 
 
 #####################################################################################################################################
 
-
-
-#####################################################################################################################################
 
 class Pencil:
     """
@@ -386,6 +397,7 @@ class Frame:
     """
     Class representing the tool frame.
     """
+    _config = None
     def __init__(self, title: str):
         self.title = title
         self._init_panels()
@@ -407,8 +419,9 @@ class Frame:
         """
         Load the configuration file.
         """
-        imgui.set_current_context(self._context)
-        self._config = cutils.read_from_file(self._config_path, cstat.IOFiletype.TOML)
+        directory = os.path.join(os.path.dirname(__file__), "static" "config_core.toml")
+        if os.path.exists(directory):
+            self._config: dict = cutils.FileHelper.read(directory, cstat.Filetype.TOML)
 
     def _push_default_style(self):
         """
@@ -536,15 +549,15 @@ class SceneManager:
         
     def _init_node_type(self, node: pusd.Prim):
         """
-        Recursively process the USD scene and init nodes.
+        Get appropriate node type.
         """
         usd_node_types = {
-            pusd.UsdGeomMesh: Mesh,
-            pusd.UsdLuxDistantLight: Light,
-            pusd.UsdGeomCamera: Camera,
-            pusd.UsdSkelSkeleton: Skeleton,
-            pusd.UsdShadeMaterial: Material,
-            pusd.UsdGeomBasisCurves: Curve,
+            pgeo.Mesh: Mesh,
+            plux.DistantLight: Light,
+            pgeo.Camera: Camera,
+            pskl.Skeleton: Skeleton,
+            pshd.Material: Material,
+            pgeo.BasisCurves: Curve,
         }
         for node_type, class_type in usd_node_types.items():
             if isinstance(node, node_type):
@@ -609,7 +622,7 @@ class SceneManager:
         """
         return self._start_time, self._end_time
     
-    def get_path_node(self, path: pusd.SdfPath) -> PathNode:
+    def get_path_node(self, path: psdf.Path) -> PathNode:
         """
         Get the path node by its path.
         """
@@ -622,5 +635,5 @@ class SceneManager:
         Get the data node by its relative path.
         """
         for node in self._data_node_list:
-            if node.get_path() == relative_path:
+            if node.get_relateive_path() == relative_path:
                 return node
