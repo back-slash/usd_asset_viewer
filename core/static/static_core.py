@@ -7,7 +7,11 @@
 # PYTHON
 from enum import Enum
 
+
 #####################################################################################################################################
+
+DEFAULT_USD_PATH = "core\\assets\\usd\\example_scene.usdc"
+
 
 class FontType(Enum):
     """
@@ -21,20 +25,27 @@ class FontType(Enum):
     CONSOLAS = 5
 
 
-class Filetype(Enum):
+class FontSetSizes(Enum):
+    """
+    Enum for font sizes used in the prototype.
+    """
+    TINY = 8
+    SMALL = 12
+    MEDIUM = 16
+    LARGE = 24
+
+
+class IOFiletype(Enum):
     """
     Enum for file types used in the prototype.
     """
-    TEXT = 0
     USD = 1
-    JSON = 2
-    TOML = 3
+    TOML = 2
 
 
-
-class Icons(Enum):
+class NodeIcon(Enum):
     """
-    Enum for icons used in the prototype.
+    Enum for node types.
     """
     MESH_ICON = "icon_mesh"
     LIGHT_ICON = "icon_light"
@@ -43,10 +54,29 @@ class Icons(Enum):
     TEXTURE_ICON = "icon_texture"
     NULL_ICON = "icon_null"
     CURVE_ICON = "icon_curve"
+    BONE_ICON = "icon_bone"
+    LOCATOR_ICON = "icon_locator"
+    SKELETON_ICON = "icon_skeleton"
+
+
+class PanelTypes(Enum):
+    """
+    Enum for panel modes.
+    """
+    NONE = 0
+    OUTLINER = 1
+    DETAIL = 2
+    NODE_EDITOR = 3
+
 
 
 #####################################################################################################################################
 
+LINE_HEIGHT = 20
+LINE_ROUNDING = 2.0
+LINE_SPACING = 0.0
+LINE_COLOR = (0.2, 0.2, 0.2, 1.0)
+LINE_COLOR_ALTERNATE = (0.3, 0.3, 0.3, 1.0)
 
 
 
