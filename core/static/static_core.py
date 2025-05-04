@@ -1,11 +1,12 @@
 #####################################################################################################################################
-# USD Outliner | Static Core
+# USD Outliner | Core | Static
 # TODO:
 # - Add animation trackbars to the outliner to scrub time
 #####################################################################################################################################
 
 # PYTHON
 from enum import Enum
+from tkinter import Image
 
 
 #####################################################################################################################################
@@ -35,12 +36,14 @@ class FontSetSizes(Enum):
     LARGE = 24
 
 
-class IOFiletype(Enum):
+class Filetype(Enum):
     """
     Enum for file types used in the prototype.
     """
     USD = 1
     TOML = 2
+    IMG = 3
+    ICON = 4
 
 
 class NodeIcon(Enum):

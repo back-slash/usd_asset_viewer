@@ -1,15 +1,13 @@
 #####################################################################################################################################
-# USD Outliner | Core
+# USD Outliner | Core | Base
 # TODO:
 # - Add animation trackbars to the outliner to scrub time
 #####################################################################################################################################
 # PYTHON
-from os import name
 from typing import Any
 
 # ADDONS
 from imgui_bundle import imgui
-import pydoc_data
 import pxr.Usd as pusd
 import pxr.Gf as pgf
 
@@ -29,11 +27,7 @@ class Node:
     _node_color = None
     _node_icon = None
     _pencil_list: list['Pencil'] = []
-    name = None
-    value = None
-    display_color = None
-    opacity = 1.0
-    path = None
+    _name = None
     def __init__(self, data_object: pusd.Prim=None):
         self._data_object: pusd.Prim = data_object
         self._parent_node = self._data_object.GetParent()
@@ -51,9 +45,7 @@ class Node:
         """
         Set the default values for the node.
         """
-        self.name = self._data_object.GetName()
-        self.path = self._data_object.GetPath()
-        self.type = self._data_object.GetTypeName()
+        self._definition = self._data_object.GetPrimDefinition()
 
     def _attach_pencil(self, pencil_class: 'Pencil', position: tuple[int, int]=None, size: tuple[int, int]=None):
         """
@@ -86,15 +78,35 @@ class Node:
         """
         return self._scene_manager
 
+    def get_icon(self) -> cstat.NodeIcon:
+        """
+        Get the icon of the node.
+        """
+        return self._node_icon
+    
+    def get_name(self) -> str:
+        """
+        Get the name of the node.
+        """
+        return self._name
+    
+
+
 
 class PathNode(Node):
     """
     Class representing a path node.
     """
+    _path = None
     def __init__(self, data_object: pusd.Prim):
         super().__init__(data_object)
         self._init_node_children()
+        self._path = self._data_object.GetPath()
     
+    def _init_generic_data(self):
+        super()._init_generic_data()
+        self._name = self._data_object.GetName()
+
     def _init_node_children(self):
         """
         Load the children of the node.
@@ -121,9 +133,7 @@ class PathNode(Node):
         """
         Get the path of the node.
         """
-        if self._data_object:
-            path = self._data_object.GetPath()
-            return path
+        return self._path
 
 
 class Primative(PathNode):
@@ -133,12 +143,18 @@ class Primative(PathNode):
     _input_list = []
     _output_list = []
     _child_list = []
-    _attribute_list = []    
+    _attribute_list = []   
+    _display_color = None
+    _opacity = 1.0
     def __init__(self, data_object: pusd.Prim):
         super().__init__(data_object)
-        self._node_color = (0.4, 0.8, 0.4, 1.0)  # Green
-        self._node_icon = cstat.NodeIcon.NULL_ICON
+        self._data_object: pusd.UsdGeomMesh #Hacky
         self._init_node_attributes()
+
+    def _init_generic_data(self):
+        super()._init_generic_data()
+        self._display_color = self._data_object.GetDisplayColorAttr().Get()
+        self._opacity = self._data_object.GetDisplayOpacityAttr().Get()
 
     def _init_node_attributes(self):
         """
@@ -156,6 +172,12 @@ class Primative(PathNode):
         if attribute not in self._attribute_list:
             self._attribute_list.append(attribute)
 
+    def get_display_color(self) -> tuple[float, float, float, float]:
+        """
+        Get the display color of the node.
+        """
+        return self._display_color 
+
 
 class Attribute(PathNode):
     """
@@ -164,12 +186,16 @@ class Attribute(PathNode):
     _connected = False
     def __init__(self, data_object: pusd.Attribute):
         super().__init__(data_object)
-        self._parent_node = data_object.GetPrim().GetPath()
+        self._parent_node = data_object.GetPrim()
         self._data_object: pusd.Attribute = data_object
+
+    def _init_generic_data(self):
+        super()._init_generic_data()
+        self._name = self._data_object.GetName()
 
     def _init_connections(self) -> list[pusd.SdfPath]:
         """
-        Get any input nodes attribute.
+        Get any connections.
         """
         self._connection_paths = []
         connection_paths = self._data_object.GetConnectionPaths()
@@ -229,9 +255,9 @@ class Mesh(Primative):
     """
     Class representing a mesh node.
     """
-    def __init__(self, data_object: pusd.UsdGeomMesh):
+    def __init__(self, data_object: pusd.Prim):
         super().__init__(data_object)
-        self._node_color = (0.8, 0.4, 0.4, 1.0)  # Red
+        self._node_color = (0.8, 0.4, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.MESH_ICON
         self._init_materials()
 
@@ -247,7 +273,7 @@ class Light(Primative):
     """
     def __init__(self, data_object: pusd.UsdLuxDistantLight):
         super().__init__(data_object)
-        self._node_color = (0.9, 0.9, 0.4, 1.0)  # Yellow
+        self._node_color = (0.9, 0.9, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.LIGHT_ICON
 
 
@@ -257,7 +283,7 @@ class Camera(Primative):
     """
     def __init__(self, data_object: pusd.UsdGeomCamera):
         super().__init__(data_object)
-        self._node_color = (0.4, 0.4, 0.8, 1.0)  # Blue
+        self._node_color = (0.4, 0.4, 0.8, 1.0)
         self._node_icon = cstat.NodeIcon.CAMERA_ICON
 
 
@@ -267,7 +293,7 @@ class Skeleton(Primative):
     """
     def __init__(self, data_object: pusd.UsdSkelSkeleton):
         super().__init__(data_object)
-        self._node_color = (0.6, 0.4, 0.8, 1.0)  # Purple
+        self._node_color = (0.6, 0.4, 0.8, 1.0)
         self._node_icon = cstat.NodeIcon.SKELETON_ICON
     
     def _init_skeleton_bones(self):
@@ -282,7 +308,7 @@ class Material(Primative):
     """
     def __init__(self, data_object: pusd.UsdShadeMaterial):
         super().__init__(data_object)
-        self._node_color = (0.8, 0.4, 0.6, 1.0)  # Pink
+        self._node_color = (0.8, 0.4, 0.6, 1.0)
         self._node_icon = cstat.NodeIcon.MATERIAL_ICON
 
     def _init_textures(self):
@@ -296,7 +322,7 @@ class Curve(Primative):
     """
     def __init__(self, data_object: pusd.UsdGeomBasisCurves):
         super().__init__(data_object)
-        self._node_color = (0.8, 0.8, 0.4, 1.0)  # Light Yellow
+        self._node_color = (0.8, 0.8, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.CURVE_ICON
 
 class Texture(Data):
@@ -305,7 +331,7 @@ class Texture(Data):
     """
     def __init__(self, data_object: str, relative_path: str):
         super().__init__(data_object, relative_path)
-        self._node_color = (0.4, 0.8, 0.8, 1.0)  # Cyan
+        self._node_color = (0.4, 0.8, 0.8, 1.0)
         self._node_icon = cstat.NodeIcon.TEXTURE_ICON
 
 class Bone(Data):
@@ -314,7 +340,7 @@ class Bone(Data):
     """
     def __init__(self, data_object: dict, relative_path: str):
         super().__init__(data_object, relative_path)
-        self._node_color = (0.8, 0.6, 0.4, 1.0)  # Orange
+        self._node_color = (0.8, 0.6, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.BONE_ICON
 
 
@@ -353,21 +379,6 @@ class Pencil:
         Update and draw the node.
         """
 
-
-
-
-
-#####################################################################################################################################
-
-class PrimitiveDrawData:
-    """
-    Class for node data view.
-    """
-    input = True
-    output = True
-    children = True
-    parent = True
-    attributes = False    
 
 #####################################################################################################################################
 

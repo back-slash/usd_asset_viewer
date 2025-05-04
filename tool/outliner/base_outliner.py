@@ -1,5 +1,5 @@
 #####################################################################################################################################
-# USD Outliner | Tool | Main
+# USD Outliner | Tool | Base
 # TODO:
 # - Add animation trackbars to the outliner to scrub time
 #####################################################################################################################################
@@ -49,7 +49,7 @@ class OutlinerEntryPencil(cbase.Pencil):
         rect_max = (rect_min[0] + content_region_avail[0], rect_min[1] + height)
         return rect_min, rect_max
 
-    def _draw_background(self, position: tuple[int, int], index: int):
+    def _draw_background(self):
         """
         Draw the background of the node.
         """
@@ -65,6 +65,12 @@ class OutlinerEntryPencil(cbase.Pencil):
         """
         Draw the node icon and name.
         """
+        icon = self._node.get_icon()
+        name = self._node.get_name()
+        imgui.set_cursor_pos(position)
+        imgui.text(name)
+        if icon:
+            imgui.image(icon, size=(16, 16), uv_min=(0, 0), uv_max=(1, 1))
 
     def _draw_navigation(self, indent: int):
         """
@@ -83,6 +89,20 @@ class OutlinerEntryPencil(cbase.Pencil):
         
 
 
+class OutlinerPropertyPencil(cbase.Pencil):
+    """
+    Class representing a node in the outliner.
+    """
+    def __init__(self, node: cbase.Node, position: tuple[int, int]=None, size: tuple[int, int]=None, index: int=0):
+        super().__init__(node, position, size)
+        self._index = index
+
+    def _draw(self):
+        """
+        Draw the outliner entry.
+        """
+        pass
+
 
 
 
@@ -90,7 +110,7 @@ class OutlinerEntryPencil(cbase.Pencil):
 #####################################################################################################################################
 
 
-class USDOutliner(cbase.Frame):
+class USDViewer(cbase.Frame):
     """
     USD Outliner class for managing and displaying a list of items in a prototype window.
     """
@@ -101,13 +121,6 @@ class USDOutliner(cbase.Frame):
         self._scene_manger = cbase.SceneManager(usd_path)
         self._stage = self._scene_manger.get_stage()
 
-
-    def _clear_usd_file(self):
-        """
-        Clear the USD Stage.
-        """
-        if self._stage:
-            self._stage = None
 
 
 

@@ -1,5 +1,5 @@
 #####################################################################################################################################
-# USD Outliner | Utility Core
+# USD Outliner | Core | Utility
 # TODO:
 # -
 #####################################################################################################################################
@@ -31,13 +31,16 @@ class FileHelper:
     Class for file input/output operations.
     """
     @classmethod
-    def read(cls, file_path: str, file_type: cstat.IOFiletype) -> Any:
+    def read(cls, file_path: str, file_type: cstat.Filetype) -> Any:
         """
         Read data from a file based on its type.
         """
         process_file_type_dict = {
-            cstat.IOFiletype.USD: lambda x: cls._read_usd(x),
-            cstat.IOFiletype.TOML: lambda x: cls._read_toml(x)
+            cstat.Filetype.USD: lambda x: cls._read_usd(x),
+            cstat.Filetype.TOML: lambda x: cls._read_toml(x),
+            cstat.Filetype.IMG: lambda x: cls._read_img(x),
+            cstat.Filetype.ICON: lambda x: cls._read_icon(x),
+
         }
         return process_file_type_dict[file_type](file_path)
     
@@ -52,8 +55,22 @@ class FileHelper:
         """
         Read data from a USD file.
         """
-        stage = pusd.Stage.Open(file_path)
-        return stage
+        self._usd_stage = pusd.Stage.Open(file_path)
+        return self._usd_stage
+
+    def _read_img(self, file_path) -> int:
+        """
+        Read data from an image file.
+        """
+        return 0
+    
+    def _read_icon(self, icon: cstat.NodeIcon) -> int:
+        """
+        Read data from an icon file.
+        """
+        current_dir = os.path.dirname(__file__)
+        icon_path = os.path.join(current_dir, 'assets', 'icons', icon.value + ".png")
+        return self._read_img(icon_path)
 
 
 def convert_dict_string(data: Dict[str, Any]) -> Dict[str, str]:
@@ -62,20 +79,6 @@ def convert_dict_string(data: Dict[str, Any]) -> Dict[str, str]:
     """
     return {str(key): str(value) for key, value in data.items()}
 
-def get_image_id(file_path: str, context: imgui.internal.Context) -> int:
-    """
-    Load an image from a file and return its ID.
-    """
-    imgui.set_current_context(context)
-    return 0
-
-def get_icon_id(icon_enum: cstat.NodeIcon, context: imgui.internal.Context) -> int:
-    """
-    Get the ID of an icon based on its name.
-    """
-    current_dir = os.path.dirname(__file__)
-    icon_path = os.path.join(current_dir, 'assets', 'icons', icon_enum.value + ".png")
-    return get_image_id(icon_path, context)
 
 def get_usd_default_path() -> str:
     """
