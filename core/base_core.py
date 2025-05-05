@@ -34,14 +34,12 @@ class Node:
     _data_object = None
     _node_color = None
     _node_icon = None
-    _pencil_list: list['Pencil'] = []
+    _pencil_dict: dict[str, 'Pencil'] = {}
     _name = None
-    def __init__(self, data_object: pusd.Prim=None):
-        self._data_object: pusd.Prim = data_object
-        self._parent_node = self._data_object.GetParent()
-        self._data_object_type = data_object.GetTypeName()
+    def __init__(self, data_object: Any):
+        self._data_object: pusd.Prim | dict = data_object
         self._init_scene_manager()
-        self._init_generic_data()
+        self._init_node_data()
 
     def _init_scene_manager(self):
         """
@@ -49,23 +47,33 @@ class Node:
         """
         self._scene_manager = SceneManager()
 
-    def _init_generic_data(self):
+    def _init_node_data(self):
         """
         Set the default values for the node.
         """
+        raise NotImplementedError("The '_init_node_data' method must be implemented by subclasses.")
+    
+    def _set_name(self, name: str=None):
+        """
+        Set the name of the node.
+        """
+        if name:
+            self._name = name
+        else:
+            self._name = self._data_object.GetName()
 
-    def _attach_pencil(self, pencil_class: 'Pencil', position: tuple[int, int]=None, size: tuple[int, int]=None):
+    def _attach_pencil(self, identifier, pencil: 'Pencil'):
         """
         Attach the pencil to the node.
         """
-        self._pencil_list.append(pencil_class(self, position, size))
+        self._pencil_dict[identifier] = pencil
 
     def update_pencil_list(self):
         """
         Update data and pencil.
         """
-        for pencil in self._pencil_list:
-            pencil.update_draw()
+        for identifier in self._pencil_dict:
+            self._pencil_dict[identifier].update_draw()
 
     def get_parent_node(self) -> 'Node':
         """
@@ -91,36 +99,41 @@ class Node:
         """
         return self._node_icon
     
+    def get_color(self) -> tuple[float, float, float, float]:
+        """
+        Get the color of the node.
+        """
+        return self._node_color
+
     def get_name(self) -> str:
         """
         Get the name of the node.
         """
         return self._name
-    
 
 
-
-class PathNode(Node):
+class Pathed(Node):
     """
     Class representing a path node.
     """
     _path = None
-    def __init__(self, data_object: pusd.Prim):
+    def __init__(self, data_object: pusd.Prim | pusd.Attribute):
         super().__init__(data_object)
-        self._init_node_children()
+        
+    def _init_node_data(self):
+        super()._init_node_data()
+        self._set_name()
+        self._parent_node = self._data_object.GetParent()
         self._path = self._data_object.GetPath()
-    
-    def _init_generic_data(self):
-        super()._init_generic_data()
-        self._name = self._data_object.GetName()
-
+        self._init_node_children()
+        
     def _init_node_children(self):
         """
         Load the children of the node.
         """
         self._child_list = []
         for child in self._data_object.GetChildren():
-            node_child = Node(self, child)
+            node_child = self._scene_manager.init_path_node(child)
             self._add_child(node_child)
 
     def _add_child(self, child: 'Node'):
@@ -143,7 +156,7 @@ class PathNode(Node):
         return self._path
 
 
-class Primative(PathNode):
+class Primative(Pathed):
     """
     Class representing a primitive node.
     """
@@ -155,14 +168,10 @@ class Primative(PathNode):
     _opacity = 1.0
     def __init__(self, data_object: pusd.Prim):
         super().__init__(data_object)
-        self._data_object: pusd.Prim #Hacky
-        self._init_node_attributes()
 
-    def _init_generic_data(self):
-        super()._init_generic_data()
-        display_color_attr = self._data_object.GetAttribute('displayColor').Get()
-        visibility_attr = self._data_object.GetAttribute('visibility')
-        self._opacity = visibility_attr.Get() != 'invisible' if visibility_attr else True
+    def _init_node_data(self):
+        super()._init_node_data()
+        self._init_node_attributes()
 
     def _init_node_attributes(self):
         """
@@ -170,7 +179,7 @@ class Primative(PathNode):
         """
         self._attribute_list: list[Attribute] = []
         for attribute in self._data_object.GetAttributes():
-            node_attribute = Attribute(self, attribute)
+            node_attribute = self._scene_manager.init_path_node(attribute)
             self._add_attribute(node_attribute)
 
     def _add_attribute(self, attribute: 'Attribute'):
@@ -187,19 +196,18 @@ class Primative(PathNode):
         return self._display_color 
 
 
-class Attribute(PathNode):
+class Attribute(Pathed):
     """
     Class representing an attribute of a node.
     """
     _connected = False
     def __init__(self, data_object: pusd.Attribute):
         super().__init__(data_object)
-        self._parent_node = data_object.GetPrim()
-        self._data_object: pusd.Attribute = data_object
+        self._data_object: pusd.Attribute
 
-    def _init_generic_data(self):
-        super()._init_generic_data()
-        self._name = self._data_object.GetName()
+    def _init_node_data(self):
+        super()._init_node_data()
+        self._init_connections()
 
     def _init_connections(self) -> list[psdf.Path]:
         """
@@ -217,8 +225,8 @@ class Attribute(PathNode):
         """
         Add an input node to the node.
         """
-        attribute = self._scene_manager.get_stage().GetPrimAtPath(path.pathString)
-        attribute_node = Attribute(attribute)
+        attribute = self._scene_manager.get_stage().GetPrimAtPath(path)
+        attribute_node = self._scene_manager.init_path_node(attribute)
         if attribute_node not in self._connection_paths:
             self._connection_paths.append(attribute_node)
 
@@ -227,33 +235,32 @@ class Attribute(PathNode):
         Get the data of the attribute.
         """
         return self._data_object.Get(time)
-    
-    def get_data_type(self):
-        """
-        Get the type of the attribute.
-        """
-        data_type = self._data_object.GetTypeName()
-        data_type_dict = {
-            'float': float,
-            'double': float,
-            'int': int,
-            'bool': bool,
-            'string': str,
-            'token': str,
-            'vector3d': pgf.Vec3d,
-            'vector4d': pgf.Vec4d,            
-            'matrix3d': pgf.Matrix3d,
-            'matrix4d': pgf.Matrix4d,
-        }
-        return data_type_dict[data_type]
+
+
+
+class XForm(Primative):
+    """
+    Class representing a transform node.
+    """
+    def __init__(self, data_object: pgeo.Xform):
+        super().__init__(data_object)
+
+    def _init_node_data(self):
+        super()._init_node_data()
+        self._node_color = (0.4, 0.8, 0.4, 1.0)
+        self._node_icon = cstat.NodeIcon.NULL_ICON
+        self._init_node_children()
 
 
 class Mesh(Primative):
     """
     Class representing a mesh node.
     """
-    def __init__(self, data_object: pusd.Prim):
+    def __init__(self, data_object: pgeo.Gprim):
         super().__init__(data_object)
+
+    def _init_node_data(self):
+        super()._init_node_data()
         self._node_color = (0.8, 0.4, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.MESH_ICON
         self._init_materials()
@@ -268,8 +275,11 @@ class Light(Primative):
     """
     Class representing a light node.
     """
-    def __init__(self, data_object: plux.DistantLight):
+    def __init__(self, data_object: plux.BoundableLightBase | plux.NonboundableLightBase):
         super().__init__(data_object)
+
+    def _init_node_data(self):
+        super()._init_node_data()
         self._node_color = (0.9, 0.9, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.LIGHT_ICON
 
@@ -280,6 +290,9 @@ class Camera(Primative):
     """
     def __init__(self, data_object: pgeo.Camera):
         super().__init__(data_object)
+        
+    def _init_node_data(self):
+        super()._init_node_data()    
         self._node_color = (0.4, 0.4, 0.8, 1.0)
         self._node_icon = cstat.NodeIcon.CAMERA_ICON
 
@@ -290,9 +303,13 @@ class Skeleton(Primative):
     """
     def __init__(self, data_object: pskl.Skeleton):
         super().__init__(data_object)
+        
+    def _init_node_data(self):
+        super()._init_node_data()
         self._node_color = (0.6, 0.4, 0.8, 1.0)
         self._node_icon = cstat.NodeIcon.SKELETON_ICON
-    
+        self._init_skeleton_bones()
+
     def _init_skeleton_bones(self):
         """
         Load the skeleton of the node.
@@ -305,6 +322,9 @@ class Material(Primative):
     """
     def __init__(self, data_object: pshd.Material):
         super().__init__(data_object)
+        
+    def _init_node_data(self):
+        super()._init_node_data()    
         self._node_color = (0.8, 0.4, 0.6, 1.0)
         self._node_icon = cstat.NodeIcon.MATERIAL_ICON
 
@@ -313,11 +333,12 @@ class Material(Primative):
         Load the textures of the material node.
         """
 
+
 class Curve(Primative):
     """
     Class representing a curve node.
     """
-    def __init__(self, data_object: pgeo.BasisCurves):
+    def __init__(self, data_object: pgeo.Curves):
         super().__init__(data_object)
         self._node_color = (0.8, 0.8, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.CURVE_ICON
@@ -327,9 +348,13 @@ class Data(Node):
     """
     Class representing a data node.
     """
-    def __init__(self, data_object_owner: pusd.Prim=None, relative_path: str=None):
-        self._parent_node = data_object_owner
-        self._relative_path = relative_path
+    def __init__(self, data_object: dict[str, pusd.Prim | str]):
+        super().__init__(data_object)
+
+    def _init_node_data(self):
+        super()._init_node_data()
+        self._parent_node: pusd.Prim = self._data_object["owner"]
+        self._relative_path = self._data_object["relative_path"]
 
     def get_relateive_path(self) -> str:
         """
@@ -342,8 +367,8 @@ class Texture(Data):
     """
     Class representing a texture node.
     """
-    def __init__(self, data_object_owner: pusd.Prim, data_object: str, relative_path: str):
-        super().__init__(data_object_owner, data_object, relative_path)
+    def __init__(self, data_object: dict[str, pusd.Prim | str]):
+        super().__init__(data_object)
         self._node_color = (0.4, 0.8, 0.8, 1.0)
         self._node_icon = cstat.NodeIcon.TEXTURE_ICON
 
@@ -352,8 +377,8 @@ class Bone(Data):
     """
     Class representing a bone node.
     """
-    def __init__(self, data_object_owner: pusd.Prim, data_object: dict, relative_path: str):
-        super().__init__(data_object_owner, data_object, relative_path)
+    def __init__(self, data_object: dict[str, pusd.Prim | str]):
+        super().__init__(data_object)
         self._node_color = (0.8, 0.6, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.BONE_ICON
 
@@ -365,33 +390,47 @@ class Pencil:
     """
     Class representing an draw pencil.
     """
-    def __init__(self, node: Node, position: tuple[int, int]=None, size: tuple[int, int]=None):
+    def __init__(self, node: Node):
         self._node = node
-        self._position = position
-        self._size = size
         self._init_node_data()
 
     def _init_node_data(self):
         """
         Initialize the node data.
         """
-        self._data_object = self._node.get_data_object()
-        self._visible = self._data_object.IsActive() and self._data_object.IsDefined()
-        self._name = self._data_object.GetName()
-        self._path = self._data_object.GetPath()
+        self._node_name = self._node.get_name()
+        self._node_icon = self._node.get_icon()
+        self._node_color = self._node.get_color()
+        if hasattr(self._node, "get_display_color"):
+            self._node_display_color = self._node.get_display_color()
+        else:
+            self._node_display_color = None
 
     def _draw(self):
         """
         Draw the node.
         """
 
-    def update_draw(self):
+    def _update_transform(self, position: tuple[int, int]=None, size: tuple[int, int]=None):
+        """
+        Update the transform of the node.
+        """
+        if position:
+            self._position = position
+        if size:
+            self._size = size
+
+    def update_draw(self, size: tuple[int, int]=None, position: tuple[int, int]=None):
         """
         Update and draw the node.
         """
+        self._update_transform(position, size)
+        self._draw()
+
 
 
 #####################################################################################################################################
+
 
 class Frame:
     """
@@ -515,7 +554,7 @@ class SceneManager:
     def __init__(self, usd_path):
         if not self._initialized:
             self._usd_path = usd_path
-            self._path_node_list: list[PathNode] = []
+            self._path_node_list: list[Pathed] = []
             self._data_node_list: list[Data] = []
             self._init_usd_scene()
             self._init_time_manager()
@@ -527,49 +566,94 @@ class SceneManager:
         """
         self._stage = pusd.Stage.Open(self._usd_path)
         self._root = self._stage.GetPseudoRoot()
+        self._init_hierarchy()
 
-    def _init_nodes(self):
+    def _init_hierarchy(self):
         """
         Process the USD scene and init nodes.
         """
         for child in self._root.GetChildren():
-            self._recursive_child_node(child)
+            self._recursive_child(child)
 
-    def _recursive_child_node(self, node: pusd.Prim):
+    def _recursive_child(self, child: pusd.Prim):
         """
         Recursively process the USD scene and init nodes.
         """
-        internal_node = self._init_node_type(node)
+        internal_node = self._init_internal_node(child)
         if internal_node:
             self._add_path_node(internal_node)
-            for attribute in node.GetAttributes():
-                self._recursive_child_node(attribute)
-            for child in node.GetChildren():
-                self._recursive_child_node(child)
+            if not isinstance(internal_node, Attribute):
+                for attribute in child.GetAttributes():
+                    self._recursive_child(attribute)
+                for child in child.GetChildren():
+                    self._recursive_child(child)
+
+    def _traverse_hierarchy(self):
+        """
+        Traverse the hierarchy and init nodes.
+        """
+        for prim in self._stage.Traverse():
+            internal_node = self._init_internal_node(prim)
+            self._add_path_node(internal_node)
+            for attribute in prim.GetAttributes():
+                internal_attribute = self._init_internal_node(attribute)
+                if internal_attribute and internal_attribute not in self._path_node_list:
+                    self._add_path_node(internal_attribute)
+
         
-    def _init_node_type(self, node: pusd.Prim):
+    def _init_internal_node(self, input_object: pusd.Prim | pusd.Attribute) -> Node | None:
         """
-        Get appropriate node type.
+        Get appropriate node type and init.
         """
-        usd_node_types = {
-            pgeo.Mesh: Mesh,
-            plux.DistantLight: Light,
-            pgeo.Camera: Camera,
-            pskl.Skeleton: Skeleton,
-            pshd.Material: Material,
-            pgeo.BasisCurves: Curve,
+        prim_classes = {
+            "Xform": XForm,
+            "Mesh": Mesh,
+            "DistantLight": Light,
+            "DiskLight": Light,
+            "RectLight": Light,
+            "SphereLight": Light,
+            "DomeLight": Light,
+            "CylinderLight": Light,
+            "GeometryLight": Light,
+            "ShapingAPI": Light,
+            "LightPortal": Light,
+            "Camera": Camera,
+            "Skeleton": Skeleton,
+            "Material": Material,
+            "BasisCurves": Curve,
+            "NurbsCurves": Curve,
         }
-        for node_type, class_type in usd_node_types.items():
-            if isinstance(node, node_type):
-                internal_node = class_type(node)
-                self._add_data_node(internal_node)
-                return internal_node
+
+        attribute_classes = {
+            "float": Attribute,
+            "double": Attribute,
+            "int": Attribute,
+            "bool": Attribute,
+            "string": Attribute,
+            "token": Attribute,
+            "vector3d": Attribute,
+            "vector4d": Attribute,
+            "matrix3d": Attribute,
+            "matrix4d": Attribute,
+        }
+
+        input_object_type = str(input_object.GetTypeName())
+        if input_object_type in attribute_classes:
+            return attribute_classes[input_object_type](input_object)
+        if input_object_type in prim_classes:
+            return prim_classes[input_object_type](input_object)
         return None
 
-    def _create_data_skeleton(self, skeleton: Skeleton):
+    def _init_internal_data(self, data_object: dict[str, str | pusd.Prim]) -> Data:
         """
-        Create a data skeleton from the USD skeleton.
+        Get appropriate data type and init.
         """
+        if isinstance(data_object["owner"], pskl.Skeleton):
+            return Skeleton(data_object)
+        if isinstance(data_object["owner"], pshd.Material):
+            return Material(data_object)
+        else:
+            return None
 
     def _init_time_manager(self):
         """
@@ -579,17 +663,45 @@ class SceneManager:
         self._start_time = self._stage.GetStartTimeCode()
         self._end_time = self._stage.GetEndTimeCode()
 
-    def _add_path_node(self, node: PathNode):
+    def _add_path_node(self, node: Pathed):
         """
         Add a node to the scene manager.
         """
-        self._path_node_list.append(node)
+        if node not in self._path_node_list:
+            self._path_node_list.append(node)
 
     def _add_data_node(self, node: Data):
         """
         Add a data node to the scene manager.
         """
-        self._data_node_list.append(node)
+        if node not in self._data_node_list:
+            self._data_node_list.append(node)
+
+    def init_path_node(self, data_object: pusd.Prim) -> Pathed:
+        """
+        Initialize a path node and add it to the scene manager.
+        """
+        for path_node in self._path_node_list:
+            if path_node.get_data_object() == data_object:
+                return path_node
+        path_node = self._init_internal_node(data_object)
+        if not path_node:
+            raise TypeError("Unknown data object type.")
+        self._add_path_node(path_node)
+        return path_node
+
+    def init_data_object(self, data_object: dict[str, str | pusd.Prim]) -> Data:
+        """
+        Initialize a data object and add it to the scene manager.
+        """
+        for data_node in self._data_node_list:
+            if data_node.get_data_object() == data_object:
+                return data_node
+        data_node = self._init_internal_data(data_object)
+        if not data_node:
+            raise TypeError("Unknown data object type.")
+        self._add_data_node(data_node)
+        return data_node
 
     def get_stage(self) -> pusd.Stage:
         """
@@ -622,18 +734,29 @@ class SceneManager:
         """
         return self._start_time, self._end_time
     
-    def get_path_node(self, path: psdf.Path) -> PathNode:
+    def get_path_node(self, input: psdf.Path | pusd.Prim | pusd.Attribute) -> Pathed:
         """
-        Get the path node by its path.
+        Get the path node from psdf.Path | pusd.Prim | pusd.Attributes.
         """
-        for node in self._path_node_list:
-            if node.get_path() == path:
-                return node
+        if isinstance(input, pusd.Prim):
+            for node in self._path_node_list:
+                if node.get_data_object() == input:
+                    return node
+        elif isinstance(input, pusd.Attribute):
+            for node in self._path_node_list:
+                if node.get_data_object() == input:
+                    return node
+        elif isinstance(input, psdf.Path):
+            for node in self._path_node_list:
+                if node.get_path() == input:
+                    return node
     
-    def get_data_node(self, relative_path: str) -> Data:
+    def get_data_node(self, input: str) -> Data:
         """
         Get the data node by its relative path.
         """
         for node in self._data_node_list:
-            if node.get_relateive_path() == relative_path:
+            if node.get_relateive_path() == input:
+                return node
+            elif node.get_name() == input:
                 return node
