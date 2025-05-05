@@ -10,7 +10,7 @@
 - TBD
 
 ## Dependencies
-#### Pythion
+#### Python
 - usd-core
 - imgui_bundle
 #### C++
