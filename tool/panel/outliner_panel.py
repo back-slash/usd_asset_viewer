@@ -1,11 +1,12 @@
 #####################################################################################################################################
-# USD Outliner | Tool | Base
+# USD Asset Viewer | Tool | Panel | Outliner
 # TODO:
 # - Add animation trackbars to the outliner to scrub time
 #####################################################################################################################################
 
 # PYTHON
 from typing import Any
+import os
 
 # ADDONS
 from imgui_bundle import imgui
@@ -16,11 +17,16 @@ import core.utils_core as cutils
 import core.base_core as cbase
 #####################################################################################################################################
       
-
-
-class OutlinerEntryPencil(cbase.Pencil):
+class OutlinerPanel(cbase.Panel):
     """
-    Class representing a node in the outliner.
+    Outliner panel for displaying usd contents.
+    """
+
+#####################################################################################################################################
+
+class OutlinerItemPencil(cbase.Pencil):
+    """
+    Pencil class drawing items in the outliner.
     """
     _index = 0
     _indent = 0
@@ -64,6 +70,13 @@ class OutlinerEntryPencil(cbase.Pencil):
         rounding = cstat.LINE_ROUNDING
         draw_list.add_rect_filled(rect_min, rect_max, color, rounding, flags=0)
 
+    def _draw_navigation(self):
+        """
+        Draw the navigation of the node.
+        """
+        for entry in range(self._indent):
+            pass
+
     def _draw_node(self):
         """
         Draw the node icon and name.
@@ -72,13 +85,6 @@ class OutlinerEntryPencil(cbase.Pencil):
         imgui.text(self._node_name)
         if self._node_icon:
             imgui.image(self._node_icon, size=(16, 16), uv_min=(0, 0), uv_max=(1, 1))
-
-    def _draw_navigation(self):
-        """
-        Draw the navigation of the node.
-        """
-        for entry in range(self._indent):
-            pass
 
     def _draw(self):
         """
@@ -95,50 +101,43 @@ class OutlinerPropertyPencil(cbase.Pencil):
     """
     Class representing a node in the outliner.
     """
-    def __init__(self, node: cbase.Node, position: tuple[int, int]=None, size: tuple[int, int]=None, index: int=0):
-        super().__init__(node, position, size)
+    _index = 0
+    _indent = 0
+    _opacity = None
+    def __init__(self, node: cbase.Node, index: int=0, indent: int=0):
+        super().__init__(node)
         self._index = index
+        self._indent = indent
+
+    def _draw_navigation(self):
+        """
+        Draw the navigation of the node.
+        """
+        for entry in range(self._indent):
+            pass
+
+    def _draw_node(self):
+        """
+        Draw the node icon and name.
+        """
+        imgui.set_cursor_pos(self._position)
+        imgui.text(self._node_name)
+        if self._node_icon:
+            imgui.image(self._node_icon, size=(16, 16), uv_min=(0, 0), uv_max=(1, 1))
 
     def _draw(self):
         """
         Draw the outliner entry.
         """
-        pass
+        self._draw_navigation()
+        self._draw_node()
+
 
 
 
 
 
 #####################################################################################################################################
-
-
-class USDViewer(cbase.Frame):
-    """
-    USD Outliner class for managing and displaying a list of items in a prototype window.
-    """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.parent = parent
-        usd_path = cstat.DEFAULT_USD_PATH
-        self._scene_manger = cbase.SceneManager(usd_path)
-        self._stage = self._scene_manger.get_stage()
-
-
-
-
-
-#####################################################################################################################################
-
-class OutlinerPanel(cbase.Panel):
-    """
-    Outliner class for managing and displaying a list of items in a prototype window.
-    """
-
-
-
-
-
-
 
 
 

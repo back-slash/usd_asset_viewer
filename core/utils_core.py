@@ -1,5 +1,5 @@
 #####################################################################################################################################
-# USD Outliner | Core | Utility
+# USD Asset Viewer | Core | Utility
 # TODO:
 # -
 #####################################################################################################################################
@@ -69,7 +69,7 @@ class FileHelper:
         Read data from an icon file.
         """
         current_dir = os.path.dirname(__file__)
-        icon_path = os.path.join(current_dir, 'assets', 'icons', icon.value + ".png")
+        icon_path = os.path.join(current_dir, 'asset', 'icons', icon.value + ".png")
         return self._read_img(icon_path)
 
 
@@ -85,6 +85,6 @@ def get_usd_default_path() -> str:
     Get the default path for USD files.
     """
     current_dir = os.path.dirname(__file__)
-    return os.path.join(current_dir, 'assets', 'usd')
+    return os.path.join(current_dir, 'asset', 'usd')
 
 

@@ -1,4 +1,4 @@
-# USD Outliner
+# USD Asset Viewer
 
 - A python tool for navigating USD (Universal Scene Description) scene hierarchies.
 

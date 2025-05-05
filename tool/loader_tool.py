@@ -1,10 +1,11 @@
-import tool.outliner.base_outliner as base_outliner
+import tool.base_tool as tbase
 
 
 def load():
     """
     Load the UI.
     """
+    usd_viewer = tbase.USDViewer()
     
 
 

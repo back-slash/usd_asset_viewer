@@ -1,5 +1,5 @@
 #####################################################################################################################################
-# USD Outliner | Core | Base
+# USD Asset Viewer | Core | Base
 # TODO:
 #
 #####################################################################################################################################
@@ -34,7 +34,6 @@ class Node:
     _data_object = None
     _node_color = None
     _node_icon = None
-    _pencil_dict: dict[str, 'Pencil'] = {}
     _name = None
     def __init__(self, data_object: Any):
         self._data_object: pusd.Prim | dict = data_object
@@ -61,25 +60,6 @@ class Node:
             self._name = name
         else:
             self._name = self._data_object.GetName()
-
-    def _attach_pencil(self, identifier, pencil: 'Pencil'):
-        """
-        Attach the pencil to the node.
-        """
-        self._pencil_dict[identifier] = pencil
-
-    def update_pencil_list(self):
-        """
-        Update data and pencil.
-        """
-        for identifier in self._pencil_dict:
-            self._pencil_dict[identifier].update_draw()
-
-    def get_parent_node(self) -> 'Node':
-        """
-        Get the parent node.
-        """
-        return self._parent_node
     
     def get_data_object(self) -> pusd.Prim:
         """
@@ -155,6 +135,11 @@ class Pathed(Node):
         """
         return self._path
 
+    def get_parent_node(self) -> 'Node':
+        """
+        Get the parent node.
+        """
+        return self._parent_node
 
 class Primative(Pathed):
     """
@@ -188,12 +173,6 @@ class Primative(Pathed):
         """
         if attribute not in self._attribute_list:
             self._attribute_list.append(attribute)
-
-    def get_display_color(self) -> tuple[float, float, float, float]:
-        """
-        Get the display color of the node.
-        """
-        return self._display_color 
 
 
 class Attribute(Pathed):
@@ -237,7 +216,6 @@ class Attribute(Pathed):
         return self._data_object.Get(time)
 
 
-
 class XForm(Primative):
     """
     Class representing a transform node.
@@ -249,18 +227,19 @@ class XForm(Primative):
         super()._init_node_data()
         self._node_color = (0.4, 0.8, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.NULL_ICON
-        self._init_node_children()
 
 
 class Mesh(Primative):
     """
     Class representing a mesh node.
     """
-    def __init__(self, data_object: pgeo.Gprim):
+    def __init__(self, data_object: pgeo.Mesh):
         super().__init__(data_object)
 
     def _init_node_data(self):
         super()._init_node_data()
+        self._data_object: pgeo.Mesh
+        self._display_color = self._data_object.GetDisplayColorAttr()        
         self._node_color = (0.8, 0.4, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.MESH_ICON
         self._init_materials()
@@ -269,6 +248,12 @@ class Mesh(Primative):
         """
         Load the materials of the mesh node.
         """
+   
+    def get_display_color(self) -> tuple[float, float, float, float]:
+        """
+        Get the display color of the node.
+        """
+        return self._display_color
 
 
 class Light(Primative):
@@ -280,8 +265,10 @@ class Light(Primative):
 
     def _init_node_data(self):
         super()._init_node_data()
+        self._data_object: plux.BoundableLightBase | plux.NonboundableLightBase
         self._node_color = (0.9, 0.9, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.LIGHT_ICON
+
 
 
 class Camera(Primative):
@@ -390,6 +377,7 @@ class Pencil:
     """
     Class representing an draw pencil.
     """
+    _node_display_color = None
     def __init__(self, node: Node):
         self._node = node
         self._init_node_data()
@@ -403,8 +391,6 @@ class Pencil:
         self._node_color = self._node.get_color()
         if hasattr(self._node, "get_display_color"):
             self._node_display_color = self._node.get_display_color()
-        else:
-            self._node_display_color = None
 
     def _draw(self):
         """
@@ -441,13 +427,6 @@ class Frame:
         self.title = title
         self._init_panels()
         
-    def _init_render_context(self):
-        """
-        Initialize the renderer for the panel.
-        """
-        self._render_manager = crend.RenderContextManager()
-        self._context = self._render_manager.context_list[-1]
-
     def _init_panels(self):
         """
         Initialize the frame panels.
@@ -481,7 +460,6 @@ class Frame:
         """
         Draw the frame and its panels.
         """
-        imgui.set_current_context(self._context)
         self._push_default_style()
         imgui.new_frame()
         self.draw()
@@ -506,10 +484,9 @@ class Panel:
     """
     Class representing a panel.
     """
-    def __init__(self, name: str, frame: Frame, context: imgui.internal.Context):
-        self._frame = frame
+    def __init__(self, name: str, frame: Frame):
         self._name = name
-        self._context = context
+        self._frame = frame
 
     def _set_default_panel_style(self):
         """
@@ -517,11 +494,16 @@ class Panel:
         """
         pass
 
+    def _pop_default_panel_style(self):
+        """
+        Pop the default style for the panel.
+        """
+        pass
+
     def _draw(self, size: tuple[int, int], position: tuple[int, int]):
         """
         Draw the panel.
         """
-        imgui.set_current_context(self._context)
         imgui.set_next_window_size(size[0], size[1])
         imgui.set_next_window_pos(position[0], position[1])
         self.draw()
@@ -543,7 +525,7 @@ class Panel:
 
 class SceneManager:
     """
-    Class for managing the scene.
+    Class for managing scene nodes.
     """
     _instance = None
     def __new__(cls):
@@ -551,8 +533,8 @@ class SceneManager:
             cls._instance = super().__new__(cls)
         return cls._instance
     
-    def __init__(self, usd_path):
-        if not self._initialized:
+    def __init__(self, usd_path: str=None):
+        if usd_path and not self._initialized:
             self._usd_path = usd_path
             self._path_node_list: list[Pathed] = []
             self._data_node_list: list[Data] = []
@@ -566,27 +548,7 @@ class SceneManager:
         """
         self._stage = pusd.Stage.Open(self._usd_path)
         self._root = self._stage.GetPseudoRoot()
-        self._init_hierarchy()
-
-    def _init_hierarchy(self):
-        """
-        Process the USD scene and init nodes.
-        """
-        for child in self._root.GetChildren():
-            self._recursive_child(child)
-
-    def _recursive_child(self, child: pusd.Prim):
-        """
-        Recursively process the USD scene and init nodes.
-        """
-        internal_node = self._init_internal_node(child)
-        if internal_node:
-            self._add_path_node(internal_node)
-            if not isinstance(internal_node, Attribute):
-                for attribute in child.GetAttributes():
-                    self._recursive_child(attribute)
-                for child in child.GetChildren():
-                    self._recursive_child(child)
+        self._traverse_hierarchy()
 
     def _traverse_hierarchy(self):
         """
