@@ -1,19 +1,21 @@
 # USD Asset Viewer
-
-- A python tool for navigating USD (Universal Scene Description) scene hierarchies.
+- A python/C++ tool for navigating USD (Universal Scene Description) scene hierarchies.
 
 ## Features
-
-- USD Outliner 
-- Pixar USD/Gf/Vt stubs
+- Outliner Panel
+- Details Panel
+- Trackbar
 
 ## Installation
-
+- TBD
 
 ## Dependencies
-
+#### Pythion
 - usd-core
 - imgui_bundle
+#### C++
+- OpenUSD
+- imgui
 
 ## Usage
 
@@ -22,5 +24,4 @@
 
 
 ## License
-
 - MIT License
