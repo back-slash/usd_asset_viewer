@@ -123,9 +123,7 @@ class Primative(Pathed):
     Class representing a primitive node.
     """
     _attribute_list: list['Attribute'] = []   
-    _child_list: list['Pathed'] = []    
-    _display_color = None
-    _opacity = 1.0
+    _child_list: list['Pathed'] = []
     def __init__(self, data_object: pusd.Prim):
         super().__init__(data_object)
 
@@ -437,23 +435,41 @@ class Frame:
     Class representing the tool frame.
     """
     _config = None
-    def __init__(self, title: str):
+    _render_manager = None
+    _display_size = None
+    def __init__(self, title: str, width: int = 1280, height: int = 720):
         self.title = title
+        self._width = width
+        self._height = height
+        self._load_config()
+        self._init_render_context_manager()
         self._init_panels()
-        
-    def _init_panels(self):
-        """
-        Initialize the frame panels.
-        """
-        raise NotImplementedError("The '_init_panels' method must be implemented by subclasses.")
 
     def _load_config(self):
         """
         Load the configuration file.
         """
-        directory = os.path.join(os.path.dirname(__file__), "static" "config_core.toml")
-        if os.path.exists(directory):
-            self._config: dict = cutils.FileHelper.read(directory, cstat.Filetype.TOML)
+        config_path = os.path.join(os.path.dirname(__file__), "static" "config_core.toml")
+        if os.path.exists(config_path):
+            self._config: dict = cutils.FileHelper.read(config_path, cstat.Filetype.TOML)
+        else:
+            raise FileNotFoundError(f"Config not found: {config_path}")
+
+    def _init_render_context_manager(self):
+        """
+        Initialize the render manager.
+        """
+        self._render_context_manager = crend.RenderContextManager()
+        self._context = self._render_context_manager.context_list[-1]
+        self._display_size = self._render_context_manager.get_frame_size()
+        self._load_config()
+        self._set_flags()
+
+    def _init_panels(self):
+        """
+        Initialize the frame panels.
+        """
+        raise NotImplementedError("The '_init_panels' method must be implemented by subclasses.")
 
     def _push_default_style(self):
         """
@@ -474,11 +490,14 @@ class Frame:
         """
         Draw the frame and its panels.
         """
+        imgui.set_current_context(self._context)
         self._push_default_style()
+        self._set_flags()
         imgui.new_frame()
         self.draw()
         self._pop_default_style()
         imgui.render()
+        self._render_manager.render(imgui.get_draw_data())
 
     def draw(self):
         """

@@ -21,8 +21,8 @@ class OutlinerPanel(cbase.Panel):
     """
     Outliner panel for displaying usd contents.
     """
-    def __init__(self, parent: Any=None):
-        super().__init__(parent)
+    def __init__(self, frame: cbase.Frame):
+        super().__init__("Outliner", frame)
 
     def _init_node_data(self) -> None:
         """

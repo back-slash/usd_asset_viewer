@@ -6,7 +6,6 @@
 
 # PYTHON
 from typing import Any
-import os
 
 # ADDONS
 from imgui_bundle import imgui
@@ -19,5 +18,5 @@ import core.base_core as cbase
       
 class TrackbarPanel(cbase.Panel):
     """
-    Detail panel class for display selection details.
+    Trackbar for scrubbing usd scene time.
     """
