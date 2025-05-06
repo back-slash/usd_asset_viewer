@@ -60,6 +60,7 @@ class NodeIcon(Enum):
     BONE_ICON = "icon_bone"
     LOCATOR_ICON = "icon_locator"
     SKELETON_ICON = "icon_skeleton"
+    UNKNOWN_ICON = "icon_unknown"
 
 
 class PanelTypes(Enum):

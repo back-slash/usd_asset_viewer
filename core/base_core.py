@@ -30,10 +30,9 @@ class Node:
     """
     Class representing a node.
     """
-    _parent_node = None
     _data_object = None
-    _node_color = None
-    _node_icon = None
+    _node_color = (0.5, 0.5, 0.5, 1.0)
+    _node_icon = cstat.NodeIcon.UNKNOWN_ICON
     _name = None
     def __init__(self, data_object: Any):
         self._data_object: pusd.Prim | dict = data_object
@@ -96,6 +95,7 @@ class Pathed(Node):
     """
     Class representing a path node.
     """
+    _parent_node = None    
     _path = None
     def __init__(self, data_object: pusd.Prim | pusd.Attribute):
         super().__init__(data_object)
@@ -105,13 +105,55 @@ class Pathed(Node):
         self._set_name()
         self._parent_node = self._data_object.GetParent()
         self._path = self._data_object.GetPath()
+
+    def get_path(self) -> psdf.Path:
+        """
+        Get the path of the node.
+        """
+        return self._path
+
+    def get_parent_node(self) -> 'Node':
+        """
+        Get the parent node.
+        """
+        return self._parent_node
+
+
+class Primative(Pathed):
+    """
+    Class representing a primitive node.
+    """
+    _attribute_list: list['Attribute'] = []   
+    _child_list: list['Pathed'] = []    
+    _display_color = None
+    _opacity = 1.0
+    def __init__(self, data_object: pusd.Prim):
+        super().__init__(data_object)
+
+    def _init_node_data(self):
+        super()._init_node_data()
+        self._init_node_attributes()
         self._init_node_children()
-        
+
+    def _init_node_attributes(self):
+        """
+        Load the attributes of the node.
+        """
+        for attribute in self._data_object.GetAttributes():
+            node_attribute = self._scene_manager.init_path_node(attribute)
+            self._add_attribute(node_attribute)
+
+    def _add_attribute(self, attribute: 'Attribute'):
+        """
+        Add an attribute to the node.
+        """
+        if attribute not in self._attribute_list:
+            self._attribute_list.append(attribute)
+
     def _init_node_children(self):
         """
         Load the children of the node.
         """
-        self._child_list = []
         for child in self._data_object.GetChildren():
             node_child = self._scene_manager.init_path_node(child)
             self._add_child(node_child)
@@ -129,56 +171,13 @@ class Pathed(Node):
         """
         return self._child_list   
 
-    def get_path(self) -> psdf.Path:
-        """
-        Get the path of the node.
-        """
-        return self._path
-
-    def get_parent_node(self) -> 'Node':
-        """
-        Get the parent node.
-        """
-        return self._parent_node
-
-class Primative(Pathed):
-    """
-    Class representing a primitive node.
-    """
-    _input_list = []
-    _output_list = []
-    _child_list = []
-    _attribute_list = []   
-    _display_color = None
-    _opacity = 1.0
-    def __init__(self, data_object: pusd.Prim):
-        super().__init__(data_object)
-
-    def _init_node_data(self):
-        super()._init_node_data()
-        self._init_node_attributes()
-
-    def _init_node_attributes(self):
-        """
-        Load the attributes of the node.
-        """
-        self._attribute_list: list[Attribute] = []
-        for attribute in self._data_object.GetAttributes():
-            node_attribute = self._scene_manager.init_path_node(attribute)
-            self._add_attribute(node_attribute)
-
-    def _add_attribute(self, attribute: 'Attribute'):
-        """
-        Add an attribute to the node.
-        """
-        if attribute not in self._attribute_list:
-            self._attribute_list.append(attribute)
 
 
 class Attribute(Pathed):
     """
     Class representing an attribute of a node.
     """
+    _connection_path_list: list['Attribute'] = []
     _connected = False
     def __init__(self, data_object: pusd.Attribute):
         super().__init__(data_object)
@@ -192,12 +191,11 @@ class Attribute(Pathed):
         """
         Get any connections.
         """
-        self._connection_paths = []
         connection_paths = self._data_object.GetConnections()
         for path in connection_paths:
             if path.IsPropertyPath():
                 self._add_connection(path)
-        if self._connection_paths:
+        if self._connection_path_list:
             self._connected = True
 
     def _add_connection(self, path: psdf.Path):
@@ -206,8 +204,8 @@ class Attribute(Pathed):
         """
         attribute = self._scene_manager.get_stage().GetPrimAtPath(path)
         attribute_node = self._scene_manager.init_path_node(attribute)
-        if attribute_node not in self._connection_paths:
-            self._connection_paths.append(attribute_node)
+        if attribute_node not in self._connection_path_list:
+            self._connection_path_list.append(attribute_node)
 
     def get_data(self, time: float = None) -> Any:
         """
@@ -222,6 +220,7 @@ class XForm(Primative):
     """
     def __init__(self, data_object: pgeo.Xform):
         super().__init__(data_object)
+        self._data_object: pgeo.Xform
 
     def _init_node_data(self):
         super()._init_node_data()
@@ -233,15 +232,17 @@ class Mesh(Primative):
     """
     Class representing a mesh node.
     """
+    _display_color = None
     def __init__(self, data_object: pgeo.Mesh):
         super().__init__(data_object)
+        self._data_object: pgeo.Mesh
 
     def _init_node_data(self):
         super()._init_node_data()
-        self._data_object: pgeo.Mesh
-        self._display_color = self._data_object.GetDisplayColorAttr()        
+        self._data_object: pgeo.Mesh     
         self._node_color = (0.8, 0.4, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.MESH_ICON
+        self._display_color = self._data_object.GetDisplayColorAttr()
         self._init_materials()
 
     def _init_materials(self):
@@ -293,6 +294,7 @@ class Skeleton(Primative):
         
     def _init_node_data(self):
         super()._init_node_data()
+        self._data_object: pskl.Skeleton
         self._node_color = (0.6, 0.4, 0.8, 1.0)
         self._node_icon = cstat.NodeIcon.SKELETON_ICON
         self._init_skeleton_bones()
@@ -301,6 +303,8 @@ class Skeleton(Primative):
         """
         Load the skeleton of the node.
         """
+        bone_attribute = self._data_object.GetJointsAttr()
+        bone_token_list = bone_attribute.Get()
 
 
 class Material(Primative):
@@ -340,6 +344,7 @@ class Data(Node):
 
     def _init_node_data(self):
         super()._init_node_data()
+        self._set_name(self._data_object["name"])
         self._parent_node: pusd.Prim = self._data_object["owner"]
         self._relative_path = self._data_object["relative_path"]
 
@@ -356,6 +361,9 @@ class Texture(Data):
     """
     def __init__(self, data_object: dict[str, pusd.Prim | str]):
         super().__init__(data_object)
+
+    def _init_node_data(self):
+        super()._init_node_data()
         self._node_color = (0.4, 0.8, 0.8, 1.0)
         self._node_icon = cstat.NodeIcon.TEXTURE_ICON
 
@@ -366,6 +374,9 @@ class Bone(Data):
     """
     def __init__(self, data_object: dict[str, pusd.Prim | str]):
         super().__init__(data_object)
+
+    def _init_node_data(self):
+        super()._init_node_data()
         self._node_color = (0.8, 0.6, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.BONE_ICON
 
@@ -377,6 +388,9 @@ class Pencil:
     """
     Class representing an draw pencil.
     """
+    _node_name = None
+    _node_icon = None
+    _node_color = None
     _node_display_color = None
     def __init__(self, node: Node):
         self._node = node

@@ -21,12 +21,19 @@ class OutlinerPanel(cbase.Panel):
     """
     Outliner panel for displaying usd contents.
     """
+    def __init__(self, parent: Any=None):
+        super().__init__(parent)
+
+    def _init_node_data(self) -> None:
+        """
+        Initialize the node data for the outliner panel.
+        """
 
 #####################################################################################################################################
 
-class OutlinerItemPencil(cbase.Pencil):
+class OutlinerEntryPencil(cbase.Pencil):
     """
-    Pencil class drawing items in the outliner.
+    Pencil class drawing entries in the outliner.
     """
     _index = 0
     _indent = 0
