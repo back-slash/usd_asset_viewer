@@ -575,8 +575,7 @@ class SceneManager:
                 internal_attribute = self._init_internal_node(attribute)
                 if internal_attribute and internal_attribute not in self._path_node_list:
                     self._add_path_node(internal_attribute)
-
-        
+  
     def _init_internal_node(self, input_object: pusd.Prim | pusd.Attribute) -> Node | None:
         """
         Get appropriate node type and init.
@@ -626,7 +625,7 @@ class SceneManager:
         """
         if isinstance(data_object["owner"], pskl.Skeleton):
             return Skeleton(data_object)
-        if isinstance(data_object["owner"], pshd.Material):
+        elif isinstance(data_object["owner"], pshd.Material):
             return Material(data_object)
         else:
             return None
