@@ -1,0 +1,23 @@
+#####################################################################################################################################
+# USD Asset Viewer | Tool | Panel | Trackbar
+# TODO:
+# -
+#####################################################################################################################################
+
+# PYTHON
+from typing import Any
+import os
+
+# ADDONS
+from imgui_bundle import imgui
+
+# PROJECT
+import core.static.static_core as cstat
+import core.utils_core as cutils
+import core.base_core as cbase
+#####################################################################################################################################
+      
+class TrackbarPanel(cbase.Panel):
+    """
+    Detail panel class for display selection details.
+    """
