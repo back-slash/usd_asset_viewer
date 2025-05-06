@@ -463,13 +463,13 @@ class Frame:
         """
         Initialize the frame panels.
         """
-        raise NotImplementedError("The '_init_panels' method must be implemented by subclasses.")
+        raise NotImplementedError("The '_init_panels' method must be implemented by Frame subclasses.")
 
     def _init_pre_rendering(self):
         """
         Initialize the frame panels.
         """
-        raise NotImplementedError("The '_init_pre_rendering' method must be implemented by subclasses.")        
+        raise NotImplementedError("The '_init_pre_rendering' method must be implemented by Frame subclasses.")        
 
     def _init_rendering(self):
         """
@@ -488,6 +488,8 @@ class Frame:
         imgui.push_style_var(imgui.StyleVar_.window_padding, window_padding)
         border_size = self._config['window']['style_var']['border_size']
         imgui.push_style_var(imgui.StyleVar_.window_border_size, border_size)
+        rounding = self._config['window']['style_var']['rounding']
+        imgui.push_style_var(imgui.StyleVar_.window_rounding, rounding)
 
         background_color = self._config['window']['style_color']['background']
         imgui.push_style_color(imgui.Col_.window_bg, background_color)
@@ -509,8 +511,8 @@ class Frame:
         """
         Pop the default style for the frame.
         """
-        imgui.pop_style_var(3)
-        imgui.pop_style_color(5)
+        imgui.pop_style_var(4)
+        imgui.pop_style_color(6)
 
     def _set_config_flags(self):
         """

@@ -2,7 +2,7 @@
 - A python/C++ tool for navigating USD (Universal Scene Description) scene hierarchies.
 
 ## Status
-- WIP
+- WIP - Curently not functional.
 
 ## Features
 - Outliner panel
@@ -13,6 +13,7 @@
 #### Python
 - usd-core
 - imgui_bundle
+- toml
 #### C++
 - OpenUSD
 - imgui
