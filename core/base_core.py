@@ -172,7 +172,6 @@ class Primative(Pathed):
         return self._child_list   
 
 
-
 class Attribute(Pathed):
     """
     Class representing an attribute of a node.
@@ -271,7 +270,6 @@ class Light(Primative):
         self._node_icon = cstat.NodeIcon.LIGHT_ICON
 
 
-
 class Camera(Primative):
     """
     Class representing a camera node.
@@ -331,6 +329,9 @@ class Curve(Primative):
     """
     def __init__(self, data_object: pgeo.Curves):
         super().__init__(data_object)
+
+    def _init_node_data(self):
+        super()._init_node_data()
         self._node_color = (0.8, 0.8, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.CURVE_ICON
 
