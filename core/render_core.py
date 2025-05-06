@@ -101,7 +101,6 @@ class GLFWFrame:
         self._width = width
         self._height = height
         self._render_loop_function = render_loop_function
-        self.window = None
         self._init_frame()
 
     def _init_frame(self):
@@ -110,23 +109,23 @@ class GLFWFrame:
         """
         if not glfw.init():
             raise RuntimeError("Failed to initialize GLFW")
-        self.window = glfw.create_window(self._width, self._height, self._title, None, None)
-        if not self.window:
+        self._window = glfw.create_window(self._width, self._height, self._title, None, None)
+        if not self._window:
             glfw.terminate()
             raise RuntimeError("Failed to create GLFW window")
-        glfw.make_context_current(self.window)
+        glfw.make_context_current(self._window)
 
     def _render_loop(self):
         """
         Render loop for the GLFW window.
         """
-        while not glfw.window_should_close(self.window):
+        while not glfw.window_should_close(self._window):
             glfw.poll_events()
             try:
                 self._render_loop_function()
             except Exception as e:
                 print(f"Error in render loop: {e}")
-            glfw.swap_buffers(self.window)
+            glfw.swap_buffers(self._window)
         glfw.terminate()
 
     def start_rendering(self):
@@ -134,3 +133,9 @@ class GLFWFrame:
         Start the rendering loop.
         """
         self._render_loop()
+
+    def get_window(self):
+        """
+        Get the GLFW window.
+        """
+        return self._window
