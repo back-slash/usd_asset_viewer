@@ -20,9 +20,9 @@ import tool.panel.detail_panel as tbd
 #####################################################################################################################################
       
 
-class USDViewer(cbase.Frame):
+class USDAssetViewer(cbase.Frame):
     """
-    USD Outliner class for managing and displaying a list of items in a prototype window.
+    USD Asset Viewer class for displaying USD assets.
     """
     def __init__(self):
         super().__init__()
