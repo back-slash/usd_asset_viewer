@@ -6,12 +6,11 @@
 
 # PYTHON
 from enum import Enum
-from tkinter import Image
 
 
 #####################################################################################################################################
 
-DEFAULT_USD_PATH = "core\\assets\\usd\\example_scene.usdc"
+DEFAULT_USD_PATH = "core\\assets\\usd\\example.usdc"
 
 
 class FontType(Enum):
