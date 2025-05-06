@@ -12,7 +12,8 @@ import glfw
 import OpenGL.GL as gl
 
 # PROJECT
-
+import core.utils_core as cutils
+import core.static.static_core as cstat
 #####################################################################################################################################
 
 
@@ -23,15 +24,12 @@ class RenderContextManager:
     """
     _instance = None
     _render_loop_function =  None
-    def __new__(cls, title, width, height, render_loop_function):
+    def __new__(cls, render_loop_function):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
     
-    def __init__(self, title, width, height, render_loop_function):
-        self._title = title
-        self._width = width
-        self._height = height
+    def __init__(self, render_loop_function):
         self._render_loop_function = render_loop_function
         if hasattr(self, 'context_list') and len(self.context_list) > 0:
             imgui.set_current_context(self.context_list[-1])
@@ -53,7 +51,7 @@ class RenderContextManager:
         """
         Initialize GLFW for window management.
         """
-        self._glfw = GLFWOpenGLWindow(self._title, self._width, self._height, self._render_loop_function)
+        self._glfw = GLFWOpenGLWindow(self._render_loop_function)
         self._glfw_window = self._glfw.get_window()
         self._glfw_window_address = self._glfw.get_window_address()
         imgui.backends.glfw_init_for_opengl(self._glfw_window_address, True)
@@ -92,7 +90,7 @@ class RenderContextManager:
 
     def get_glfw(self):
         """
-        Get the GLFW frame.
+        Get the GLFW class.
         """
         return self._glfw
 
@@ -101,12 +99,20 @@ class GLFWOpenGLWindow:
     """
     GLFW Window class for rendering.
     """
-    def __init__(self, title, width, height, render_loop_function):
-        self._title = title        
-        self._width = width
-        self._height = height
+    def __init__(self, render_loop_function):
         self._render_loop_function = render_loop_function
+        self._init_config()
         self._init_frame()
+
+
+    def _init_config(self):
+        """
+        Initialize the core config.
+        """
+        self._cfg = cutils.get_core_config()
+        self._cfg_width = self._cfg["glfw"]["window_size"][0]
+        self._cfg_height = self._cfg["glfw"]["window_size"][1]
+        self._cfg_title = self._cfg["glfw"]["title"]
 
     def _init_frame(self):
         """
@@ -114,7 +120,7 @@ class GLFWOpenGLWindow:
         """
         if not glfw.init():
             raise RuntimeError("Failed to initialize GLFW")
-        self._window = glfw.create_window(self._width, self._height, self._title, None, None)
+        self._window = glfw.create_window(self._cfg_width, self._cfg_height, self._cfg_title, None, None)
         if not self._window:
             glfw.terminate()
             raise RuntimeError("Failed to create GLFW window")
@@ -124,6 +130,7 @@ class GLFWOpenGLWindow:
         """
         Render loop for the GLFW window.
         """
+
         imgui.get_io().display_size = glfw.get_window_size(self.get_window())
         while not glfw.window_should_close(self._window):
             glfw.poll_events()
@@ -132,10 +139,9 @@ class GLFWOpenGLWindow:
             glfw.swap_buffers(self._window)
         glfw.terminate()
 
-
-    def start_rendering(self):
+    def begin_render_loop(self):
         """
-        Start the rendering loop.
+        Start the render loop.
         """
         self._render_loop()
 

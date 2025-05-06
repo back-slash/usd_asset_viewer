@@ -7,7 +7,6 @@
 # PYTHON
 from enum import Enum
 import os
-import json
 import toml
 from typing import Any, Dict, List, Tuple
 
@@ -92,3 +91,13 @@ def get_usd_default_path() -> str:
     return os.path.join(current_dir, 'asset', 'usd')
 
 
+def get_core_config() -> Dict[str, Any]:
+    """
+    Get the core configuration from the TOML file.
+    """
+    config_path = os.path.join(os.path.dirname(__file__), "static", "config_core.toml")
+    if os.path.exists(config_path):
+        config: dict = FileHelper.read(config_path, cstat.Filetype.TOML)
+        return config
+    else:
+        raise FileNotFoundError(f"Config not found: {config_path}")

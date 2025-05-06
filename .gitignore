@@ -7,5 +7,7 @@ __pycache__/
 
 
 #OTHER
-usd_outliner.code-workspace
+usd_asset_viewer.code-workspace
 example.usdc
+imgui.ini
+

@@ -438,33 +438,27 @@ class Frame:
     _config = None
     _render_context_manager = None
     _display_size = None
-    def __init__(self, title: str, width: int = 1280, height: int = 720):
-        self.title = title
-        self._width = width
-        self._height = height
-        self._load_config()
+    def __init__(self):
+        self._init_config()
         self._init_render_context_manager()
         self._init_panels()
-        self._render_context_manager.get_glfw().start_rendering()
-
-    def _load_config(self):
+        self._init_pre_rendering()
+        self._init_rendering()
+        
+    def _init_config(self):
         """
-        Load the configuration file.
+        Initialize the configuration file.
         """
-        config_path = os.path.join(os.path.dirname(__file__), "static", "config_core.toml")
-        if os.path.exists(config_path):
-            self._config: dict = cutils.FileHelper.read(config_path, cstat.Filetype.TOML)
-        else:
-            raise FileNotFoundError(f"Config not found: {config_path}")
+        self._config = cutils.get_core_config()
+        self._cfg_docking = self._config['config']['docking']
 
     def _init_render_context_manager(self):
         """
         Initialize the render manager.
         """
-        self._render_context_manager = crend.RenderContextManager(self.title, self._width, self._height, self.update)
+        self._render_context_manager = crend.RenderContextManager(self.update)
         self._context = self._render_context_manager.context_list[-1]
         self._display_size = self._render_context_manager.get_frame_size()
-        self._load_config()
         self._set_flags()
 
     def _init_panels(self):
@@ -472,6 +466,18 @@ class Frame:
         Initialize the frame panels.
         """
         raise NotImplementedError("The '_init_panels' method must be implemented by subclasses.")
+
+    def _init_pre_rendering(self):
+        """
+        Initialize the frame panels.
+        """
+        raise NotImplementedError("The '_init_pre_rendering' method must be implemented by subclasses.")        
+
+    def _init_rendering(self):
+        """
+        Initialize the rendering context.
+        """
+        self._render_context_manager.get_glfw().begin_render_loop()
 
     def _push_default_style(self):
         """

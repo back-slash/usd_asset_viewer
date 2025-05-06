@@ -27,22 +27,26 @@ class USDAssetViewer(cbase.Frame):
     USD Asset Viewer class for displaying USD assets.
     """
     def __init__(self):
-        title = "USD Asset Viewer"
-        width = 1280
-        height = 720
-        usd_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), cstat.DEFAULT_USD_PATH)
-        self._scene_manager = cbase.SceneManager(usd_path)
-        self._stage = self._scene_manager.get_stage()
-        super().__init__(title, width, height)
+        super().__init__()        
+
+    def _init_pre_rendering(self):
+        self._init_usd_stage()       
 
     def _init_panels(self):
         self._outliner_panel = tpo.OutlinerPanel(self)
         self._details_panel = tpd.DetailPanel(self)
         self._trackbar_panel = tpt.TrackbarPanel(self)
 
+    def _init_usd_stage(self):
+        usd_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), cstat.DEFAULT_USD_PATH)
+        self._scene_manager = cbase.SceneManager(usd_path)
+        self._stage = self._scene_manager.get_stage()   
+
     def draw(self):
         """
         Draw the USD Asset Viewer.
         """
-        imgui.show_demo_window()
+        imgui.set_next_window_size((800, 600))
+        imgui.begin("Banana", True)
+        imgui.end()
 
