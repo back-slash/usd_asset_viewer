@@ -491,6 +491,11 @@ class Frame:
         rounding = self._config['window']['style_var']['rounding']
         imgui.push_style_var(imgui.StyleVar_.window_rounding, rounding)
 
+        popup_padding = self._config['menu_bar']['style_var']['popup_rounding']
+        imgui.push_style_var(imgui.StyleVar_.popup_rounding, popup_padding)
+        popup_border_size = self._config['menu_bar']['style_var']['popup_border_size']
+        imgui.push_style_var(imgui.StyleVar_.popup_border_size, popup_border_size)
+        
         background_color = self._config['window']['style_color']['background']
         imgui.push_style_color(imgui.Col_.window_bg, background_color)
         border_color = self._config['window']['style_color']['border']
@@ -505,14 +510,20 @@ class Frame:
         header_active_color = self._config['header']['style_color']['header_active']
         imgui.push_style_color(imgui.Col_.header_active, header_active_color)
 
+        title_color = self._config['title']['style_color']['title']
+        imgui.push_style_color(imgui.Col_.title_bg, title_color)
+        title_hover_color = self._config['title']['style_color']['title_active']
+        imgui.push_style_color(imgui.Col_.title_bg_active, title_hover_color)
 
+        menu_bar_color = self._config['menu_bar']['style_color']['menu_bar']
+        imgui.push_style_color(imgui.Col_.menu_bar_bg, menu_bar_color)
 
     def _pop_default_style(self):
         """
         Pop the default style for the frame.
         """
-        imgui.pop_style_var(4)
-        imgui.pop_style_color(6)
+        imgui.pop_style_var()
+        imgui.pop_style_color()
 
     def _set_config_flags(self):
         """
@@ -522,10 +533,7 @@ class Frame:
             self._set_flag(imgui.ConfigFlags_.docking_enable, True)
         else:
             self._set_flag(imgui.ConfigFlags_.docking_enable, False)
-        if self._config['config']['srgb']:
-            self._set_flag(imgui.ConfigFlags_.is_srgb, True)
-        else:
-            self._set_flag(imgui.ConfigFlags_.is_srgb, False)
+
 
     def _set_flag(self, flag: int, value: bool):
         """
@@ -548,6 +556,7 @@ class Frame:
             self._window_flags |= imgui.WindowFlags_.no_title_bar
         if self._config['window']['flags']['no_docking']:
             self._window_flags |= imgui.WindowFlags_.no_docking
+        
 
     def _draw(self):
         """

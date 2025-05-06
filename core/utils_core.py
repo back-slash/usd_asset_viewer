@@ -39,7 +39,6 @@ class FileHelper:
             cstat.Filetype.TOML: lambda x: cls._read_toml(x),
             cstat.Filetype.IMG: lambda x: cls._read_img(x),
             cstat.Filetype.ICON: lambda x: cls._read_icon(x),
-
         }
         return process_file_type_dict[file_type](file_path)
     

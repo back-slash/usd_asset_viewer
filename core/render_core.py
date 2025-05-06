@@ -5,11 +5,15 @@
 #####################################################################################################################################
 # PYTHON
 import ctypes
+import os
 
 # ADDONS
 from imgui_bundle import imgui
 import glfw
 import OpenGL.GL as gl
+import pxr.Usd as pusd
+import pxr.UsdGeom as pgeo
+import pxr.UsdImagingGL as pimg
 
 # PROJECT
 import core.utils_core as cutils
@@ -55,7 +59,7 @@ class RenderContextManager:
         self._glfw_window = self._glfw.get_window()
         self._glfw_window_address = self._glfw.get_window_address()
         imgui.backends.glfw_init_for_opengl(self._glfw_window_address, True)
-        imgui.backends.opengl3_init("#version 330")
+        imgui.backends.opengl3_init("#version 450")
         imgui.backends.opengl3_new_frame()
 
     def _update_window_size(self):
@@ -173,9 +177,9 @@ class GLFWHydraOpenGLWindow:
     """
     def __init__(self, render_loop_function):
         self._render_loop_function = render_loop_function
-        self._hydra_render_function = test_hydra_fucntion
         self._init_config()
         self._init_frame()
+        self._hydra = HydraTestRendering(self._window)
 
     def _init_config(self):
         """
@@ -193,6 +197,7 @@ class GLFWHydraOpenGLWindow:
         """
         if not glfw.init():
             raise RuntimeError("Failed to initialize GLFW")
+        print(glfw.vulkan_supported())
         self._window = glfw.create_window(self._cfg_width, self._cfg_height, self._cfg_title, None, None)
         if not self._window:
             glfw.terminate()
@@ -208,7 +213,7 @@ class GLFWHydraOpenGLWindow:
             glfw.poll_events()
             gl.glClearColor(*self._cfg_gl_color)
             gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-            self._hydra_render_function()
+            self._hydra.test_render()
             self._render_loop_function()
             glfw.swap_buffers(self._window)
         glfw.terminate()
@@ -239,22 +244,28 @@ class GLFWHydraOpenGLWindow:
     
 
 
-
-
-def test_hydra_fucntion():
+class HydraTestRendering:
     """
-    Test function for Hydra rendering.
+    Test class for Hydra rendering.
     """
-    from pxr import Usd, UsdGeom, UsdImagingGL
-    print("Rendering with Hydra...")
-    # Initialize Hydra renderer
-    stage = Usd.Stage.Open("path/to/your/usd_scene.usda")  # Replace with your USD file path
-    renderer = UsdImagingGL.Engine()
-    renderer.SetRendererPlugin("HdStormRendererPlugin")  # Use Hydra's Storm renderer
+    def __init__(self, window):
+        self._window = window
+        self._stage = pusd.Stage.Open("P:\\DATA\\GAMEDEV\\CODE\\usd_asset_viewer\\core\\asset\\usd\\example.usdc")
+        self._renderer = pimg.Engine()
+        self._renderer.SetRendererPlugin("HdStormRendererPlugin")
+        camera = pgeo.Camera.Define(self._stage, "/Camera")
+        xform = pgeo.Xform(camera.GetPrim())
+        xform.AddTranslateOp().Set((100, 0.0, 0.0))
+        camera.CreateFocalLengthAttr(50.0)
+        camera.CreateHorizontalApertureAttr(36.0)
+        camera.CreateVerticalApertureAttr(24.0)
+        self._renderer.SetCameraPath("/Camera")
 
-    # Set the root of the scene to render
-    root = stage.GetPseudoRoot()
-    renderer.SetRenderViewport((0, 0, 800, 600))  # Set viewport size (width, height)
-    renderer.SetCameraPath(UsdGeom.Camera.Define(stage, "/Camera").GetPath())  # Replace with your camera path
-
-    renderer.Render(stage.GetPseudoRoot(), UsdImagingGL.RenderParams())
+    def test_render(self):
+        """
+        Test for Hydra rendering.
+        """
+        print("Rendering with Hydra...")
+        render_params = pimg.RenderParams()
+        self._renderer.SetCameraPath("/Camera")
+        self._renderer.Render(self._stage.GetPseudoRoot(), render_params)  
