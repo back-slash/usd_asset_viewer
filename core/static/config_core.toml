@@ -6,36 +6,48 @@
 use_hydra = false
 usd_example_path = "core/asset/usd/example.usdc"
 
+
 [glfw]
 title = "USD Asset Viewer"
 window_size = [1280, 720]
-gl_color = [0.1, 0.2, 0.1, 1.0]
+gl_color = [0.1, 0.1, 0.1, 1.0]
+
 
 [config]
 docking = false
+srgb = true
+
 
 [window]
-ui_scale = 1.0
+font_scale = 1.0
+
 
 [window.flags]
 no_move = true
 no_resize = true
-no_close = true
 no_titlebar = true
 no_docking = true
 no_scrollbar = true
+no_bring_to_front = true
 
 
 [window.style_color]
-background_color = [0.3, 0.3, 0.3, 1.0]
-border_color = [0.0, 0.0, 0.0, 1.0]
+text = [0.65, 0.65, 0.65, 1.0]
+background = [0.2, 0.2, 0.2, 1.0]
+border = [0.0, 0.0, 0.0, 1.0]
+
+
 
 [window.style_var]
 item_spacing = [5, 5]
-item_padding = [5, 5]
-border_size = 1.0
+window_padding = [5, 5]
+border_size = 1.5
 
 
+[header.style_color]
+header = [0.2, 0.2, 0.2, 1.0]
+header_hovered = [0.3, 0.3, 0.3, 1.0]
+header_active = [0.4, 0.4, 0.4, 1.0]
 
 
 

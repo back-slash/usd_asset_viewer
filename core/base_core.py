@@ -450,7 +450,6 @@ class Frame:
         Initialize the configuration file.
         """
         self._config = cutils.get_core_config()
-        self._cfg_docking = self._config['config']['docking']
 
     def _init_render_context_manager(self):
         """
@@ -459,7 +458,6 @@ class Frame:
         self._render_context_manager = crend.RenderContextManager(self.update)
         self._context = self._render_context_manager.context_list[-1]
         self._display_size = self._render_context_manager.get_frame_size()
-        self._set_flags()
 
     def _init_panels(self):
         """
@@ -483,24 +481,80 @@ class Frame:
         """
         Set the default style for the frame.
         """
+        imgui.get_io().font_global_scale = self._config['window']['font_scale']
+        item_spacing = self._config['window']['style_var']['item_spacing']
+        imgui.push_style_var(imgui.StyleVar_.item_spacing, item_spacing)
+        window_padding = self._config['window']['style_var']['window_padding']
+        imgui.push_style_var(imgui.StyleVar_.window_padding, window_padding)
+        border_size = self._config['window']['style_var']['border_size']
+        imgui.push_style_var(imgui.StyleVar_.window_border_size, border_size)
+
+        background_color = self._config['window']['style_color']['background']
+        imgui.push_style_color(imgui.Col_.window_bg, background_color)
+        border_color = self._config['window']['style_color']['border']
+        imgui.push_style_color(imgui.Col_.border, border_color)
+        text_color = self._config['window']['style_color']['text']
+        imgui.push_style_color(imgui.Col_.text, text_color)
+
+        header_color = self._config['header']['style_color']['header']
+        imgui.push_style_color(imgui.Col_.header, header_color)
+        header_hover_color = self._config['header']['style_color']['header_hovered']
+        imgui.push_style_color(imgui.Col_.header_hovered, header_hover_color)
+        header_active_color = self._config['header']['style_color']['header_active']
+        imgui.push_style_color(imgui.Col_.header_active, header_active_color)
+
+
 
     def _pop_default_style(self):
         """
         Pop the default style for the frame.
         """
+        imgui.pop_style_var(3)
+        imgui.pop_style_color(5)
 
-    def _set_flags(self):
+    def _set_config_flags(self):
         """
         Set the flags for the frame.
         """
-    
+        if self._config['config']['docking']:
+            self._set_flag(imgui.ConfigFlags_.docking_enable, True)
+        else:
+            self._set_flag(imgui.ConfigFlags_.docking_enable, False)
+        if self._config['config']['srgb']:
+            self._set_flag(imgui.ConfigFlags_.is_srgb, True)
+        else:
+            self._set_flag(imgui.ConfigFlags_.is_srgb, False)
+
+    def _set_flag(self, flag: int, value: bool):
+        """
+        Set a specific flag for the frame.
+        """
+        if value:
+            imgui.get_io().config_flags |= flag
+        else:
+            imgui.get_io().config_flags &= ~flag
+
+    def _set_window_flags(self):
+        self._window_flags = 0
+        if self._config['window']['flags']['no_move']:
+            self._window_flags |= imgui.WindowFlags_.no_move
+        if self._config['window']['flags']['no_resize']:
+            self._window_flags |= imgui.WindowFlags_.no_resize
+        if self._config['window']['flags']['no_scrollbar']:
+            self._window_flags |= imgui.WindowFlags_.no_scrollbar
+        if self._config['window']['flags']['no_titlebar']:
+            self._window_flags |= imgui.WindowFlags_.no_title_bar
+        if self._config['window']['flags']['no_docking']:
+            self._window_flags |= imgui.WindowFlags_.no_docking
+
     def _draw(self):
         """
         Draw the frame and its panels.
         """
         imgui.set_current_context(self._context)
+        self._set_config_flags()
         self._push_default_style()
-        self._set_flags()
+        self._set_window_flags()
         imgui.new_frame()
         self.draw()
         self._pop_default_style()
@@ -640,9 +694,10 @@ class SceneManager:
             "matrix4d": Attribute,
         }
 
+        
+        if isinstance(input_object, pusd.Attribute):
+            return Attribute(input_object)
         input_object_type = str(input_object.GetTypeName())
-        if input_object_type in attribute_classes:
-            return attribute_classes[input_object_type](input_object)
         if input_object_type in prim_classes:
             return prim_classes[input_object_type](input_object)
         return None
