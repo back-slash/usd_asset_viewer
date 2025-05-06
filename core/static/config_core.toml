@@ -19,13 +19,13 @@ no_titlebar = true
 
 [window.style_var]
 line_height = 24
-SCALE = 1.0
-ITEM_SPACING = [8, 12]
+scale = 1.0
+item_spacing = [8, 12]
 padding = [5, 5]
 
 
 [window.title]
-title = "USD Outliner"
+title = "USD Asset Viewer"
 
 
 [window.title.style_color]

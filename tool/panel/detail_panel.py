@@ -19,5 +19,5 @@ import core.base_core as cbase
       
 class DetailPanel(cbase.Panel):
     """
-    Detail panel class for display node details.
+    Detail panel class for display selection details.
     """

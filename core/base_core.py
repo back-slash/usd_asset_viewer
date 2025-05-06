@@ -18,7 +18,6 @@ import pxr.UsdLux as plux
 import pxr.UsdSkel as pskl
 import pxr.UsdUtils as putils
 
-
 # PROJECT
 import core.static.static_core as cstat
 import core.utils_core as cutils

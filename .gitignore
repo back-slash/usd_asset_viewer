@@ -1,9 +1,10 @@
 #COMPILED
-__pycache__
-__pycache__/*
+__pycache__/
+
 
 #HIDDEN
 .*
+
 
 #OTHER
 usd_outliner.code-workspace
