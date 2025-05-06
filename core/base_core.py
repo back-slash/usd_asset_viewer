@@ -145,7 +145,7 @@ class Primative(Pathed):
         """
         Add an attribute to the node.
         """
-        if attribute not in self._attribute_list:
+        if attribute and attribute not in self._attribute_list:
             self._attribute_list.append(attribute)
 
     def _init_node_children(self):
@@ -160,7 +160,7 @@ class Primative(Pathed):
         """
         Add a child node to the node.
         """
-        if child not in self._child_list:
+        if child and child not in self._child_list:
             self._child_list.append(child)
 
     def get_child_nodes(self) -> list['Node']:
@@ -191,7 +191,8 @@ class Attribute(Pathed):
         connection_paths = self._data_object.GetConnections()
         for path in connection_paths:
             if path.IsPropertyPath():
-                self._add_connection(path)
+                pass
+                #self._add_connection(path)
         if self._connection_path_list:
             self._connected = True
 
@@ -201,7 +202,7 @@ class Attribute(Pathed):
         """
         attribute = self._scene_manager.get_stage().GetPrimAtPath(path)
         attribute_node = self._scene_manager.init_path_node(attribute)
-        if attribute_node not in self._connection_path_list:
+        if attribute_node and attribute_node not in self._connection_path_list:
             self._connection_path_list.append(attribute_node)
 
     def get_data(self, time: float = None) -> Any:
@@ -290,7 +291,7 @@ class Skeleton(Primative):
         
     def _init_node_data(self):
         super()._init_node_data()
-        self._data_object: pskl.Skeleton
+        self._data_object = pskl.Skeleton(self._data_object)
         self._node_color = (0.6, 0.4, 0.8, 1.0)
         self._node_icon = cstat.NodeIcon.SKELETON_ICON
         self._init_skeleton_bones()
@@ -435,7 +436,7 @@ class Frame:
     Class representing the tool frame.
     """
     _config = None
-    _render_manager = None
+    _render_context_manager = None
     _display_size = None
     def __init__(self, title: str, width: int = 1280, height: int = 720):
         self.title = title
@@ -444,6 +445,7 @@ class Frame:
         self._load_config()
         self._init_render_context_manager()
         self._init_panels()
+        self._render_context_manager.get_glfw_frame().start_rendering()
 
     def _load_config(self):
         """
@@ -459,7 +461,7 @@ class Frame:
         """
         Initialize the render manager.
         """
-        self._render_context_manager = crend.RenderContextManager(self.title, self._width, self._height)
+        self._render_context_manager = crend.RenderContextManager(self.title, self._width, self._height, self.update)
         self._context = self._render_context_manager.context_list[-1]
         self._display_size = self._render_context_manager.get_frame_size()
         self._load_config()
@@ -497,7 +499,7 @@ class Frame:
         self.draw()
         self._pop_default_style()
         imgui.render()
-        self._render_manager.render(imgui.get_draw_data())
+        self._render_context_manager.render(imgui.get_draw_data())
 
     def draw(self):
         """
@@ -588,11 +590,11 @@ class SceneManager:
         """
         Traverse the hierarchy and init nodes.
         """
-        for prim in self._stage.Traverse():
-            internal_node = self._init_internal_node(prim)
+        for self._temp_prim in self._stage.Traverse():
+            internal_node = self._init_internal_node(self._temp_prim)
             self._add_path_node(internal_node)
-            for attribute in prim.GetAttributes():
-                internal_attribute = self._init_internal_node(attribute)
+            for self._temp_attribute in self._temp_prim.GetAttributes():
+                internal_attribute = self._init_internal_node(self._temp_attribute)
                 if internal_attribute and internal_attribute not in self._path_node_list:
                     self._add_path_node(internal_attribute)
   
@@ -662,14 +664,14 @@ class SceneManager:
         """
         Add a node to the scene manager.
         """
-        if node not in self._path_node_list:
+        if node and node not in self._path_node_list:
             self._path_node_list.append(node)
 
     def _add_data_node(self, node: Data):
         """
         Add a data node to the scene manager.
         """
-        if node not in self._data_node_list:
+        if node and node not in self._data_node_list:
             self._data_node_list.append(node)
 
     def init_path_node(self, data_object: pusd.Prim) -> Pathed:
