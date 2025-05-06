@@ -5,10 +5,8 @@ def load():
     """
     Load the UI.
     """
-    usd_viewer = tbase.USDViewer()
+    usd_asset_viewer = tbase.USDAssetViewer()
     
-
-
 
 if __name__ == "__main__":
     load()

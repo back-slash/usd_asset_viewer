@@ -8,7 +8,7 @@
 
 # ADDONS
 from imgui_bundle import imgui
-from pxr import Usd, UsdImaging, Hd, Glf
+from pxr import Usd as pusd
 import glfw
 
 # PROJECT
@@ -23,7 +23,7 @@ class RenderContextManager:
     """
     _instance = None
     _hydra = False
-    def __new__(cls):
+    def __new__(cls, title, width, height):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
@@ -49,16 +49,6 @@ class RenderContextManager:
         self._init_glfw()
         imgui.backends.opengl3_init("#version 330")
 
-    def _init_hydra(self):
-        """
-        Initialize Hydra for USD rendering.
-        """
-        if self._hydra:
-            self.hydra_delegate = Hd.StormRenderDelegate()
-            self.hydra_render_index = Hd.RenderIndex(self.hydra_delegate)
-            self.hydra_engine = Hd.Engine()
-            self.scene_delegate = None
-
     def _init_glfw(self):
         """
         Initialize GLFW for window management.
@@ -77,26 +67,6 @@ class RenderContextManager:
         """
         self._update_size() 
         return self._display_size
-
-    def load_usd_scene(self, usd_file_path):
-        """
-        Load a USD scene and set up the Hydra scene delegate.
-        """
-        stage = Usd.Stage.Open(usd_file_path)
-        if not stage:
-            raise ValueError(f"Failed to open USD file: {usd_file_path}")
-        if self._hydra:
-            self.scene_delegate = UsdImaging.SceneDelegate(self.hydra_render_index, stage.GetPseudoRoot())
-
-    def render_usd_scene(self):
-        """
-        Render the USD scene using Hydra.
-        """
-        if not self.scene_delegate:
-            raise RuntimeError("No USD scene loaded for rendering.")
-        imgui.set_current_context(self.context_list[-1])
-        Glf.GLContext.BindDefaultFramebuffer()
-        self.hydra_engine.Execute(self.hydra_render_index, Hd.TaskSharedPtrVector())
     
     def remove_context(self, context):
         """
@@ -122,9 +92,10 @@ class GLFWFrame:
     GLFW Window class for rendering.
     """
     def __init__(self, title, width, height):
-        self.width = width
-        self.height = height
-        self.title = title
+        self._title = title        
+        self._width = width
+        self._height = height
+
         self.window = None
         self._init_frame()
 
@@ -134,7 +105,7 @@ class GLFWFrame:
         """
         if not glfw.init():
             raise RuntimeError("Failed to initialize GLFW")
-        self.window = glfw.create_window(self.width, self.height, self.title, None, None)
+        self.window = glfw.create_window(self._width, self._height, self._title, None, None)
         if not self.window:
             glfw.terminate()
             raise RuntimeError("Failed to create GLFW window")

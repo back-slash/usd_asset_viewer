@@ -21,3 +21,5 @@ class DetailPanel(cbase.Panel):
     """
     Detail panel class for display selection details.
     """
+    def __init__(self, frame: cbase.Frame):
+        super().__init__("Details", frame)

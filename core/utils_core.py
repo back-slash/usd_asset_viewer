@@ -44,26 +44,30 @@ class FileHelper:
         }
         return process_file_type_dict[file_type](file_path)
     
-    def _read_toml(self, file_path) -> Dict[str, Any]:
+    @classmethod
+    def _read_toml(cls, file_path) -> Dict[str, Any]:
         """
         Read data from a TOML file.
         """
         with open(file_path, 'r') as file:
             return toml.load(file)
-        
-    def _read_usd(self, file_path) -> pusd.Stage:
+
+    @classmethod    
+    def _read_usd(cls, file_path) -> pusd.Stage:
         """
         Read data from a USD file.
         """
-        self._usd_stage = pusd.Stage.Open(file_path)
-        return self._usd_stage
+        usd_stage = pusd.Stage.Open(file_path)
+        return usd_stage
 
+    @classmethod
     def _read_img(self, file_path) -> int:
         """
         Read data from an image file.
         """
         return 0
     
+    @classmethod
     def _read_icon(self, icon: cstat.NodeIcon) -> int:
         """
         Read data from an icon file.

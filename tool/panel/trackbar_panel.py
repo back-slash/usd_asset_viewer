@@ -20,3 +20,5 @@ class TrackbarPanel(cbase.Panel):
     """
     Trackbar for scrubbing usd scene time.
     """
+    def __init__(self, frame: cbase.Frame):
+        super().__init__("Trackbar", frame)

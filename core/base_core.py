@@ -100,10 +100,11 @@ class Pathed(Node):
         super().__init__(data_object)
         
     def _init_node_data(self):
-        super()._init_node_data()
         self._set_name()
-        self._parent_node = self._data_object.GetParent()
+
         self._path = self._data_object.GetPath()
+        parent_path = self._path.GetParentPath()
+        self._parent_node = self._scene_manager.get_stage().GetPrimAtPath(parent_path)
 
     def get_path(self) -> psdf.Path:
         """
@@ -235,7 +236,7 @@ class Mesh(Primative):
 
     def _init_node_data(self):
         super()._init_node_data()
-        self._data_object: pgeo.Mesh     
+        self._data_object = pgeo.Mesh(self._data_object)  
         self._node_color = (0.8, 0.4, 0.4, 1.0)
         self._node_icon = cstat.NodeIcon.MESH_ICON
         self._display_color = self._data_object.GetDisplayColorAttr()
@@ -341,7 +342,6 @@ class Data(Node):
         super().__init__(data_object)
 
     def _init_node_data(self):
-        super()._init_node_data()
         self._set_name(self._data_object["name"])
         self._parent_node: pusd.Prim = self._data_object["owner"]
         self._relative_path = self._data_object["relative_path"]
@@ -449,7 +449,7 @@ class Frame:
         """
         Load the configuration file.
         """
-        config_path = os.path.join(os.path.dirname(__file__), "static" "config_core.toml")
+        config_path = os.path.join(os.path.dirname(__file__), "static", "config_core.toml")
         if os.path.exists(config_path):
             self._config: dict = cutils.FileHelper.read(config_path, cstat.Filetype.TOML)
         else:
@@ -459,7 +459,7 @@ class Frame:
         """
         Initialize the render manager.
         """
-        self._render_context_manager = crend.RenderContextManager()
+        self._render_context_manager = crend.RenderContextManager(self.title, self._width, self._height)
         self._context = self._render_context_manager.context_list[-1]
         self._display_size = self._render_context_manager.get_frame_size()
         self._load_config()
@@ -561,9 +561,10 @@ class SceneManager:
     Class for managing scene nodes.
     """
     _instance = None
-    def __new__(cls):
+    def __new__(cls, usd_path: str=None):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
+            cls._initialized = False
         return cls._instance
     
     def __init__(self, usd_path: str=None):
@@ -680,7 +681,8 @@ class SceneManager:
                 return path_node
         path_node = self._init_internal_node(data_object)
         if not path_node:
-            raise TypeError("Unknown data object type.")
+            print(f"Unknown data object type: {data_object.GetTypeName()}")
+            return None
         self._add_path_node(path_node)
         return path_node
 
@@ -693,7 +695,7 @@ class SceneManager:
                 return data_node
         data_node = self._init_internal_data(data_object)
         if not data_node:
-            raise TypeError("Unknown data object type.")
+            print(f"Unknown data object type: {data_object['owner'].GetTypeName()}")
         self._add_data_node(data_node)
         return data_node
 

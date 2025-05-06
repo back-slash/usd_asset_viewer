@@ -10,7 +10,7 @@ from enum import Enum
 
 #####################################################################################################################################
 
-DEFAULT_USD_PATH = "core\\assets\\usd\\example.usdc"
+DEFAULT_USD_PATH = "core\\asset\\usd\\example.usdc"
 
 
 class FontType(Enum):
