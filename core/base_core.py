@@ -445,7 +445,7 @@ class Frame:
         self._load_config()
         self._init_render_context_manager()
         self._init_panels()
-        self._render_context_manager.get_glfw_frame().start_rendering()
+        self._render_context_manager.get_glfw().start_rendering()
 
     def _load_config(self):
         """

@@ -1,15 +1,15 @@
 #####################################################################################################################################
-# USD Asset Viewer | Core | Imgui Render 
+# USD Asset Viewer | Core | Render 
 # TODO:
 # -
 #####################################################################################################################################
 # PYTHON
-
+import ctypes
 
 # ADDONS
 from imgui_bundle import imgui
-from pxr import Usd as pusd
 import glfw
+import OpenGL.GL as gl
 
 # PROJECT
 
@@ -53,11 +53,14 @@ class RenderContextManager:
         """
         Initialize GLFW for window management.
         """
-        self._glfw_frame = GLFWFrame(self._title, self._width, self._height, self._render_loop_function)
+        self._glfw = GLFWOpenGLWindow(self._title, self._width, self._height, self._render_loop_function)
+        self._glfw_window = self._glfw.get_window()
+        self._glfw_window_address = self._glfw.get_window_address()
+        imgui.backends.glfw_init_for_opengl(self._glfw_window_address, True)
         imgui.backends.opengl3_init("#version 330")
         imgui.backends.opengl3_new_frame()
-        
-    def _update_size(self):
+
+    def _update_window_size(self):
         """ 
         Update the size of the panels.
         """
@@ -67,7 +70,7 @@ class RenderContextManager:
         """
         Get the size of the frame.
         """
-        self._update_size() 
+        self._update_window_size()
         return self._display_size
     
     def remove_context(self, context):
@@ -87,14 +90,14 @@ class RenderContextManager:
         imgui.set_current_context(context)
         imgui.backends.opengl3_render_draw_data(draw_data)
 
-    def get_glfw_frame(self):
+    def get_glfw(self):
         """
         Get the GLFW frame.
         """
-        return self._glfw_frame
+        return self._glfw
 
 
-class GLFWFrame:
+class GLFWOpenGLWindow:
     """
     GLFW Window class for rendering.
     """
@@ -124,9 +127,11 @@ class GLFWFrame:
         imgui.get_io().display_size = glfw.get_window_size(self.get_window())
         while not glfw.window_should_close(self._window):
             glfw.poll_events()
+            gl.glClear(gl.GL_COLOR_BUFFER_BIT)
             self._render_loop_function()
             glfw.swap_buffers(self._window)
         glfw.terminate()
+
 
     def start_rendering(self):
         """
@@ -139,3 +144,9 @@ class GLFWFrame:
         Get the GLFW window.
         """
         return self._window
+    
+    def get_window_address(self):
+        """
+        Get the address of the GLFW window.
+        """
+        return ctypes.cast(self._window, ctypes.c_void_p).value
