@@ -30,10 +30,10 @@ class USDAssetViewer(cbase.Frame):
         title = "USD Asset Viewer"
         width = 1280
         height = 720
-        super().__init__(title, width, height)
         usd_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), cstat.DEFAULT_USD_PATH)
         self._scene_manager = cbase.SceneManager(usd_path)
         self._stage = self._scene_manager.get_stage()
+        super().__init__(title, width, height)
 
     def _init_panels(self):
         self._outliner_panel = tpo.OutlinerPanel(self)
@@ -44,7 +44,5 @@ class USDAssetViewer(cbase.Frame):
         """
         Draw the USD Asset Viewer.
         """
-        self._outliner_panel.draw()
-        self._details_panel.draw()
-        self._trackbar_panel.draw()
+        imgui.show_demo_window()
 

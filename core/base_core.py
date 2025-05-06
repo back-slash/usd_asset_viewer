@@ -499,7 +499,7 @@ class Frame:
         self.draw()
         self._pop_default_style()
         imgui.render()
-        self._render_context_manager.render(imgui.get_draw_data())
+        self._render_context_manager.render(imgui.get_draw_data(), self._context)
 
     def draw(self):
         """

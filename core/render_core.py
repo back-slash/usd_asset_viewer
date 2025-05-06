@@ -54,6 +54,8 @@ class RenderContextManager:
         Initialize GLFW for window management.
         """
         self._glfw_frame = GLFWFrame(self._title, self._width, self._height, self._render_loop_function)
+        imgui.backends.opengl3_init("#version 330")
+        imgui.backends.opengl3_new_frame()
         
     def _update_size(self):
         """ 
@@ -119,12 +121,10 @@ class GLFWFrame:
         """
         Render loop for the GLFW window.
         """
+        imgui.get_io().display_size = glfw.get_window_size(self.get_window())
         while not glfw.window_should_close(self._window):
             glfw.poll_events()
-            try:
-                self._render_loop_function()
-            except Exception as e:
-                print(f"Error in render loop: {e}")
+            self._render_loop_function()
             glfw.swap_buffers(self._window)
         glfw.terminate()
 
