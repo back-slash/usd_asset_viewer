@@ -3,10 +3,8 @@
 
 ## Status
 - WIP
-
-## Screenshot
+#### Screenshot
 ![USD Asset Viewer WIP Screenshot](./docs/images/screenshot_WIP.png)
-
 
 ## Features
 - Hydra viewport
