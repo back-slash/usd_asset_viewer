@@ -205,30 +205,26 @@ class GLFWHydraOpenGLWindow:
         glfw.make_context_current(self._window)
         glfw.swap_interval(1) 
 
+    def _pre_render_loop(self):
+        camera = pgeo.Camera.Get(self._hydra._stage, '/Camera')
+        self._hydra._renderer.SetCameraPath(camera.GetPath())
 
     def _render_loop(self):
         """
         Render loop for the GLFW window with Hydra rendering.
         """
-        self._hydra._renderer.SetRendererAov("color")
-    
-        camera = pgeo.Camera.Get(self._hydra._stage, '/Camera')
-        self._hydra._renderer.SetCameraPath(camera.GetPath())
-
-        gl.glEnable(gl.GL_DEPTH_TEST)
-        gl.glDepthFunc(gl.GL_LESS)
-        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
-        gl.glEnable(gl.GL_BLEND)
-        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
-        gl.glClearColor(0.2, 0.5, 0.2, 1.0)    
+        self._pre_render_loop()
         while not glfw.window_should_close(self._window):
             self._set_imgui_window_size()
             glfw.poll_events()
-            gl.glClearColor(*self._cfg_gl_color)            
-            self._hydra.test_render()
+            gl.glClearColor(*self._cfg_gl_color)
+            gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)        
+            self._hydra.render_loop()
             self._render_loop_function()
             glfw.swap_buffers(self._window)
+        self._hydra.get_renderer().StopRenderer()        
         glfw.terminate()
+
 
     def _set_imgui_window_size(self):
         """
@@ -267,19 +263,17 @@ class HydraTestRendering:
         renderer_plugins = self._renderer.GetRendererPlugins()
         self._renderer.SetRendererPlugin(renderer_plugins[0])
 
+    def get_renderer(self):
+        """
+        Get the renderer.
+        """
+        return self._renderer
 
-    def test_render(self):
+    def render_loop(self):
         """
         Render the USD stage using Hydra.
         """
         width, height = glfw.get_framebuffer_size(self._window)
-        self._viewport_width = width
-        self._viewport_height = height
-        gl.glViewport(0, 0, width, height)
-        
-        # Set up render parameters
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-        gl.glViewport(0, 0, width, height)  
         
         render_params = pimg.RenderParams()
         render_params.drawMode = pimg.DrawMode.DRAW_WIREFRAME_ON_SURFACE
