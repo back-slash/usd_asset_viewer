@@ -2,9 +2,10 @@
 - A python/C++ tool for navigating USD (Universal Scene Description) scene hierarchies.
 
 ## Status
-- WIP - Curently not functional.
+- WIP
 
 ## Features
+- Hydra Viewport
 - Outliner panel
 - Details panel
 - Trackbar panel
