@@ -11,7 +11,7 @@
 
 ## Dependencies
 #### Python
-- usd-core
+- OpenUSD
 - imgui_bundle
 - toml
 #### C++

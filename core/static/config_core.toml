@@ -4,7 +4,7 @@
 #####################################################################################################################################
 [settings]
 use_hydra = false
-usd_example_path = "core/asset/usd/example.usdc"
+usd_example_path = "core/asset/usd/example_sphere.usdc"
 
 
 [glfw]

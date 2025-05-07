@@ -14,6 +14,7 @@ import OpenGL.GL as gl
 import pxr.Usd as pusd
 import pxr.UsdGeom as pgeo
 import pxr.UsdImagingGL as pimg
+import pxr.Gf as pgf
 
 # PROJECT
 import core.utils_core as cutils
@@ -55,7 +56,7 @@ class RenderContextManager:
         """
         Initialize GLFW for window management.
         """
-        self._glfw = GLFWOpenGLWindow(self._render_loop_function)
+        self._glfw = GLFWHydraOpenGLWindow(self._render_loop_function)
         self._glfw_window = self._glfw.get_window()
         self._glfw_window_address = self._glfw.get_window_address()
         imgui.backends.glfw_init_for_opengl(self._glfw_window_address, True)
@@ -197,22 +198,33 @@ class GLFWHydraOpenGLWindow:
         """
         if not glfw.init():
             raise RuntimeError("Failed to initialize GLFW")
-        print(glfw.vulkan_supported())
         self._window = glfw.create_window(self._cfg_width, self._cfg_height, self._cfg_title, None, None)
         if not self._window:
             glfw.terminate()
             raise RuntimeError("Failed to create GLFW window")
         glfw.make_context_current(self._window)
+        glfw.swap_interval(1) 
+
 
     def _render_loop(self):
         """
         Render loop for the GLFW window with Hydra rendering.
         """
+        self._hydra._renderer.SetRendererAov("color")
+    
+        camera = pgeo.Camera.Get(self._hydra._stage, '/Camera')
+        self._hydra._renderer.SetCameraPath(camera.GetPath())
+
+        gl.glEnable(gl.GL_DEPTH_TEST)
+        gl.glDepthFunc(gl.GL_LESS)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
+        gl.glClearColor(0.2, 0.5, 0.2, 1.0)    
         while not glfw.window_should_close(self._window):
             self._set_imgui_window_size()
             glfw.poll_events()
-            gl.glClearColor(*self._cfg_gl_color)
-            gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+            gl.glClearColor(*self._cfg_gl_color)            
             self._hydra.test_render()
             self._render_loop_function()
             glfw.swap_buffers(self._window)
@@ -246,26 +258,38 @@ class GLFWHydraOpenGLWindow:
 
 class HydraTestRendering:
     """
-    Test class for Hydra rendering.
+    USD viewport rendering using Hydra.
     """
     def __init__(self, window):
         self._window = window
-        self._stage = pusd.Stage.Open("P:\\DATA\\GAMEDEV\\CODE\\usd_asset_viewer\\core\\asset\\usd\\example.usdc")
+        self._stage = pusd.Stage.Open("P:\\DATA\\GAMEDEV\\CODE\\usd_asset_viewer\\core\\asset\\usd\\example_sphere.usdc")
         self._renderer = pimg.Engine()
-        self._renderer.SetRendererPlugin("HdStormRendererPlugin")
-        camera = pgeo.Camera.Define(self._stage, "/Camera")
-        xform = pgeo.Xform(camera.GetPrim())
-        xform.AddTranslateOp().Set((100, 0.0, 0.0))
-        camera.CreateFocalLengthAttr(50.0)
-        camera.CreateHorizontalApertureAttr(36.0)
-        camera.CreateVerticalApertureAttr(24.0)
-        self._renderer.SetCameraPath("/Camera")
+        renderer_plugins = self._renderer.GetRendererPlugins()
+        self._renderer.SetRendererPlugin(renderer_plugins[0])
+
 
     def test_render(self):
         """
-        Test for Hydra rendering.
+        Render the USD stage using Hydra.
         """
-        print("Rendering with Hydra...")
+        width, height = glfw.get_framebuffer_size(self._window)
+        self._viewport_width = width
+        self._viewport_height = height
+        gl.glViewport(0, 0, width, height)
+        
+        # Set up render parameters
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+        gl.glViewport(0, 0, width, height)  
+        
         render_params = pimg.RenderParams()
-        self._renderer.SetCameraPath("/Camera")
-        self._renderer.Render(self._stage.GetPseudoRoot(), render_params)  
+        render_params.drawMode = pimg.DrawMode.DRAW_WIREFRAME_ON_SURFACE
+        render_params.enableLighting = False
+        render_params.enableIdRender = False
+        render_params.clearColor = pgf.Vec4f(0.1, 0.1, 0.1, 1.0)
+        render_params.complexity = 1.0
+        render_params.enableSampleAlphaToCoverage = False
+
+        self._renderer.SetRenderViewport((0, 0, width, height))
+        self._renderer.SetRenderBufferSize((width, height))
+        self._renderer.Render(self._stage.GetPseudoRoot(), render_params)
+        

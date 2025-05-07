@@ -130,7 +130,7 @@ class OutlinerPropertyPencil(cbase.Pencil):
         imgui.set_cursor_pos(self._position)
         imgui.text(self._node_name)
         if self._node_icon:
-            imgui.image(self._node_icon, size=(16, 16), uv_min=(0, 0), uv_max=(1, 1))
+            imgui.image(self._node_icon, size=(16, 16), uv0=(0, 0), uv1=(1, 1))
 
     def _draw(self):
         """
