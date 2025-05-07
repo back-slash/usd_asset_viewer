@@ -4,8 +4,12 @@
 ## Status
 - WIP
 
+## Screenshot
+![USD Asset Viewer WIP Screenshot](./docs/images/screenshot_WIP.png)
+
+
 ## Features
-- Hydra Viewport
+- Hydra viewport
 - Outliner panel
 - Details panel
 - Trackbar panel
@@ -20,7 +24,7 @@
 - imgui
 
 ## Usage
-- File > Open > *.usd
+- File > Open USD > *.usd
 
 ## License
 - MIT License
