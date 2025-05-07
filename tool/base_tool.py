@@ -26,22 +26,31 @@ class USDAssetViewer(cbase.Frame):
     """
     USD Asset Viewer class for displaying USD assets.
     """
+    _scene_manager = None
     def __init__(self):
         self._cfg = cutils.get_core_config() 
         super().__init__()    
 
     def _init_pre_rendering(self):
-        self._init_usd_stage()       
+        pass     
 
     def _init_panels(self):
         self._outliner_panel = tpo.OutlinerPanel(self)
         self._details_panel = tpd.DetailPanel(self)
         self._trackbar_panel = tpt.TrackbarPanel(self)
 
-    def _init_usd_stage(self):
-        usd_path = os.path.join(cutils.get_usd_default_path(), self._cfg['settings']['default_usd'])
-        self._scene_manager = cbase.SceneManager(usd_path)
-        self._stage = self._scene_manager.get_stage() 
+    def _init_usd_stage(self, usd_path=None):
+        """
+        Initialize the USD stage and scene manager.
+        """
+        if usd_path is None:
+            usd_path = os.path.join(cutils.get_usd_default_path(), self._cfg['settings']['default_usd'])
+        if not self._scene_manager:
+            self._scene_manager = cbase.SceneManager(usd_path)
+            self._stage = self._scene_manager.get_stage()
+        else:
+            self._scene_manager.set_usd_file(usd_path)
+        self._render_context_manager.set_usd_stage(self._scene_manager.get_stage())
 
     def _set_window_flags(self):
         super()._set_window_flags()
@@ -61,8 +70,7 @@ class USDAssetViewer(cbase.Frame):
                 for usd_file in usd_file_list:
                     if imgui.menu_item_simple(usd_file, "", False, True):
                         usd_path = os.path.join(cutils.get_usd_default_path(), usd_file)
-                        self._scene_manager.set_usd_file(usd_path)
-                        self._render_context_manager.set_usd_stage(self._scene_manager.get_stage())
+                        self._init_usd_stage(usd_path)
                 imgui.end_menu()
             if imgui.menu_item_simple("Exit", "", False, True):
                 print("Open USD")
