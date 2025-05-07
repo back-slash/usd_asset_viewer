@@ -109,7 +109,6 @@ class GLFWOpenGLWindow:
         self._init_config()
         self._init_frame()
 
-
     def _init_config(self):
         """
         Initialize the core config.
@@ -119,7 +118,6 @@ class GLFWOpenGLWindow:
         self._cfg_height = self._cfg["glfw"]["window_size"][1]
         self._cfg_title = self._cfg["glfw"]["title"]
         self._cfg_gl_color = self._cfg["glfw"]["gl_color"]
-
 
     def _init_frame(self):
         """
@@ -225,7 +223,6 @@ class GLFWHydraOpenGLWindow:
         self._hydra.get_renderer().StopRenderer()        
         glfw.terminate()
 
-
     def _set_imgui_window_size(self):
         """
         Set the size of the GLFW window.
@@ -258,7 +255,10 @@ class HydraTestRendering:
     """
     def __init__(self, window):
         self._window = window
-        self._stage = pusd.Stage.Open("P:\\DATA\\GAMEDEV\\CODE\\usd_asset_viewer\\core\\asset\\usd\\example_sphere.usdc")
+        self._cfg = cutils.get_core_config()
+        cfg_example_file = self._cfg["settings"]["usd_example_path"]
+        example_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), cfg_example_file)
+        self._stage = pusd.Stage.Open(example_file_path)
         self._renderer = pimg.Engine()
         renderer_plugins = self._renderer.GetRendererPlugins()
         self._renderer.SetRendererPlugin(renderer_plugins[0])
@@ -279,7 +279,6 @@ class HydraTestRendering:
         render_params.drawMode = pimg.DrawMode.DRAW_WIREFRAME_ON_SURFACE
         render_params.enableLighting = False
         render_params.enableIdRender = False
-        render_params.clearColor = pgf.Vec4f(0.1, 0.1, 0.1, 1.0)
         render_params.complexity = 1.0
         render_params.enableSampleAlphaToCoverage = False
 

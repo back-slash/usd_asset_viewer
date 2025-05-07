@@ -10,8 +10,6 @@ from enum import Enum
 
 #####################################################################################################################################
 
-DEFAULT_USD_PATH = "core\\asset\\usd\\example.usdc"
-
 
 class FontType(Enum):
     """
@@ -70,6 +68,9 @@ class PanelTypes(Enum):
     OUTLINER = 1
     DETAIL = 2
     NODE_EDITOR = 3
+    TRACKBAR = 4
+    VIEWPORT = 5
+    OPEN = 6
 
 
 
