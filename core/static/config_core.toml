@@ -3,14 +3,15 @@
 # Configure the core of the USD Asset Viewer.
 #####################################################################################################################################
 [settings]
-use_hydra = false
-usd_example_path = "core/asset/usd/example_sphere.usdc"
+use_hydra = true
+default_usd = "example_sphere.usdc"
 
 
 [glfw]
 title = "USD Asset Viewer"
 window_size = [1280, 720]
 gl_color = [0.1, 0.1, 0.1, 1.0]
+vsync = true
 
 
 [config]

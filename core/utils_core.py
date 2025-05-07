@@ -81,14 +81,12 @@ def convert_dict_string(data: Dict[str, Any]) -> Dict[str, str]:
     """
     return {str(key): str(value) for key, value in data.items()}
 
-
 def get_usd_default_path() -> str:
     """
     Get the default path for USD files.
     """
     current_dir = os.path.dirname(__file__)
     return os.path.join(current_dir, 'asset', 'usd')
-
 
 def get_core_config() -> Dict[str, Any]:
     """

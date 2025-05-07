@@ -64,13 +64,12 @@ class PanelTypes(Enum):
     """
     Enum for panel modes.
     """
-    NONE = 0
-    OUTLINER = 1
-    DETAIL = 2
-    NODE_EDITOR = 3
-    TRACKBAR = 4
-    VIEWPORT = 5
-    OPEN = 6
+    OUTLINER = 0
+    DETAIL = 1
+    NODE_EDITOR = 2
+    TRACKBAR = 3
+    VIEWPORT = 4
+    BROWSER = 5
 
 
 

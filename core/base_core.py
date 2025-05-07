@@ -449,7 +449,15 @@ class Frame:
         """
         Initialize the configuration file.
         """
-        self._config = cutils.get_core_config()
+        self._cfg = cutils.get_core_config()
+
+    def _init_scene_manager(self):
+        """
+        Initialize the scene manager.
+        """
+        default_usd_path = os.path.join(cutils.get_usd_default_path(), self._cfg['settings']['default_usd'])   
+        self._scene_manager = SceneManager(default_usd_path)
+        self._stage = self._scene_manager.get_stage()
 
     def _init_render_context_manager(self):
         """
@@ -481,41 +489,41 @@ class Frame:
         """
         Set the default style for the frame.
         """
-        imgui.get_io().font_global_scale = self._config['window']['font_scale']
-        item_spacing = self._config['window']['style_var']['item_spacing']
+        imgui.get_io().font_global_scale = self._cfg['window']['font_scale']
+        item_spacing = self._cfg['window']['style_var']['item_spacing']
         imgui.push_style_var(imgui.StyleVar_.item_spacing, item_spacing)
-        window_padding = self._config['window']['style_var']['window_padding']
+        window_padding = self._cfg['window']['style_var']['window_padding']
         imgui.push_style_var(imgui.StyleVar_.window_padding, window_padding)
-        border_size = self._config['window']['style_var']['border_size']
+        border_size = self._cfg['window']['style_var']['border_size']
         imgui.push_style_var(imgui.StyleVar_.window_border_size, border_size)
-        rounding = self._config['window']['style_var']['rounding']
+        rounding = self._cfg['window']['style_var']['rounding']
         imgui.push_style_var(imgui.StyleVar_.window_rounding, rounding)
 
-        popup_padding = self._config['menu_bar']['style_var']['popup_rounding']
+        popup_padding = self._cfg['menu_bar']['style_var']['popup_rounding']
         imgui.push_style_var(imgui.StyleVar_.popup_rounding, popup_padding)
-        popup_border_size = self._config['menu_bar']['style_var']['popup_border_size']
+        popup_border_size = self._cfg['menu_bar']['style_var']['popup_border_size']
         imgui.push_style_var(imgui.StyleVar_.popup_border_size, popup_border_size)
         
-        background_color = self._config['window']['style_color']['background']
+        background_color = self._cfg['window']['style_color']['background']
         imgui.push_style_color(imgui.Col_.window_bg, background_color)
-        border_color = self._config['window']['style_color']['border']
+        border_color = self._cfg['window']['style_color']['border']
         imgui.push_style_color(imgui.Col_.border, border_color)
-        text_color = self._config['window']['style_color']['text']
+        text_color = self._cfg['window']['style_color']['text']
         imgui.push_style_color(imgui.Col_.text, text_color)
 
-        header_color = self._config['header']['style_color']['header']
+        header_color = self._cfg['header']['style_color']['header']
         imgui.push_style_color(imgui.Col_.header, header_color)
-        header_hover_color = self._config['header']['style_color']['header_hovered']
+        header_hover_color = self._cfg['header']['style_color']['header_hovered']
         imgui.push_style_color(imgui.Col_.header_hovered, header_hover_color)
-        header_active_color = self._config['header']['style_color']['header_active']
+        header_active_color = self._cfg['header']['style_color']['header_active']
         imgui.push_style_color(imgui.Col_.header_active, header_active_color)
 
-        title_color = self._config['title']['style_color']['title']
+        title_color = self._cfg['title']['style_color']['title']
         imgui.push_style_color(imgui.Col_.title_bg, title_color)
-        title_hover_color = self._config['title']['style_color']['title_active']
+        title_hover_color = self._cfg['title']['style_color']['title_active']
         imgui.push_style_color(imgui.Col_.title_bg_active, title_hover_color)
 
-        menu_bar_color = self._config['menu_bar']['style_color']['menu_bar']
+        menu_bar_color = self._cfg['menu_bar']['style_color']['menu_bar']
         imgui.push_style_color(imgui.Col_.menu_bar_bg, menu_bar_color)
 
     def _pop_default_style(self):
@@ -529,7 +537,7 @@ class Frame:
         """
         Set the flags for the frame.
         """
-        if self._config['config']['docking']:
+        if self._cfg['config']['docking']:
             self._set_flag(imgui.ConfigFlags_.docking_enable, True)
         else:
             self._set_flag(imgui.ConfigFlags_.docking_enable, False)
@@ -546,18 +554,17 @@ class Frame:
 
     def _set_window_flags(self):
         self._window_flags = 0
-        if self._config['window']['flags']['no_move']:
+        if self._cfg['window']['flags']['no_move']:
             self._window_flags |= imgui.WindowFlags_.no_move
-        if self._config['window']['flags']['no_resize']:
+        if self._cfg['window']['flags']['no_resize']:
             self._window_flags |= imgui.WindowFlags_.no_resize
-        if self._config['window']['flags']['no_scrollbar']:
+        if self._cfg['window']['flags']['no_scrollbar']:
             self._window_flags |= imgui.WindowFlags_.no_scrollbar
-        if self._config['window']['flags']['no_titlebar']:
+        if self._cfg['window']['flags']['no_titlebar']:
             self._window_flags |= imgui.WindowFlags_.no_title_bar
-        if self._config['window']['flags']['no_docking']:
+        if self._cfg['window']['flags']['no_docking']:
             self._window_flags |= imgui.WindowFlags_.no_docking
         
-
     def _draw(self):
         """
         Draw the frame and its panels.
@@ -584,6 +591,12 @@ class Frame:
         """
         self._draw()
 
+    def set_usd_file(self, usd_path: str):
+        """
+        Set the USD file for the frame.
+        """
+        self._scene_manager
+        self._stage = self._scene_manager.get_stage()
 #####################################################################################################################################
 
 class Panel:
@@ -636,8 +649,8 @@ class SceneManager:
     _instance = None
     def __new__(cls, usd_path: str=None):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
             cls._initialized = False
+            cls._instance = super().__new__(cls)
         return cls._instance
     
     def __init__(self, usd_path: str=None):
@@ -651,7 +664,7 @@ class SceneManager:
 
     def _init_usd_scene(self):
         """
-        Initialize the USD scene.
+        Initialize USD scene.
         """
         self._stage = pusd.Stage.Open(self._usd_path)
         self._root = self._stage.GetPseudoRoot()
@@ -778,7 +791,16 @@ class SceneManager:
         Get the USD stage.
         """
         return self._stage
-    
+
+    def set_usd_file(self, usd_path: str):
+        """
+        Set the USD file for the scene manager.
+        """
+        self._usd_path = usd_path
+        self._path_node_list = []
+        self._data_node_list = []        
+        self._init_usd_scene()
+
     def get_root(self) -> pusd.Prim:
         """
         Get the root of the stage.

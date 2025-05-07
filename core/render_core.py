@@ -6,6 +6,7 @@
 # PYTHON
 import ctypes
 import os
+from typing import Callable
 
 # ADDONS
 from imgui_bundle import imgui
@@ -42,7 +43,8 @@ class RenderContextManager:
             self._init_renderer()
             return
         self.context_list = []
-        self.context_list.append(imgui.create_context())   
+        self.context_list.append(imgui.create_context())
+        self._cfg = cutils.get_core_config()   
         self._init_renderer()
 
     def _init_renderer(self):
@@ -56,7 +58,11 @@ class RenderContextManager:
         """
         Initialize GLFW for window management.
         """
-        self._glfw = GLFWHydraOpenGLWindow(self._render_loop_function)
+        use_hydra = self._cfg['settings']['use_hydra']
+        if use_hydra:
+            self._glfw = GLFWHydraOpenGLWindow(self._render_loop_function)
+        else:
+            self._glfw = GLFWOpenGLWindow(self._render_loop_function)
         self._glfw_window = self._glfw.get_window()
         self._glfw_window_address = self._glfw.get_window_address()
         imgui.backends.glfw_init_for_opengl(self._glfw_window_address, True)
@@ -98,6 +104,13 @@ class RenderContextManager:
         Get the GLFW class.
         """
         return self._glfw
+
+    def set_usd_stage(self, stage: pusd.Stage):
+        """
+        Set the USD stage.
+        """
+        if self._cfg['settings']['use_hydra']:
+            self._glfw.set_usd_stage(stage)
 
 
 class GLFWOpenGLWindow:
@@ -174,11 +187,11 @@ class GLFWHydraOpenGLWindow:
     """
     GLFW Window class for rendering Hydra.
     """
-    def __init__(self, render_loop_function):
+    def __init__(self, render_loop_function, stage: pusd.Stage = None):
         self._render_loop_function = render_loop_function
+        self._stage = stage
         self._init_config()
         self._init_frame()
-        self._hydra = HydraTestRendering(self._window)
 
     def _init_config(self):
         """
@@ -189,6 +202,29 @@ class GLFWHydraOpenGLWindow:
         self._cfg_height = self._cfg["glfw"]["window_size"][1]
         self._cfg_title = self._cfg["glfw"]["title"]
         self._cfg_gl_color = self._cfg["glfw"]["gl_color"]
+        self._cfg_vsync = self._cfg["glfw"]["vsync"]
+
+    def _init_hydra(self):
+        """
+        Initialize the Hydra renderer.
+        """        
+        self._hydra = pimg.Engine()
+
+        self._hydra_rend_params = pimg.RenderParams()
+        self._hydra_rend_params.drawMode = pimg.DrawMode.DRAW_WIREFRAME_ON_SURFACE
+        self._hydra_rend_params.enableLighting = False
+        self._hydra_rend_params.enableIdRender = False
+        self._hydra_rend_params.complexity = 1.0
+        self._hydra_rend_params.enableSampleAlphaToCoverage = False
+
+        render_plugins = self._hydra.GetRendererPlugins()
+        if render_plugins:
+            self._hydra.SetRendererPlugin(render_plugins[0])
+            camera = self._stage.GetPrimAtPath("/Camera")
+            if camera:
+                self._hydra.SetCameraPath(camera.GetPath())
+        else:
+            raise RuntimeError("No renderer plugins available")
 
     def _init_frame(self):
         """
@@ -201,27 +237,33 @@ class GLFWHydraOpenGLWindow:
             glfw.terminate()
             raise RuntimeError("Failed to create GLFW window")
         glfw.make_context_current(self._window)
-        glfw.swap_interval(1) 
-
-    def _pre_render_loop(self):
-        camera = pgeo.Camera.Get(self._hydra._stage, '/Camera')
-        self._hydra._renderer.SetCameraPath(camera.GetPath())
+        if self._cfg_vsync:
+            glfw.swap_interval(1) 
 
     def _render_loop(self):
         """
         Render loop for the GLFW window with Hydra rendering.
         """
-        self._pre_render_loop()
+        previous_stage = None
         while not glfw.window_should_close(self._window):
             self._set_imgui_window_size()
             glfw.poll_events()
             gl.glClearColor(*self._cfg_gl_color)
-            gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)        
-            self._hydra.render_loop()
-            self._render_loop_function()
+            gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)                    
+            if self._stage:
+                self._hydra_render_loop()  
+            self._render_loop_function()   
             glfw.swap_buffers(self._window)
-        self._hydra.get_renderer().StopRenderer()        
         glfw.terminate()
+
+    def _hydra_render_loop(self):
+        """
+        Render loop for the Hydra renderer.
+        """
+        size = glfw.get_framebuffer_size(self._window)
+        self._hydra.SetRenderViewport((0, 0, size[0], size[1]))
+        self._hydra.SetRenderBufferSize(size)
+        self._hydra.Render(self._stage.GetPseudoRoot(), self._hydra_rend_params)
 
     def _set_imgui_window_size(self):
         """
@@ -247,42 +289,11 @@ class GLFWHydraOpenGLWindow:
         """
         return ctypes.cast(self._window, ctypes.c_void_p).value
     
-
-
-class HydraTestRendering:
-    """
-    USD viewport rendering using Hydra.
-    """
-    def __init__(self, window):
-        self._window = window
-        self._cfg = cutils.get_core_config()
-        cfg_example_file = self._cfg["settings"]["usd_example_path"]
-        example_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), cfg_example_file)
-        self._stage = pusd.Stage.Open(example_file_path)
-        self._renderer = pimg.Engine()
-        renderer_plugins = self._renderer.GetRendererPlugins()
-        self._renderer.SetRendererPlugin(renderer_plugins[0])
-
-    def get_renderer(self):
+    def set_usd_stage(self, stage: pusd.Stage):
         """
-        Get the renderer.
+        Set the USD stage.
         """
-        return self._renderer
-
-    def render_loop(self):
-        """
-        Render the USD stage using Hydra.
-        """
-        width, height = glfw.get_framebuffer_size(self._window)
+        self._stage = stage
+        self._init_hydra()
         
-        render_params = pimg.RenderParams()
-        render_params.drawMode = pimg.DrawMode.DRAW_WIREFRAME_ON_SURFACE
-        render_params.enableLighting = False
-        render_params.enableIdRender = False
-        render_params.complexity = 1.0
-        render_params.enableSampleAlphaToCoverage = False
-
-        self._renderer.SetRenderViewport((0, 0, width, height))
-        self._renderer.SetRenderBufferSize((width, height))
-        self._renderer.Render(self._stage.GetPseudoRoot(), render_params)
         
