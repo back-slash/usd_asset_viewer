@@ -12,7 +12,7 @@ import os
 from imgui_bundle import imgui
 
 # PROJECT
-import core.static.static_core as cstat
+import core.static_core as cstat
 import core.utils_core as cutils
 import core.base_core as cbase
 #####################################################################################################################################
@@ -22,12 +22,16 @@ class OutlinerPanel(cbase.Panel):
     Outliner panel for displaying usd contents.
     """
     def __init__(self, frame: cbase.Frame):
-        super().__init__("Outliner", frame)
+        super().__init__("outliner", frame)
+    
+    def draw(self, position: tuple[int, int]) -> None:
+        """
+        Draw the outliner panel.
+        """ 
+        imgui.set_next_window_size((self._panel_width, self._panel_height))
+        imgui.set_next_window_pos(position)
+        imgui.begin(self._name, True, self._window_flags)
 
-    def _init_node_data(self) -> None:
-        """
-        Initialize the node data for the outliner panel.
-        """
 
 #####################################################################################################################################
 

@@ -11,28 +11,6 @@ from enum import Enum
 #####################################################################################################################################
 
 
-class FontType(Enum):
-    """
-    Enum for font types used in the prototype.
-    """
-    DEFAULT = 0
-    VERDANA = 1
-    ARIAL = 2
-    TIMES = 3
-    SEGOEUI = 4
-    CONSOLAS = 5
-
-
-class FontSetSizes(Enum):
-    """
-    Enum for font sizes used in the prototype.
-    """
-    TINY = 8
-    SMALL = 12
-    MEDIUM = 16
-    LARGE = 24
-
-
 class Filetype(Enum):
     """
     Enum for file types used in the prototype.
@@ -66,10 +44,9 @@ class PanelTypes(Enum):
     """
     OUTLINER = 0
     DETAIL = 1
-    NODE_EDITOR = 2
+    NODE_NETWORK = 2
     TRACKBAR = 3
     VIEWPORT = 4
-    BROWSER = 5
 
 
 

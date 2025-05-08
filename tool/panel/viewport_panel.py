@@ -16,12 +16,12 @@ import core.utils_core as cutils
 import core.base_core as cbase
 #####################################################################################################################################
       
-class TrackbarPanel(cbase.Panel):
+class ViewportPanel(cbase.Panel):
     """
-    Trackbar for scrubbing usd scene time.
+    Viewport for USD Scene.
     """
     def __init__(self, frame: cbase.Frame):
-        super().__init__("trackbar", frame)
+        super().__init__("viewport", frame)
     
     def draw(self, position: tuple[int, int]) -> None:
         """

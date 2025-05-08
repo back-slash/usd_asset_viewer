@@ -1,0 +1,198 @@
+#####################################################################################################################################
+# USD Asset Viewer | Core | Config
+#####################################################################################################################################
+[settings]
+use_hydra = true
+default_usd = "example_sphere.usdc"
+default_font = "arial.ttf"
+
+
+[glfw]
+title = "USD Asset Viewer"
+window_size = [1280, 720]
+gl_color = [0.1, 0.1, 0.1, 1.0]
+vsync = true
+
+
+[config]
+docking = false
+
+
+[camera]
+clipping_range = [0.1, 1000000.0]
+fov = 75.0
+focal_length = 50.0
+
+
+[window]
+font_scale = 1.0
+font_size_tiny = 8.0
+font_size_small = 12.0
+font_size_medium = 18.0
+font_size_large = 24.0
+
+
+[window.flags]
+no_background = true
+no_move = true
+no_resize = true
+no_title_bar = true
+no_docking = true
+no_scrollbar = true
+no_bring_to_front_on_focus = true
+
+
+[window.style_color]
+text = [0.65, 0.65, 0.65, 1.0]
+window_bg = [0.2, 0.2, 0.2, 1.0]
+border = [0.0, 0.0, 0.0, 1.0]
+
+
+[window.style_var]
+item_spacing = [5, 5]
+window_padding = [10, 10]
+window_border_size = 0.0
+window_rounding = 0.0
+
+
+[menu_bar.style_color]
+menu_bar_bg = [0.2, 0.2, 0.2, 1.0]
+
+
+[menu_bar.style_var]
+popup_border_size = 1.0
+popup_rounding = 6
+
+
+[title.style_color]
+title_bg = [0.3, 0.3, 0.3, 1.0]
+title_bg_active = [0.3, 0.3, 0.3, 1.0]
+
+
+[header.style_color]
+header = [0.3, 0.3, 0.3, 1.0]
+header_hovered = [0.4, 0.4, 0.4, 1.0]
+header_active = [0.5, 0.5, 0.5, 1.0]
+
+
+#####################################################################################################################################
+# USD Asset Viewer | Tool | Outliner
+#####################################################################################################################################
+
+[outliner]
+horizontal_range = 0.25
+vertical_range = 0.97
+
+[outliner.flags]
+no_move = true
+no_resize = true
+no_title_bar = true
+no_docking = true
+
+
+[outliner.style_color]
+window_bg = [0.15, 0.15, 0.15, 1.0]
+border = [0.0, 0.0, 0.0, 1.0]
+text = [0.65, 0.65, 0.65, 1.0]
+
+
+[outliner.style_var]
+item_spacing = [5, 5]
+window_padding = [10, 10]
+window_border_size = 1.0
+window_rounding = 0.0
+
+#####################################################################################################################################
+# USD Asset Viewer | Tool | Trackbar
+#####################################################################################################################################
+
+
+[trackbar]
+horizontal_range = 1.0
+vertical_range = 0.03
+
+
+[trackbar.flags]
+no_move = true
+no_resize = true
+no_title_bar = true
+no_docking = true
+
+
+[trackbar.style_color]
+window_bg = [0.15, 0.15, 0.15, 1.0]
+border = [0.0, 0.0, 0.0, 1.0]
+text = [0.65, 0.65, 0.65, 1.0]
+
+
+[trackbar.style_var]
+item_spacing = [5, 5]
+window_padding = [10, 10]
+window_border_size = 1.0
+window_rounding = 0.0
+
+#####################################################################################################################################
+# USD Asset Viewer | Tool | Detail
+#####################################################################################################################################
+
+
+[detail]
+horizontal_range = 0.15
+vertical_range = 0.97
+
+
+[detail.flags]
+no_move = true
+no_resize = true
+no_title_bar = true
+no_docking = true
+
+
+[detail.style_color]
+window_bg = [0.15, 0.15, 0.15, 1.0]
+border = [0.0, 0.0, 0.0, 1.0]
+text = [0.65, 0.65, 0.65, 1.0]
+
+
+[detail.style_var]
+item_spacing = [5, 5]
+window_padding = [10, 10]
+window_border_size = 1.0
+window_rounding = 0.0
+
+
+#####################################################################################################################################
+# USD Asset Viewer | Tool | Viewport
+#####################################################################################################################################
+
+
+[viewport]
+horizontal_range = 0.6
+vertical_range = 0.97
+
+
+[viewport.flags]
+no_move = true
+no_resize = true
+no_title_bar = true
+no_docking = true
+no_background = true
+no_scrollbar = true
+no_bring_to_front_on_focus = true
+
+
+[viewport.style_color]
+window_bg = [0.15, 0.15, 0.15, 1.0]
+border = [0.0, 0.0, 0.0, 1.0]
+text = [0.65, 0.65, 0.65, 1.0]
+
+
+[viewport.style_var]
+item_spacing = [5, 5]
+window_padding = [10, 10]
+window_border_size = 1.0
+window_rounding = 0.0
+
+
+
+

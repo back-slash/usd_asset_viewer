@@ -5,8 +5,7 @@
 #####################################################################################################################################
 # PYTHON
 import ctypes
-import os
-from typing import Callable
+
 
 # ADDONS
 from imgui_bundle import imgui
@@ -16,10 +15,11 @@ import pxr.Usd as pusd
 import pxr.UsdGeom as pgeo
 import pxr.UsdImagingGL as pimg
 import pxr.Gf as pgf
+import pxr.Sdf as psdf
 
 # PROJECT
 import core.utils_core as cutils
-import core.static.static_core as cstat
+import core.static_core as cstat
 #####################################################################################################################################
 
 
@@ -67,7 +67,6 @@ class RenderContextManager:
         self._glfw_window_address = self._glfw.get_window_address()
         imgui.backends.glfw_init_for_opengl(self._glfw_window_address, True)
         imgui.backends.opengl3_init("#version 450")
-        imgui.backends.opengl3_new_frame()
 
     def _update_window_size(self):
         """ 
@@ -111,6 +110,35 @@ class RenderContextManager:
         """
         if self._cfg['settings']['use_hydra']:
             self._glfw.set_usd_stage(stage)
+
+    def refresh_font_texture(self):
+        font_atlas = imgui.get_io().fonts
+       
+        pixels = imgui.font_atlas_get_tex_data_as_rgba32(font_atlas)
+
+        width = font_atlas.tex_width
+        height = font_atlas.tex_height
+
+        if hasattr(self, "_font_texture") and self._font_texture:
+            gl.glDeleteTextures([self._font_texture])
+
+        self._font_texture = gl.glGenTextures(1)
+        gl.glBindTexture(gl.GL_TEXTURE_2D, self._font_texture)
+        
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
+        
+        gl.glTexImage2D(
+            gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, 
+            width, height, 0, 
+            gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, 
+            pixels
+        )
+        gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+        font_atlas.set_tex_id(self._font_texture)
+
 
 
 class GLFWOpenGLWindow:
@@ -187,6 +215,8 @@ class GLFWHydraOpenGLWindow:
     """
     GLFW Window class for rendering Hydra.
     """
+    _key_scroll_up = False
+    _key_scroll_down = False
     def __init__(self, render_loop_function, stage: pusd.Stage = None):
         self._render_loop_function = render_loop_function
         self._stage = stage
@@ -212,19 +242,37 @@ class GLFWHydraOpenGLWindow:
 
         self._hydra_rend_params = pimg.RenderParams()
         self._hydra_rend_params.drawMode = pimg.DrawMode.DRAW_WIREFRAME_ON_SURFACE
-        self._hydra_rend_params.enableLighting = False
-        self._hydra_rend_params.enableIdRender = False
-        self._hydra_rend_params.complexity = 1.0
-        self._hydra_rend_params.enableSampleAlphaToCoverage = False
+        self._hydra_rend_params.gammaCorrectColors = False
+        self._hydra_rend_params.enableLighting = True
+        self._hydra_rend_params.enableSceneLights = True
+        self._hydra_rend_params.enableIdRender = True
 
         render_plugins = self._hydra.GetRendererPlugins()
         if render_plugins:
             self._hydra.SetRendererPlugin(render_plugins[0])
-            camera = self._stage.GetPrimAtPath("/Camera")
-            if camera:
-                self._hydra.SetCameraPath(camera.GetPath())
+            self._camera = self._create_camera()
+            self._hydra.SetCameraPath(self._camera.GetPath())
         else:
             raise RuntimeError("No renderer plugins available")
+
+    def _create_camera(self):
+        """
+        Create a camera with default attributes and a transformation matrix.
+        """
+        camera = pgeo.Camera.Define(self._stage, "/OrbitCamera")
+        camera.CreateFocalLengthAttr(50.0)
+        camera.CreateHorizontalApertureAttr(20.955)
+        camera.CreateVerticalApertureAttr(15.2908)
+        camera.CreateClippingRangeAttr(pgf.Vec2f(self._cfg["camera"]["clipping_range"]))
+        xform_attr = camera.GetPrim().CreateAttribute("xformOp:transform", psdf.ValueTypeNames.Matrix4d)
+        xform_attr.Set(pgf.Matrix4d().SetIdentity())
+
+        xform_op_order = camera.GetPrim().GetAttribute("xformOpOrder")
+        if not xform_op_order:
+           xform_op_order = camera.GetPrim().CreateAttribute("xformOpOrder", psdf.ValueTypeNames.TokenArray)
+        xform_op_order.Set(["xformOp:transform"])
+
+        return camera.GetPrim()
 
     def _init_frame(self):
         """
@@ -239,14 +287,60 @@ class GLFWHydraOpenGLWindow:
         glfw.make_context_current(self._window)
         if self._cfg_vsync:
             glfw.swap_interval(1) 
+        glfw.set_scroll_callback(self._window, self._mouse_scroll_callback)
+
+    def _mouse_scroll_callback(self, window, x_offset, y_offset):
+        """
+        Mouse scroll callback for GLFW window.
+        """
+        if y_offset > 0:
+            self._key_scroll_up = True
+        elif y_offset < 0:
+            self._key_scroll_down  = True
+
+    def _process_glfw_events(self):
+        """
+        Process GLFW events.
+        """
+        self._key_f = glfw.get_key(self._window, glfw.KEY_F)
+        self._key_esc = glfw.get_key(self._window, glfw.KEY_ESCAPE)
+        self._key_alt = glfw.get_key(self._window, glfw.KEY_LEFT_ALT) or glfw.get_key(self._window, glfw.KEY_RIGHT_ALT)
+        self._key_shift = glfw.get_key(self._window, glfw.KEY_LEFT_SHIFT) or glfw.get_key(self._window, glfw.KEY_RIGHT_SHIFT)
+        
+        self._key_mouse_position = glfw.get_cursor_pos(self._window)
+        self._key_mouse_left = glfw.get_mouse_button(self._window, glfw.MOUSE_BUTTON_LEFT)
+        self._key_mouse_right = glfw.get_mouse_button(self._window, glfw.MOUSE_BUTTON_RIGHT)
+        self._key_mouse_middle = glfw.get_mouse_button(self._window, glfw.MOUSE_BUTTON_MIDDLE)
+
+        
+        self._orbit = False
+        self._zoom = False
+        self._pan = False
+        self._incremental_zoom_in = False
+        self._incremental_zoom_out = False
+        self._frame_scene = False
+        if self._key_alt == glfw.PRESS and self._key_mouse_left == glfw.PRESS:
+            self._orbit = True
+        elif self._key_alt == glfw.PRESS and self._key_mouse_right == glfw.PRESS:
+            self._zoom = True
+        elif self._key_alt == glfw.PRESS and self._key_mouse_middle == glfw.PRESS:
+            self._pan = True
+        elif self._key_scroll_up:
+            self._incremental_zoom_in = True
+        elif self._key_scroll_down:
+            self._incremental_zoom_out = True
+        elif self._key_f == glfw.PRESS:
+            self._frame_scene = True
+        self._key_scroll_up = False
+        self._key_scroll_down = False
 
     def _render_loop(self):
         """
         Render loop for the GLFW window with Hydra rendering.
         """
-        previous_stage = None
         while not glfw.window_should_close(self._window):
             self._set_imgui_window_size()
+            self._process_glfw_events()
             glfw.poll_events()
             gl.glClearColor(*self._cfg_gl_color)
             gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)                    
@@ -263,7 +357,77 @@ class GLFWHydraOpenGLWindow:
         size = glfw.get_framebuffer_size(self._window)
         self._hydra.SetRenderViewport((0, 0, size[0], size[1]))
         self._hydra.SetRenderBufferSize(size)
+        self._update_hydra_camera()
         self._hydra.Render(self._stage.GetPseudoRoot(), self._hydra_rend_params)
+
+    def _create_scene_bounding_box(self):
+        """
+        Create a bounding box for the scene.
+        """
+        bbox_cache = pgeo.BBoxCache(pusd.TimeCode.Default(), includedPurposes=[pgeo.Tokens.default_, pgeo.Tokens.render])
+        bbox = bbox_cache.ComputeWorldBound(self._stage.GetPseudoRoot())
+        bbox_min = bbox.GetRange().GetMin()
+        bbox_max = bbox.GetRange().GetMax()
+        bbox_center: pgf.Vec3d = (bbox_min + bbox_max) * 0.5
+        bbox_size: pgf.Vec3d = bbox_max - bbox_min
+        return bbox_center, bbox_size
+
+    def _update_hydra_camera(self):
+        """
+        Update the Hydra camera.
+        """
+        bbox_center, bbox_size = self._create_scene_bounding_box()
+        bbox_quatified = (bbox_size.GetLength()) / 1000.0
+        cursor_pos = glfw.get_cursor_pos(self._window)
+        if self._orbit or self._zoom or self._pan:
+            cursor_pos = glfw.get_cursor_pos(self._window)
+            delta_x = cursor_pos[0] - self._prev_cursor_pos[0]
+            delta_y = cursor_pos[1] - self._prev_cursor_pos[1]
+            self._prev_cursor_pos = cursor_pos
+            if self._orbit:
+                transform = pgf.Matrix4d().SetRotate(pgf.Rotation(pgf.Vec3d(0, 1, 0), -delta_x * 0.1))
+                transform *= pgf.Matrix4d().SetRotate(pgf.Rotation(pgf.Vec3d(1, 0, 0), -delta_y * 0.1))
+                self._camera_xform = self._camera.GetAttribute("xformOp:transform").Get()
+                self._camera_xform = transform * self._camera_xform
+                self._camera.GetAttribute("xformOp:transform").Set(self._camera_xform)
+            elif self._zoom:
+                transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0, 0, delta_x * 1 * bbox_quatified))
+                self._camera_xform = self._camera.GetAttribute("xformOp:transform").Get()
+                self._camera_xform = transform * self._camera_xform
+                self._camera.GetAttribute("xformOp:transform").Set(self._camera_xform)
+            elif self._pan:
+                transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(-delta_x * 1 * bbox_quatified, delta_y * 1 * bbox_quatified, 0))
+                self._camera_xform = self._camera.GetAttribute("xformOp:transform").Get()
+                self._camera_xform = transform * self._camera_xform
+                self._camera.GetAttribute("xformOp:transform").Set(self._camera_xform)
+        if self._incremental_zoom_in:
+            transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0, 0, -10 * bbox_quatified))
+            self._camera_xform = self._camera.GetAttribute("xformOp:transform").Get()
+            self._camera_xform = transform * self._camera_xform
+            self._camera.GetAttribute("xformOp:transform").Set(self._camera_xform)
+        if self._incremental_zoom_out:
+            transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0, 0, 10 * bbox_quatified))
+            self._camera_xform = self._camera.GetAttribute("xformOp:transform").Get()
+            self._camera_xform = transform * self._camera_xform
+            self._camera.GetAttribute("xformOp:transform").Set(self._camera_xform)
+        if self._frame_scene:
+            distance = max(bbox_size) * 4.0
+            existing_transform: pgf.Matrix4d = self._camera.GetAttribute("xformOp:transform").Get()
+            existing_position = existing_transform.ExtractTranslation()
+            existing_distance = ((existing_position - bbox_center).GetLength())
+            scale_factor = distance / existing_distance
+            if existing_position != pgf.Vec3d(0, 0, 0):
+                altered_position = existing_position * scale_factor
+            else:
+                altered_position = pgf.Vec3d(bbox_center[0], bbox_center[1], bbox_center[2] + distance)
+            transform = existing_transform
+            transform = transform.SetTranslateOnly(altered_position) 
+            self._camera.GetAttribute("xformOp:transform").Set(transform)
+        self._prev_cursor_pos = cursor_pos
+
+
+                     
+
 
     def _set_imgui_window_size(self):
         """
@@ -295,5 +459,5 @@ class GLFWHydraOpenGLWindow:
         """
         self._stage = stage
         self._init_hydra()
-        
-        
+
+

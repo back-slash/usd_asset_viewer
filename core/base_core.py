@@ -19,7 +19,7 @@ import pxr.UsdSkel as pskl
 import pxr.UsdUtils as putils
 
 # PROJECT
-import core.static.static_core as cstat
+import core.static_core as cstat
 import core.utils_core as cutils
 import core.render_core as crend
 #####################################################################################################################################
@@ -29,11 +29,10 @@ class Node:
     """
     Class representing a node.
     """
-    _data_object = None
     _node_color = (0.5, 0.5, 0.5, 1.0)
     _node_icon = cstat.NodeIcon.UNKNOWN_ICON
     _name = None
-    def __init__(self, data_object: Any):
+    def __init__(self, data_object):
         self._data_object: pusd.Prim | dict = data_object
         self._init_scene_manager()
         self._init_node_data()
@@ -96,12 +95,12 @@ class Pathed(Node):
     """
     _parent_node = None    
     _path = None
-    def __init__(self, data_object: pusd.Prim | pusd.Attribute):
+    def __init__(self, data_object):
         super().__init__(data_object)
         
     def _init_node_data(self):
         self._set_name()
-
+        self._data_object: pusd.Prim | pusd.Attribute
         self._path = self._data_object.GetPath()
         parent_path = self._path.GetParentPath()
         self._parent_node = self._scene_manager.get_stage().GetPrimAtPath(parent_path)
@@ -176,7 +175,7 @@ class Attribute(Pathed):
     """
     _connection_path_list: list['Attribute'] = []
     _connected = False
-    def __init__(self, data_object: pusd.Attribute):
+    def __init__(self, data_object):
         super().__init__(data_object)
         self._data_object: pusd.Attribute
 
@@ -231,7 +230,7 @@ class Mesh(Primative):
     Class representing a mesh node.
     """
     _display_color = None
-    def __init__(self, data_object: pgeo.Mesh):
+    def __init__(self, data_object):
         super().__init__(data_object)
         self._data_object: pgeo.Mesh
 
@@ -273,7 +272,7 @@ class Camera(Primative):
     """
     Class representing a camera node.
     """
-    def __init__(self, data_object: pgeo.Camera):
+    def __init__(self, data_object):
         super().__init__(data_object)
         
     def _init_node_data(self):
@@ -286,7 +285,7 @@ class Skeleton(Primative):
     """
     Class representing a skeleton node.
     """
-    def __init__(self, data_object: pskl.Skeleton):
+    def __init__(self, data_object):
         super().__init__(data_object)
         
     def _init_node_data(self):
@@ -308,7 +307,7 @@ class Material(Primative):
     """
     Class representing a material node.
     """
-    def __init__(self, data_object: pshd.Material):
+    def __init__(self, data_object):
         super().__init__(data_object)
         
     def _init_node_data(self):
@@ -326,7 +325,7 @@ class Curve(Primative):
     """
     Class representing a curve node.
     """
-    def __init__(self, data_object: pgeo.Curves):
+    def __init__(self, data_object):
         super().__init__(data_object)
 
     def _init_node_data(self):
@@ -339,7 +338,7 @@ class Data(Node):
     """
     Class representing a data node.
     """
-    def __init__(self, data_object: dict[str, pusd.Prim | str]):
+    def __init__(self, data_object):
         super().__init__(data_object)
 
     def _init_node_data(self):
@@ -358,7 +357,7 @@ class Texture(Data):
     """
     Class representing a texture node.
     """
-    def __init__(self, data_object: dict[str, pusd.Prim | str]):
+    def __init__(self, data_object):
         super().__init__(data_object)
 
     def _init_node_data(self):
@@ -371,7 +370,7 @@ class Bone(Data):
     """
     Class representing a bone node.
     """
-    def __init__(self, data_object: dict[str, pusd.Prim | str]):
+    def __init__(self, data_object):
         super().__init__(data_object)
 
     def _init_node_data(self):
@@ -405,7 +404,7 @@ class Pencil:
         if hasattr(self._node, "get_display_color"):
             self._node_display_color = self._node.get_display_color()
 
-    def _draw(self):
+    def _internal_draw(self):
         """
         Draw the node.
         """
@@ -424,7 +423,7 @@ class Pencil:
         Update and draw the node.
         """
         self._update_transform(position, size)
-        self._draw()
+        self._internal_draw()
 
 
 
@@ -441,6 +440,7 @@ class Frame:
     def __init__(self):
         self._init_config()
         self._init_render_context_manager()
+        self._init_default_font()
         self._init_panels()
         self._init_pre_rendering()
         self._init_rendering()
@@ -455,15 +455,14 @@ class Frame:
         """
         Initialize the scene manager.
         """
-        default_usd_path = os.path.join(cutils.get_usd_default_path(), self._cfg['settings']['default_usd'])   
-        self._scene_manager = SceneManager(default_usd_path)
-        self._stage = self._scene_manager.get_stage()
+        self._default_usd_path = os.path.join(cutils.get_usd_default_path(), self._cfg['settings']['default_usd'])   
+        self._scene_manager = SceneManager()
 
     def _init_render_context_manager(self):
         """
         Initialize the render manager.
         """
-        self._render_context_manager = crend.RenderContextManager(self.update)
+        self._render_context_manager = crend.RenderContextManager(self.update_draw)
         self._context = self._render_context_manager.context_list[-1]
         self._display_size = self._render_context_manager.get_frame_size()
 
@@ -483,6 +482,7 @@ class Frame:
         """
         Initialize the rendering context.
         """
+        imgui.backends.opengl3_new_frame()
         self._render_context_manager.get_glfw().begin_render_loop()
 
     def _push_default_style(self):
@@ -490,91 +490,64 @@ class Frame:
         Set the default style for the frame.
         """
         imgui.get_io().font_global_scale = self._cfg['window']['font_scale']
-        item_spacing = self._cfg['window']['style_var']['item_spacing']
-        imgui.push_style_var(imgui.StyleVar_.item_spacing, item_spacing)
-        window_padding = self._cfg['window']['style_var']['window_padding']
-        imgui.push_style_var(imgui.StyleVar_.window_padding, window_padding)
-        border_size = self._cfg['window']['style_var']['border_size']
-        imgui.push_style_var(imgui.StyleVar_.window_border_size, border_size)
-        rounding = self._cfg['window']['style_var']['rounding']
-        imgui.push_style_var(imgui.StyleVar_.window_rounding, rounding)
 
-        popup_padding = self._cfg['menu_bar']['style_var']['popup_rounding']
-        imgui.push_style_var(imgui.StyleVar_.popup_rounding, popup_padding)
-        popup_border_size = self._cfg['menu_bar']['style_var']['popup_border_size']
-        imgui.push_style_var(imgui.StyleVar_.popup_border_size, popup_border_size)
-        
-        background_color = self._cfg['window']['style_color']['background']
-        imgui.push_style_color(imgui.Col_.window_bg, background_color)
-        border_color = self._cfg['window']['style_color']['border']
-        imgui.push_style_color(imgui.Col_.border, border_color)
-        text_color = self._cfg['window']['style_color']['text']
-        imgui.push_style_color(imgui.Col_.text, text_color)
+        cutils.push_style_var(self._cfg['window']['style_var'], 'item_spacing')
+        cutils.push_style_var(self._cfg['window']['style_var'], 'window_padding')
+        cutils.push_style_var(self._cfg['window']['style_var'], 'window_border_size')
+        cutils.push_style_var(self._cfg['window']['style_var'], 'window_rounding')
+        cutils.push_style_var(self._cfg['menu_bar']['style_var'], 'popup_rounding')
+        cutils.push_style_var(self._cfg['menu_bar']['style_var'], 'popup_border_size')
 
-        header_color = self._cfg['header']['style_color']['header']
-        imgui.push_style_color(imgui.Col_.header, header_color)
-        header_hover_color = self._cfg['header']['style_color']['header_hovered']
-        imgui.push_style_color(imgui.Col_.header_hovered, header_hover_color)
-        header_active_color = self._cfg['header']['style_color']['header_active']
-        imgui.push_style_color(imgui.Col_.header_active, header_active_color)
-
-        title_color = self._cfg['title']['style_color']['title']
-        imgui.push_style_color(imgui.Col_.title_bg, title_color)
-        title_hover_color = self._cfg['title']['style_color']['title_active']
-        imgui.push_style_color(imgui.Col_.title_bg_active, title_hover_color)
-
-        menu_bar_color = self._cfg['menu_bar']['style_color']['menu_bar']
-        imgui.push_style_color(imgui.Col_.menu_bar_bg, menu_bar_color)
+        cutils.push_style_color(self._cfg['window']['style_color'], 'window_bg')
+        cutils.push_style_color(self._cfg['window']['style_color'], 'border')
+        cutils.push_style_color(self._cfg['window']['style_color'], 'text')
+        cutils.push_style_color(self._cfg['header']['style_color'], 'header')
+        cutils.push_style_color(self._cfg['header']['style_color'], 'header_hovered')
+        cutils.push_style_color(self._cfg['header']['style_color'], 'header_active')
+        cutils.push_style_color(self._cfg['title']['style_color'], 'title_bg')
+        cutils.push_style_color(self._cfg['title']['style_color'], 'title_bg_active')
+        cutils.push_style_color(self._cfg['menu_bar']['style_color'], 'menu_bar_bg')
 
     def _pop_default_style(self):
         """
         Pop the default style for the frame.
         """
-        imgui.pop_style_var()
-        imgui.pop_style_color()
+        imgui.pop_style_var(6)
+        imgui.pop_style_color(9)
 
     def _set_config_flags(self):
         """
         Set the flags for the frame.
         """
-        if self._cfg['config']['docking']:
-            self._set_flag(imgui.ConfigFlags_.docking_enable, True)
-        else:
-            self._set_flag(imgui.ConfigFlags_.docking_enable, False)
+        cutils.set_flag(imgui.ConfigFlags_.docking_enable, self._cfg['config']['docking'])
 
-
-    def _set_flag(self, flag: int, value: bool):
+    def _init_default_font(self):
         """
-        Set a specific flag for the frame.
+        Create the default font for the frame.
         """
-        if value:
-            imgui.get_io().config_flags |= flag
-        else:
-            imgui.get_io().config_flags &= ~flag
+        font_path = os.path.join(cutils.get_font_path(), "arial.ttf")
+        self._font_tiny = imgui.get_io().fonts.add_font_from_file_ttf(font_path, self._cfg['window']['font_size_tiny'])
+        self._font_small = imgui.get_io().fonts.add_font_from_file_ttf(font_path, self._cfg['window']['font_size_small'])
+        self._font_medium = imgui.get_io().fonts.add_font_from_file_ttf(font_path, self._cfg['window']['font_size_medium'])
+        self._font_large = imgui.get_io().fonts.add_font_from_file_ttf(font_path, self._cfg['window']['font_size_large'])
 
     def _set_window_flags(self):
         self._window_flags = 0
-        if self._cfg['window']['flags']['no_move']:
-            self._window_flags |= imgui.WindowFlags_.no_move
-        if self._cfg['window']['flags']['no_resize']:
-            self._window_flags |= imgui.WindowFlags_.no_resize
-        if self._cfg['window']['flags']['no_scrollbar']:
-            self._window_flags |= imgui.WindowFlags_.no_scrollbar
-        if self._cfg['window']['flags']['no_titlebar']:
-            self._window_flags |= imgui.WindowFlags_.no_title_bar
-        if self._cfg['window']['flags']['no_docking']:
-            self._window_flags |= imgui.WindowFlags_.no_docking
-        
-    def _draw(self):
+        for flag in self._cfg['window']['flags']:
+            self._window_flags = cutils.set_window_flag(self._window_flags, self._cfg['window']['flags'], flag)
+
+    def _internal_draw(self):
         """
         Draw the frame and its panels.
         """
         imgui.set_current_context(self._context)
         self._set_config_flags()
-        self._push_default_style()
         self._set_window_flags()
+        self._push_default_style()
         imgui.new_frame()
+        imgui.push_font(self._font_small)
         self.draw()
+        imgui.pop_font()
         self._pop_default_style()
         imgui.render()
         self._render_context_manager.render(imgui.get_draw_data(), self._context)
@@ -585,18 +558,18 @@ class Frame:
         """
         raise NotImplementedError("The 'draw' method must be implemented by subclasses.")
         
-    def update(self):
+    def update_draw(self):
         """
         Update the frame.
         """
-        self._draw()
+        self._internal_draw()
 
-    def set_usd_file(self, usd_path: str):
+    def get_usable_space(self) -> tuple[int, int]:
         """
-        Set the USD file for the frame.
+        Get the usable space for the panels.
         """
-        self._scene_manager
-        self._stage = self._scene_manager.get_stage()
+        display_size = imgui.get_io().display_size
+        return display_size
 #####################################################################################################################################
 
 class Panel:
@@ -606,39 +579,118 @@ class Panel:
     def __init__(self, name: str, frame: Frame):
         self._name = name
         self._frame = frame
+        self._init_config()
+        self._init_scene_manager()
 
-    def _set_default_panel_style(self):
+    def _init_config(self):
         """
-        Set the default style for the panel.
+        Initialize the configuration file.
         """
-        pass
+        self._cfg = cutils.get_core_config()
 
-    def _pop_default_panel_style(self):
+    def _init_panel_size(self):
         """
-        Pop the default style for the panel.
+        Initialize the size and position of the panel.
         """
-        pass
+        display_size = self._frame.get_usable_space()
+        horizontal_range = self._cfg[self._name]['horizontal_range']
+        vertical_range = self._cfg[self._name]['vertical_range']
+        self._panel_width = int(display_size.x * horizontal_range)
+        self._panel_height = int(display_size.y * vertical_range)
 
-    def _draw(self, size: tuple[int, int], position: tuple[int, int]):
+    def _init_scene_manager(self):
+        """
+        Initialize the scene manager.
+        """
+        self._scene_manager = SceneManager()
+        self._stage = self._scene_manager.get_stage()
+
+    def _init_stage_data(self):
+        """
+        Initialize the stage data.
+        """
+        self._scene_manager.get
+
+    def _update_stage_data(self):
+        """
+        Update the stage data.
+        """
+
+    def _set_window_flags(self):
+        self._window_flags = 0
+        for flag in self._cfg[self._name]['flags']:
+            self._window_flags = cutils.set_window_flag(self._window_flags, self._cfg[self._name]['flags'], flag)
+
+    def _push_panel_style(self):
+        for style in self._cfg[self._name]['style_color']:
+            cutils.push_style_color(self._cfg[self._name]['style_color'], style)
+        for style in self._cfg[self._name]['style_var']:
+            cutils.push_style_var(self._cfg[self._name]['style_var'], style)
+
+    def _pop_panel_style(self):
+        imgui.pop_style_color(len(self._cfg[self._name]['style_color']))
+        imgui.pop_style_var(len(self._cfg[self._name]['style_var']))
+
+    def _calc_panel_rect(self):
+        """
+        Calculate the panel rectangle.
+        """
+        window_position = imgui.get_window_pos()
+        window_size = imgui.get_window_size()
+        rect = (window_position.x, window_position.y, window_position.x + window_size.x, window_position.y + window_size.y)
+        return rect
+
+    def _internal_draw(self, position: tuple[int, int]):
         """
         Draw the panel.
         """
-        imgui.set_next_window_size(size[0], size[1])
-        imgui.set_next_window_pos(position[0], position[1])
-        self.draw()
+        rect = self.draw(position)
+        return rect
 
-    def draw(self):
+    def draw(self, position: tuple[int, int]):
         """
         Draw the panel.
         """
         raise NotImplementedError("The 'draw' method must be implemented by subclasses.")
 
-    def update(self, size: tuple[int, int], position: tuple[int, int]):
+    def update_draw(self, position: tuple[int, int]):
         """
         Update the frame.
         """
-        self._draw(size, position)
+        self._update_stage_data()
+        self._init_panel_size()
+        self._set_window_flags()
+        self._push_panel_style()
+        self._internal_draw(position)
+        rect = self._calc_panel_rect()
+        self._pop_panel_style()
+        imgui.end()
+        return rect
 
+    def update_usd(self):
+        """
+        Update the USD stage.
+        """
+        self._init_scene_manager()
+
+#####################################################################################################################################
+
+class Viewport(Panel):
+    """
+    Class representing the viewport panel.
+    """
+    def __init__(self, name: str, frame: Frame):
+        super().__init__(name, frame)
+        self._viewport_size = (0, 0)
+        self._viewport_position = (0, 0)
+
+    def draw(self):
+        """
+        Draw the viewport panel.
+        """
+        imgui.begin(self._name, True, self._frame._window_flags)
+        imgui.text("Viewport")
+        imgui.end()
 
 #####################################################################################################################################
 
@@ -647,6 +699,9 @@ class SceneManager:
     Class for managing scene nodes.
     """
     _instance = None
+    _usd_path = None
+    _stage = None
+    _root = None
     def __new__(cls, usd_path: str=None):
         if cls._instance is None:
             cls._initialized = False
@@ -661,6 +716,8 @@ class SceneManager:
             self._init_usd_scene()
             self._init_time_manager()
             self._initialized = True
+        if usd_path:
+            self.set_usd_file(usd_path)
 
     def _init_usd_scene(self):
         """
