@@ -9,8 +9,14 @@ default_font = "arial.ttf"
 [glfw]
 title = "USD Asset Viewer"
 window_size = [1280, 720]
-gl_color = [0.05, 0.05, 0.05, 1.0]
+gl_color = [0.1, 0.1, 0.1, 1.0]
 vsync = true
+
+
+[hydra.paramater]
+drawMode = "DRAW_SHADED_SMOOTH"
+enableLighting = true
+enableSampleAlphaToCoverage = true
 
 
 [config]

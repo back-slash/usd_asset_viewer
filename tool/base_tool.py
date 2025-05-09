@@ -5,6 +5,7 @@
 #####################################################################################################################################
 
 # PYTHON
+import sys
 from typing import Any
 import os
 
@@ -69,7 +70,7 @@ class USDAssetViewer(cbase.Frame):
                         self._init_usd_stage(usd_path)
                 imgui.end_menu()
             if imgui.menu_item_simple("Exit", "", False, True):
-                print("Exit Logic")
+                self._shutdown()
             imgui.end_menu()
         imgui.end_menu_bar() 
         menu_bar_size = imgui.get_item_rect_size()   
@@ -98,3 +99,9 @@ class USDAssetViewer(cbase.Frame):
         viewport_size_x = self._display_size[0] - (outliner_rect[2] - outliner_rect[0]) - (details_rect[2] - details_rect[0])
         viewport_rect = self._viewport.update_draw((outliner_rect[2], min_y), (viewport_size_x, panel_size_y))
 
+    def _shutdown(self):
+        """
+        Shutdown the USD Asset Viewer.
+        """
+        self._viewport.shutdown()
+        sys.exit(0)
