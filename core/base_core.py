@@ -463,6 +463,7 @@ class Frame:
         Initialize the render manager.
         """
         self._render_context_manager = crend.RenderContextManager(self.update_draw)
+        self._window = self._render_context_manager.get_window()
         self._context = self._render_context_manager.context_list[-1]
         self._display_size = self._render_context_manager.get_frame_size()
 
@@ -564,6 +565,12 @@ class Frame:
         """
         self._internal_draw()
 
+    def get_window(self):
+        """
+        Get the window of the frame.
+        """
+        return self._window
+
     def get_usable_space(self) -> tuple[int, int]:
         """
         Get the usable space for the panels.
@@ -588,16 +595,6 @@ class Panel:
         """
         self._cfg = cutils.get_core_config()
 
-    def _init_panel_size(self):
-        """
-        Initialize the size and position of the panel.
-        """
-        display_size = self._frame.get_usable_space()
-        horizontal_range = self._cfg[self._name]['horizontal_range']
-        vertical_range = self._cfg[self._name]['vertical_range']
-        self._panel_width = int(display_size.x * horizontal_range)
-        self._panel_height = int(display_size.y * vertical_range)
-
     def _init_scene_manager(self):
         """
         Initialize the scene manager.
@@ -609,7 +606,6 @@ class Panel:
         """
         Initialize the stage data.
         """
-        self._scene_manager.get
 
     def _update_stage_data(self):
         """
@@ -653,12 +649,13 @@ class Panel:
         """
         raise NotImplementedError("The 'draw' method must be implemented by subclasses.")
 
-    def update_draw(self, position: tuple[int, int]):
+    def update_draw(self, position: tuple[int, int], size: tuple[int, int]) -> tuple[int, int, int, int]:
         """
         Update the frame.
         """
+        self._panel_width = size[0]
+        self._panel_height = size[1]
         self._update_stage_data()
-        self._init_panel_size()
         self._set_window_flags()
         self._push_panel_style()
         self._internal_draw(position)

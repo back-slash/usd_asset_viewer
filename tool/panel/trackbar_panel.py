@@ -30,3 +30,4 @@ class TrackbarPanel(cbase.Panel):
         imgui.set_next_window_size((self._panel_width, self._panel_height))
         imgui.set_next_window_pos(position)
         imgui.begin(self._name, True, self._window_flags)
+        imgui.text("Trackbar")

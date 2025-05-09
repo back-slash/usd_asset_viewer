@@ -48,7 +48,7 @@ class USDAssetViewer(cbase.Frame):
         if usd_path is None:
             usd_path = os.path.join(cutils.get_usd_default_path(), self._cfg['settings']['default_usd'])
         self._scene_manager = cbase.SceneManager(usd_path)
-        self._render_context_manager.set_usd_stage(self._scene_manager.get_stage())
+        self._viewport.update_usd()
 
     def _set_window_flags(self):
         super()._set_window_flags()
@@ -72,25 +72,29 @@ class USDAssetViewer(cbase.Frame):
                 print("Exit Logic")
             imgui.end_menu()
         imgui.end_menu_bar() 
-        self._menu_bar_size = imgui.get_item_rect_size()   
+        menu_bar_size = imgui.get_item_rect_size()   
         imgui.end()
-
-    def get_usable_space(self) -> tuple[int, int]:
-        """
-        Get the usable space for the panels.
-        """
-        display_size = imgui.get_io().display_size
-        usable_space = (display_size.x, display_size.y - self._menu_bar_size.y)
-        return imgui.ImVec2(usable_space)
+        return menu_bar_size
 
     def draw(self):
         """
         Draw the USD Asset Viewer.
         """
-        self._draw_menu_bar()
-        start_y = self._menu_bar_size.y + 1
-        outliner_rect = self._outliner_panel.update_draw(position=(0, start_y))
-        trackbar_rect = self._trackbar_panel.update_draw(position=(0, outliner_rect[3]))
-        viewport_rect = self._viewport.update_draw(position=(outliner_rect[2], start_y))
-        details_rect = self._details_panel.update_draw(position=(viewport_rect[2], start_y))
+        self._menu_bar_size = self._draw_menu_bar()
+        min_y = self._menu_bar_size.y + 1
+        trackbar_min_y = self._display_size[1] - self._cfg['trackbar']['height']
+        trackbar_size_x = self._display_size[0]
+        trackbar_size_y = self._cfg['trackbar']['height']
+        trackbar_rect = self._trackbar_panel.update_draw((0, trackbar_min_y), (trackbar_size_x, trackbar_size_y))
+
+        outliner_size_x = self._cfg['outliner']['width']
+        panel_size_y = self._display_size[1] - trackbar_size_y - min_y
+        outliner_rect = self._outliner_panel.update_draw((0, min_y), (outliner_size_x, panel_size_y))
+        
+        details_min_x = self._display_size[0] - self._cfg['detail']['width']
+        details_size_x = self._cfg['detail']['width']
+        details_rect = self._details_panel.update_draw((details_min_x, min_y), (details_size_x, panel_size_y))
+
+        viewport_size_x = self._display_size[0] - (outliner_rect[2] - outliner_rect[0]) - (details_rect[2] - details_rect[0])
+        viewport_rect = self._viewport.update_draw((outliner_rect[2], min_y), (viewport_size_x, panel_size_y))
 
