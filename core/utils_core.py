@@ -31,17 +31,17 @@ class FileHelper:
     Class for file input/output operations.
     """
     @classmethod
-    def read(cls, file_path: str, file_type: cstat.Filetype) -> Any:
+    def read(cls, file_type: cstat.Filetype, *args) -> Any:
         """
         Read data from a file based on its type.
         """
         process_file_type_dict = {
-            cstat.Filetype.USD: lambda input: cls._read_usd(input),
-            cstat.Filetype.TOML: lambda input: cls._read_toml(input),
-            cstat.Filetype.IMG: lambda input: cls._read_img(input),
-            cstat.Filetype.ICON: lambda input: cls._read_icon(input),
+            cstat.Filetype.USD: lambda *args: cls._read_usd(*args),
+            cstat.Filetype.TOML: lambda *args: cls._read_toml(*args),
+            cstat.Filetype.IMG: lambda *args: cls._read_img(*args),
+            cstat.Filetype.ICON: lambda *args: cls._read_icon(*args),
         }
-        return process_file_type_dict[file_type](file_path)
+        return process_file_type_dict[file_type](*args)
     
     @classmethod
     def _read_toml(cls, file_path) -> Dict[str, Any]:
@@ -60,12 +60,14 @@ class FileHelper:
         return usd_stage
 
     @classmethod
-    def _read_img(self, file_path) -> int:
+    def _read_img(cls, file_path, size: tuple[int, int]) -> int:
         """
         Read data from an image file.
         """
         if os.path.exists(file_path):
             image = Image.open(file_path).convert("RGBA")
+            image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+            image = image.resize(size, Image.Resampling.LANCZOS)
             image_data = image.tobytes("raw", "RGBA", 0, -1)
             width, height = image.size
             gl.glEnable(gl.GL_TEXTURE_2D)
@@ -81,13 +83,13 @@ class FileHelper:
             return texture_id
 
     @classmethod
-    def _read_icon(self, icon: cstat.NodeIcon) -> int:
+    def _read_icon(cls, icon: cstat.Icon, size: tuple[int, int]) -> int:
         """
         Read data from an icon file.
         """
-        current_dir = os.path.dirname(__file__)
-        icon_path = os.path.join(current_dir, 'asset', 'icons', icon.value + ".png")
-        return self._read_img(icon_path)
+        icon_base_path = get_icon_path()
+        icon_path = os.path.join(icon_base_path, icon.value + ".png")
+        return cls._read_img(icon_path, size)
 
 
 def convert_dict_string(data: Dict[str, Any]) -> Dict[str, str]:
@@ -112,6 +114,12 @@ def get_font_path() -> str:
     current_dir = os.path.dirname(__file__)
     return os.path.join(current_dir, 'asset', 'font')
 
+def get_icon_path() -> str:
+    """
+    Get the default icon path.
+    """
+    current_dir = os.path.dirname(__file__)
+    return os.path.join(current_dir, 'asset', 'icon')
 
 def get_core_config() -> Dict[str, Any]:
     """
@@ -119,7 +127,7 @@ def get_core_config() -> Dict[str, Any]:
     """
     config_path = os.path.join(os.path.dirname(__file__), "config.toml")
     if os.path.exists(config_path):
-        config: dict = FileHelper.read(config_path, cstat.Filetype.TOML)
+        config: dict = FileHelper.read(cstat.Filetype.TOML, config_path)
         return config
     else:
         raise FileNotFoundError(f"Config not found: {config_path}")

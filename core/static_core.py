@@ -7,6 +7,9 @@
 # PYTHON
 from enum import Enum
 
+# ADDONS
+from pxr import UsdImagingGL as pimg
+
 
 #####################################################################################################################################
 
@@ -21,7 +24,7 @@ class Filetype(Enum):
     ICON = 4
 
 
-class NodeIcon(Enum):
+class Icon(Enum):
     """
     Enum for node types.
     """
@@ -36,6 +39,9 @@ class NodeIcon(Enum):
     LOCATOR_ICON = "icon_locator"
     SKELETON_ICON = "icon_skeleton"
     UNKNOWN_ICON = "icon_unknown"
+    WIREFRAME_ICON = "icon_wireframe"
+    FLAT_ICON = "icon_flat"
+    FULL_ICON = "icon_full"
 
 
 class PanelTypes(Enum):
@@ -49,8 +55,5 @@ class PanelTypes(Enum):
     VIEWPORT = 4
 
 
-
 #####################################################################################################################################
-
-
 

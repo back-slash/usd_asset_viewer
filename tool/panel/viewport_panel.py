@@ -5,13 +5,14 @@
 #####################################################################################################################################
 
 # PYTHON
+from argparse import FileType
 from typing import Any
 
 # ADDONS
 from imgui_bundle import imgui
 import glfw
 import OpenGL.GL as gl
-from numpy import double
+from numpy import double, size
 import pxr.Usd as pusd
 import pxr.UsdGeom as pgeo
 import pxr.UsdImagingGL as pimg
@@ -24,16 +25,37 @@ import core.static_core as cstat
 import core.utils_core as cutils
 import core.base_core as cbase
 #####################################################################################################################################
-      
+    
+class ViewportDrawStyleOverlay():
+    """
+    Enum for viewport draw styles.
+    """
+    def __init__(self):
+        pass
+        
+
+
+
+#####################################################################################################################################      
 class ViewportPanel(cbase.Panel):
     """
     Viewport for USD Scene.
     """
     _key_scroll_up = False
     _key_scroll_down = False
+    _current_draw_style = None
     def __init__(self, frame: cbase.Frame):
         super().__init__("viewport", frame)
         self._window = frame.get_window()
+        self._init_viewport_draw_styles()
+        self._update_hydra_render_params()
+
+    def _init_viewport_draw_styles(self):
+        """
+        Initialize the viewport draw styles.
+        """
+        self._draw_style_dict = self._cfg["viewport"]["draw_style"]
+        self._current_draw_style = self._cfg["viewport"]["default_draw_style"]
 
     def _mouse_scroll_callback(self, window, x_offset, y_offset):
         """
@@ -49,8 +71,6 @@ class ViewportPanel(cbase.Panel):
         Initialize the Hydra renderer.
         """
         self._hydra = pimg.Engine()
-        self._hydra_rend_params = pimg.RenderParams()
-        self._update_hydra_render_params()
         render_plugins = self._hydra.GetRendererPlugins()
         if render_plugins:
             glfw.set_scroll_callback(self._window, self._mouse_scroll_callback)
@@ -64,12 +84,14 @@ class ViewportPanel(cbase.Panel):
         """
         Update the Hydra render parameters.
         """
-        self._render_param_dict = self._cfg["hydra"]["paramater"]
-        if hasattr(pimg.DrawMode, self._render_param_dict["drawMode"]):
-            attr = getattr(pimg.DrawMode, self._render_param_dict["drawMode"])
-            self._hydra_rend_params.drawMode = attr 
-        self._hydra_rend_params.enableLighting = self._render_param_dict["enableLighting"]
-        self._hydra_rend_params.enableSampleAlphaToCoverage = self._render_param_dict["enableSampleAlphaToCoverage"]
+        draw_style_dict = self._cfg["viewport"]["draw_style"]
+        selected_draw_style_dict = draw_style_dict[self._current_draw_style]
+        self._hydra_rend_params = pimg.RenderParams()
+        self._hydra_rend_params.drawMode = getattr(pimg.DrawMode, selected_draw_style_dict["draw_mode"])
+        self._hydra_rend_params.enableLighting = selected_draw_style_dict["enable_lighting"]
+        self._hydra_rend_params.enableSampleAlphaToCoverage = True
+        
+        
 
     #CONVERT TO IMGUI
     def _process_glfw_events(self):
@@ -159,15 +181,9 @@ class ViewportPanel(cbase.Panel):
             elif self._pan:
                 self._calc_viewport_pan(delta_x, delta_y)
         if self._incremental_zoom_in:
-            transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0, 0, -10 * bbox_quatified))
-            self._camera_xform = self._camera.GetAttribute("xformOp:transform").Get()
-            self._camera_xform = transform * self._camera_xform
-            self._camera.GetAttribute("xformOp:transform").Set(self._camera_xform)
+            self._calc_incremental_zoom(bbox_quatified, out=False)
         if self._incremental_zoom_out:
-            transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0, 0, 10 * bbox_quatified))
-            self._camera_xform = self._camera.GetAttribute("xformOp:transform").Get()
-            self._camera_xform = transform * self._camera_xform
-            self._camera.GetAttribute("xformOp:transform").Set(self._camera_xform)
+            self._calc_incremental_zoom(bbox_quatified, out=True)
         if self._frame_scene:
             self._calc_frame_scene(bbox_size, bbox_center)
         self._prev_cursor_pos = cursor_pos
@@ -193,10 +209,20 @@ class ViewportPanel(cbase.Panel):
         """
         Calculate the zoom transformation for the viewport.
         """
-        transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0, 0, delta_x * 1))
+        transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0, 0, -delta_x * 1))
         camera_xform = self._camera.GetAttribute("xformOp:transform").Get()
         transform = transform * camera_xform
         self._camera.GetAttribute("xformOp:transform").Set(transform)
+
+    def _calc_incremental_zoom(self, bbox_quatified: float, out=True) -> None:
+        """
+        Calculate the incremental zoom transformation for the viewport.
+        """
+        amount = 200 if out else -200
+        transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0, 0, amount * bbox_quatified))
+        camera_xform = self._camera.GetAttribute("xformOp:transform").Get()
+        camera_xform = transform * camera_xform
+        self._camera.GetAttribute("xformOp:transform").Set(camera_xform)
 
     def _calc_viewport_pan(self, delta_x: float, delta_y: float) -> None:
         """
@@ -224,7 +250,6 @@ class ViewportPanel(cbase.Panel):
         transform = transform * rotation
 
         self._camera.GetAttribute("xformOp:transform").Set(transform)
-        
 
     def _hydra_render_loop(self, position: tuple[int, int]) -> None:
         """
@@ -239,6 +264,42 @@ class ViewportPanel(cbase.Panel):
         self._update_hydra_camera()
         self._hydra.Render(self._stage.GetPseudoRoot(), self._hydra_rend_params)
 
+    # TEMPORARY
+    def _draw_draw_style_radio(self):
+        """
+        Draw the render modes for the viewport.
+        """
+        imgui.set_cursor_pos_x(self._panel_width - 50)
+        imgui.push_style_var(imgui.StyleVar_.frame_rounding, 3)
+        imgui.push_style_var(imgui.StyleVar_.frame_border_size, 1.0)
+        imgui.push_style_var(imgui.StyleVar_.frame_padding, (3, 3))
+        imgui.push_style_var(imgui.StyleVar_.item_spacing, (5, -5))
+
+        imgui.push_style_color(imgui.Col_.frame_bg, (0.2, 0.2, 0.2, 0.5))
+        imgui.push_style_color(imgui.Col_.frame_bg_active, (0.2, 0.2, 0.2, 0.75))
+        imgui.push_style_color(imgui.Col_.frame_bg_hovered, (0.2, 0.2, 0.2, 1))
+        imgui.push_style_color(imgui.Col_.check_mark, (0.65, 0.65, 0.65, 1.0))
+
+        imgui.set_cursor_pos((self._panel_width - 50, 10))
+        for index, style_key in enumerate(self._draw_style_dict):
+            imgui.set_cursor_pos_x(self._panel_width - 50)
+            style_dict = self._draw_style_dict[style_key]
+            icon = style_dict["icon"]
+            current = self._current_draw_style == style_key
+            imgui.push_id(index)
+            if imgui.radio_button("", current):
+                self._current_draw_style = style_key
+                self._update_hydra_render_params()
+                pimg.DrawMode.DRAW_WIREFRAME_ON_SURFACE
+            imgui.pop_id()
+            imgui.same_line()
+            icon_size = (16, 16)
+            icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, getattr(cstat.Icon, icon), icon_size)
+            imgui.image(icon_id, icon_size, tint_col=(0.5, 0.5, 0.5, 1))
+            imgui.new_line()
+
+        imgui.pop_style_var(4)
+        imgui.pop_style_color(4)
 
     def draw(self, position: tuple[int, int]) -> None:
         """
@@ -250,7 +311,7 @@ class ViewportPanel(cbase.Panel):
         imgui.set_next_window_size((self._panel_width, self._panel_height))
         imgui.set_next_window_pos(position)
         imgui.begin(self._name, True, self._window_flags)
-        imgui.text("Viewport")
+        self._draw_draw_style_radio()
 
     def update_usd(self):
         super().update_usd()

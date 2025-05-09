@@ -16,7 +16,6 @@ from imgui_bundle import imgui
 import core.static_core as cstat
 import core.utils_core as cutils
 import core.base_core as cbase
-import core.render_core as crend
 import tool.panel.outliner_panel as tpo
 import tool.panel.detail_panel as tpd
 import tool.panel.trackbar_panel as tpt

@@ -170,6 +170,7 @@ window_rounding = 0.0
 [viewport]
 width = 1280
 height = 720
+default_draw_style = "flat"
 
 
 [viewport.flags]
@@ -179,7 +180,6 @@ no_title_bar = true
 no_docking = true
 no_background = true
 no_scrollbar = true
-no_bring_to_front_on_focus = true
 
 
 [viewport.style_color]
@@ -193,6 +193,25 @@ item_spacing = [5, 5]
 window_padding = [10, 10]
 window_border_size = 1.0
 window_rounding = 0.0
+
+
+[viewport.draw_style.wireframe]
+name = "Wireframe"
+icon = "WIREFRAME_ICON"
+draw_mode = "DRAW_WIREFRAME"
+enable_lighting = false
+
+[viewport.draw_style.flat]
+name = "Flat Shading"
+icon = "FLAT_ICON"
+draw_mode = "DRAW_WIREFRAME_ON_SURFACE"
+enable_lighting = false
+
+[viewport.draw_style.full]
+name = "Full Shading"
+icon = "FULL_ICON"
+draw_mode = "DRAW_SHADED_SMOOTH"
+enable_lighting = true
 
 
 
