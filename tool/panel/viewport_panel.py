@@ -356,7 +356,6 @@ class ViewportPanel(cbase.Panel):
         imgui.push_style_var(imgui.StyleVar_.frame_padding, (3, 3))
         imgui.push_style_var(imgui.StyleVar_.item_spacing, (5, 0))
 
-
         imgui.push_style_color(imgui.Col_.frame_bg, (0.2, 0.2, 0.2, 0.5))
         imgui.push_style_color(imgui.Col_.frame_bg_active, (0.2, 0.2, 0.2, 0.75))
         imgui.push_style_color(imgui.Col_.frame_bg_hovered, (0.2, 0.2, 0.2, 1))

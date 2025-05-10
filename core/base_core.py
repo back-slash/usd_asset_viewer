@@ -10,6 +10,7 @@ import ctypes
 import sys
 
 # ADDONS
+from attr import has
 from imgui_bundle import imgui
 import pxr.Usd as pusd
 import pxr.Gf as pgf
@@ -722,7 +723,6 @@ class SceneManager:
     """
     _instance = None
     _usd_path = None
-    _stage: pusd.Stage = None
     _root = None
     def __new__(cls, usd_path: str=None):
         if cls._instance is None:
@@ -869,7 +869,8 @@ class SceneManager:
         """
         Get the USD stage.
         """
-        return self._stage
+        if hasattr(self, "_stage"):
+            return self._stage
 
     def set_usd_file(self, usd_path: str):
         """
@@ -1132,4 +1133,5 @@ class GLFWOpenGLWindow:
         """
         Shutdown the GLFW window.
         """
+        glfw.terminate()
         sys.exit()      

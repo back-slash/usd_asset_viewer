@@ -32,7 +32,7 @@ class USDAssetViewer(cbase.Frame):
     def __init__(self):
         super().__init__()
         self._cfg = cutils.get_core_config()
-        self._init_rendering() #LOOP
+        self._init_rendering()
 
     def _init_pre_rendering(self):
         pass     
