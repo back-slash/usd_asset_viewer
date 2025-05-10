@@ -7,6 +7,7 @@
 from typing import Any
 import os
 import ctypes
+import sys
 
 # ADDONS
 from imgui_bundle import imgui
@@ -446,7 +447,6 @@ class Frame:
         self._init_default_font()
         self._init_panels()
         self._init_pre_rendering()
-        self._init_rendering()
         
     def _init_config(self):
         """
@@ -469,6 +469,7 @@ class Frame:
         self._window = self._render_context_manager.get_window()
         self._context = self._render_context_manager.context_list[-1]
         self._display_size = self._render_context_manager.get_frame_size()
+        glfw.set_window_close_callback(self._window, self._shutdown)
 
     def _init_panels(self):
         """
@@ -580,6 +581,21 @@ class Frame:
         """
         display_size = imgui.get_io().display_size
         return display_size
+
+    def _stop_rendering(self):
+        """
+        Stop the rendering loop.
+        """
+        if self._render_context_manager is not None:
+            self._render_context_manager
+
+    def _shutdown(self, *args):
+        """
+        Shutdown the frame and its panels.
+        """
+        self._render_context_manager.remove_context(self._context)
+
+
 #####################################################################################################################################
 
 class Panel:
@@ -639,14 +655,14 @@ class Panel:
         rect = (window_position.x, window_position.y, window_position.x + window_size.x, window_position.y + window_size.y)
         return rect
 
-    def _internal_draw(self, position: tuple[int, int]):
+    def _internal_draw(self):
         """
         Draw the panel.
         """
-        rect = self.draw(position)
+        rect = self.draw()
         return rect
 
-    def draw(self, position: tuple[int, int]):
+    def draw(self):
         """
         Draw the panel.
         """
@@ -658,10 +674,11 @@ class Panel:
         """
         self._panel_width = size[0]
         self._panel_height = size[1]
+        self._panel_position = position
         self._update_stage_data()
         self._set_window_flags()
         self._push_panel_style()
-        self._internal_draw(position)
+        self._internal_draw()
         rect = self._calc_panel_rect()
         self._pop_panel_style()
         imgui.end()
@@ -672,6 +689,11 @@ class Panel:
         Update the USD stage.
         """
         self._init_scene_manager()
+
+    def shutdown(self):
+        """
+        Shutdown the panel.
+        """
 
 #####################################################################################################################################
 
@@ -700,7 +722,7 @@ class SceneManager:
     """
     _instance = None
     _usd_path = None
-    _stage = None
+    _stage: pusd.Stage = None
     _root = None
     def __new__(cls, usd_path: str=None):
         if cls._instance is None:
@@ -718,12 +740,12 @@ class SceneManager:
             self._initialized = True
         if usd_path:
             self.set_usd_file(usd_path)
-
+    
     def _init_usd_scene(self):
         """
         Initialize USD scene.
         """
-        self._stage = pusd.Stage.Open(self._usd_path)
+        self._stage: pusd.Stage = pusd.Stage.Open(self._usd_path)
         self._root = self._stage.GetPseudoRoot()
         self._traverse_hierarchy()
 
@@ -973,10 +995,14 @@ class RenderContextManager:
         Remove a context from the context list.
         """
         if context in self.context_list:
+            self._glfw.stop_render_loop()
             self.context_list.remove(context)
             imgui.set_current_context(context)
+            imgui.backends.glfw_shutdown()
             imgui.backends.opengl3_shutdown()
             imgui.destroy_context(context)
+            imgui.destroy_platform_windows()
+
 
     def render(self, draw_data, context):
         """
@@ -1031,6 +1057,7 @@ class GLFWOpenGLWindow:
     """
     GLFW Window class for rendering.
     """
+    _should_render = True
     def __init__(self, render_loop_function):
         self._render_loop_function = render_loop_function
         self._init_config()
@@ -1062,14 +1089,14 @@ class GLFWOpenGLWindow:
         """
         Render loop for the GLFW window.
         """
-        while not glfw.window_should_close(self._window):
+        while not glfw.window_should_close(self._window) and self._should_render:
             self._set_imgui_window_size()
             glfw.poll_events()
             gl.glClearColor(*self._cfg_gl_color)
             gl.glClear(gl.GL_COLOR_BUFFER_BIT)
             self._render_loop_function()
             glfw.swap_buffers(self._window)
-        glfw.terminate()
+        self._shutdown()
 
     def _set_imgui_window_size(self):
         """
@@ -1083,6 +1110,12 @@ class GLFWOpenGLWindow:
         """
         self._render_loop()
 
+    def stop_render_loop(self):
+        """
+        Stop the render loop.
+        """
+        self._should_render = False
+
     def get_window(self):
         """
         Get the GLFW window.
@@ -1094,3 +1127,9 @@ class GLFWOpenGLWindow:
         Get the address of the GLFW window.
         """
         return ctypes.cast(self._window, ctypes.c_void_p).value
+    
+    def _shutdown(self):
+        """
+        Shutdown the GLFW window.
+        """
+        sys.exit()      

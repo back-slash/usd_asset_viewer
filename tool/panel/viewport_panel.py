@@ -5,20 +5,21 @@
 #####################################################################################################################################
 
 # PYTHON
-from argparse import FileType
 from typing import Any
+import math
+
 
 # ADDONS
 from imgui_bundle import imgui
 import glfw
 import OpenGL.GL as gl
-from numpy import double, size
 import pxr.Usd as pusd
 import pxr.UsdGeom as pgeo
 import pxr.UsdImagingGL as pimg
 import pxr.Gf as pgf
 import pxr.Sdf as psdf
 import pxr.UsdShade as pshd
+import numpy as np
 
 # PROJECT
 import core.static_core as cstat
@@ -77,6 +78,8 @@ class ViewportPanel(cbase.Panel):
             self._hydra.SetRendererPlugin(render_plugins[0])
             self._camera = self._create_camera()
             self._hydra.SetCameraPath(self._camera.GetPath())
+            self._scene_bbox_center, self._scene_bbox_size = self._create_scene_bounding_box()
+            self._calc_frame_scene(self._scene_bbox_size, self._scene_bbox_center)
         else:
             raise RuntimeError("No renderer plugins available")
 
@@ -90,8 +93,6 @@ class ViewportPanel(cbase.Panel):
         self._hydra_rend_params.drawMode = getattr(pimg.DrawMode, selected_draw_style_dict["draw_mode"])
         self._hydra_rend_params.enableLighting = selected_draw_style_dict["enable_lighting"]
         self._hydra_rend_params.enableSampleAlphaToCoverage = True
-        
-        
 
     #CONVERT TO IMGUI
     def _process_glfw_events(self):
@@ -130,25 +131,31 @@ class ViewportPanel(cbase.Panel):
         self._key_scroll_up = False
         self._key_scroll_down = False
 
-
     def _create_camera(self):
         """
         Create a camera with default attributes and a transformation matrix.
         """
+        clipping_range = self._cfg["viewport"]["clipping_range"]
+        focal_length = self._cfg["viewport"]["focal_length"]
         camera = pgeo.Camera.Define(self._stage, "/OrbitCamera")
-        camera.CreateFocalLengthAttr(50.0)
-        camera.CreateHorizontalApertureAttr(20.955)
-        camera.CreateVerticalApertureAttr(15.2908)
-        camera.CreateClippingRangeAttr(pgf.Vec2f(self._cfg["camera"]["clipping_range"]))
+        camera.CreateFocalLengthAttr(focal_length)
+        camera.CreateHorizontalApertureAttr(24.0)
+        camera.CreateVerticalApertureAttr(18.0)
+        camera.CreateHorizontalApertureOffsetAttr(0.0)
+        camera.CreateVerticalApertureOffsetAttr(0.0)
+        camera.CreateClippingRangeAttr(pgf.Vec2f(clipping_range))
         xform_attr = camera.GetPrim().CreateAttribute("xformOp:transform", psdf.ValueTypeNames.Matrix4d)
         xform_attr.Set(pgf.Matrix4d().SetIdentity())
-
         xform_op_order = camera.GetPrim().GetAttribute("xformOpOrder")
         if not xform_op_order:
            xform_op_order = camera.GetPrim().CreateAttribute("xformOpOrder", psdf.ValueTypeNames.TokenArray)
         xform_op_order.Set(["xformOp:transform"])
+        return camera.GetPrim()
 
-        return camera.GetPrim()    
+    def _calc_fov(self):
+        camera = pgeo.Camera(self._camera)
+        fov = 2 * math.atan(camera.GetVerticalApertureAttr().Get() / (2 * camera.GetFocalLengthAttr().Get()))
+        return math.degrees(fov)
 
     def _create_scene_bounding_box(self):
         """
@@ -160,13 +167,15 @@ class ViewportPanel(cbase.Panel):
         bbox_max = bbox.GetRange().GetMax()
         bbox_center: pgf.Vec3d = (bbox_min + bbox_max) * 0.5
         bbox_size: pgf.Vec3d = bbox_max - bbox_min
-        return bbox_center, bbox_size    
+        return bbox_center, bbox_size
 
     #NEEDS WORK
     def _update_hydra_camera(self):
         """
         Update the viewport camera.
         """
+        if not hasattr(self, "_user_transform"):
+            self._user_transform = pgf.Matrix4d().SetIdentity()
         bbox_center, bbox_size = self._create_scene_bounding_box()
         bbox_quatified = bbox_size.GetLength() / 5000.0
         cursor_pos = glfw.get_cursor_pos(self._window)
@@ -221,8 +230,8 @@ class ViewportPanel(cbase.Panel):
         amount = 200 if out else -200
         transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0, 0, amount * bbox_quatified))
         camera_xform = self._camera.GetAttribute("xformOp:transform").Get()
-        camera_xform = transform * camera_xform
-        self._camera.GetAttribute("xformOp:transform").Set(camera_xform)
+        transform = transform * camera_xform
+        self._camera.GetAttribute("xformOp:transform").Set(transform)
 
     def _calc_viewport_pan(self, delta_x: float, delta_y: float) -> None:
         """
@@ -248,32 +257,105 @@ class ViewportPanel(cbase.Panel):
         up = pgf.Vec3d(0, 1, 0)
         rotation = pgf.Matrix4d().SetLookAt(-camera_position, bbox_center, up)
         transform = transform * rotation
-
         self._camera.GetAttribute("xformOp:transform").Set(transform)
 
-    def _hydra_render_loop(self, position: tuple[int, int]) -> None:
+    def _draw_opengl_grid(self) -> None:
+        """
+        Draw a grid.
+        """
+        gl.glPushAttrib(gl.GL_ENABLE_BIT | gl.GL_TRANSFORM_BIT | gl.GL_VIEWPORT_BIT)
+        gl.glPushMatrix()
+        gl.glViewport(int(self._hydra_x_min), int(self._hydra_y_min), int(self._panel_width), int(self._panel_height))
+        gl.glEnable(gl.GL_DEPTH_TEST)
+        gl.glDepthFunc(gl.GL_LESS)
+        gl.glMatrixMode(gl.GL_PROJECTION)
+        
+        gl.glLoadIdentity()
+        fov = self._calc_fov()
+        aspect_ratio = self._panel_width / self._panel_height
+        near = self._cfg["viewport"]["clipping_range"][0]
+        far = self._cfg["viewport"]["clipping_range"][1]
+        top = near * math.tan(math.radians(fov) / 2)
+        bottom = -top
+        right = top * aspect_ratio
+        left = -right
+        gl.glFrustum(left, right, bottom, top, near, far)
+
+
+        gl.glMatrixMode(gl.GL_MODELVIEW)
+        gl.glLoadIdentity()
+        camera_transform: pgf.Matrix4d = self._camera.GetAttribute("xformOp:transform").Get()  
+        camera_transform_offset = camera_transform.GetInverse()
+        camera_transform_offset_np = np.array([camera_transform_offset.GetRow(i) for i in range(4)])
+        gl.glMultMatrixf(camera_transform_offset_np.flatten())
+
+        #GRID
+        grid_size = self._cfg["viewport"]["grid_size"]
+        grid_density = self._cfg["viewport"]["grid_density"]
+        grid_color = self._cfg["viewport"]["grid_color"]
+        axis_size = self._cfg["viewport"]["axis_size"]
+        axis_width = self._cfg["viewport"]["axis_width"]
+        step = grid_size / grid_density
+
+        gl.glLineWidth(0.5)
+        gl.glColor4f(*grid_color)
+        gl.glBegin(gl.GL_LINES)
+        for index in range(-grid_density, grid_density + 1):
+            gl.glVertex3f(index * step, 0.0, -grid_size)
+            gl.glVertex3f(index * step, 0.0, grid_size)
+            gl.glVertex3f(-grid_size, 0.0, index * step)
+            gl.glVertex3f(grid_size, 0.0, index * step)
+        gl.glEnd()
+
+        gl.glLineWidth(axis_width)
+        gl.glBegin(gl.GL_LINES)
+
+        #X
+        gl.glColor3f(1, 0.0, 0.0)
+        gl.glVertex3f(0.0, 0.0, 0.0)
+        gl.glVertex3f(axis_size, 0.0, 0.0)
+
+        #Y
+        gl.glColor3f(0.0, 1, 0.0)
+        gl.glVertex3f(0.0, 0.0, 0.0)
+        gl.glVertex3f(0.0, axis_size, 0.0)
+
+        #Z
+        gl.glColor3f(0.0, 0.0, 1)
+        gl.glVertex3f(0.0, 0.0, 0.0)
+        gl.glVertex3f(0.0, 0.0, axis_size)
+        
+        gl.glEnd()
+        gl.glPopMatrix()
+        gl.glPopAttrib()
+        
+
+    def _hydra_render_loop(self) -> None:
         """
         Render loop for the Hydra renderer.
         """
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
         display_size = glfw.get_window_size(self._window)
-        hydra_x_min = position[0]
-        hydra_y_min = display_size[1] - position[1] - self._panel_height
-        self._hydra.SetRenderViewport((hydra_x_min, hydra_y_min, self._panel_width, self._panel_height))
+        self._hydra_x_min = self._panel_position[0]
+        self._hydra_y_min = display_size[1] - self._panel_position[1] - self._panel_height
+        self._hydra.SetRenderViewport((self._hydra_x_min, self._hydra_y_min, self._panel_width, self._panel_height))
         self._hydra.SetRenderBufferSize(pgf.Vec2i(int(self._panel_width), int(self._panel_height)))
         self._update_hydra_camera()
         self._hydra.Render(self._stage.GetPseudoRoot(), self._hydra_rend_params)
+        self._draw_opengl_grid()
 
-    # TEMPORARY
+    #MOVE
     def _draw_draw_style_radio(self):
         """
         Draw the render modes for the viewport.
         """
         imgui.set_cursor_pos_x(self._panel_width - 50)
+        imgui.push_font(self._frame._font_tiny)
         imgui.push_style_var(imgui.StyleVar_.frame_rounding, 3)
         imgui.push_style_var(imgui.StyleVar_.frame_border_size, 1.0)
         imgui.push_style_var(imgui.StyleVar_.frame_padding, (3, 3))
-        imgui.push_style_var(imgui.StyleVar_.item_spacing, (5, -5))
+        imgui.push_style_var(imgui.StyleVar_.item_spacing, (5, 0))
+
 
         imgui.push_style_color(imgui.Col_.frame_bg, (0.2, 0.2, 0.2, 0.5))
         imgui.push_style_color(imgui.Col_.frame_bg_active, (0.2, 0.2, 0.2, 0.75))
@@ -295,31 +377,25 @@ class ViewportPanel(cbase.Panel):
             imgui.same_line()
             icon_size = (16, 16)
             icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, getattr(cstat.Icon, icon), icon_size)
-            imgui.image(icon_id, icon_size, tint_col=(0.5, 0.5, 0.5, 1))
+            imgui.image(icon_id, icon_size, tint_col=(0.75, 0.75, 0.75, 1))
             imgui.new_line()
 
         imgui.pop_style_var(4)
         imgui.pop_style_color(4)
+        imgui.pop_font()
 
-    def draw(self, position: tuple[int, int]) -> None:
+    def draw(self) -> None:
         """
         Draw the outliner panel.
         """ 
         self._process_glfw_events()
         if self._stage:
-            self._hydra_render_loop(position)
+            self._hydra_render_loop()
         imgui.set_next_window_size((self._panel_width, self._panel_height))
-        imgui.set_next_window_pos(position)
+        imgui.set_next_window_pos(self._panel_position)
         imgui.begin(self._name, True, self._window_flags)
         self._draw_draw_style_radio()
 
     def update_usd(self):
         super().update_usd()
         self._init_hydra()
-
-    def shutdown(self):
-        """
-        Shutdown the viewport panel.
-        """
-        self._hydra.StopRenderer()
-        del(self._hydra)

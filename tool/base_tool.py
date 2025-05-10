@@ -11,6 +11,7 @@ import os
 
 # ADDONS
 from imgui_bundle import imgui
+import glfw
 
 # PROJECT
 import core.static_core as cstat
@@ -29,8 +30,9 @@ class USDAssetViewer(cbase.Frame):
     """
     _scene_manager = None
     def __init__(self):
-        self._cfg = cutils.get_core_config() 
-        super().__init__()    
+        super().__init__()
+        self._cfg = cutils.get_core_config()
+        self._init_rendering() #LOOP
 
     def _init_pre_rendering(self):
         pass     
@@ -98,9 +100,3 @@ class USDAssetViewer(cbase.Frame):
         viewport_size_x = self._display_size[0] - (outliner_rect[2] - outliner_rect[0]) - (details_rect[2] - details_rect[0])
         viewport_rect = self._viewport.update_draw((outliner_rect[2], min_y), (viewport_size_x, panel_size_y))
 
-    def _shutdown(self):
-        """
-        Shutdown the USD Asset Viewer.
-        """
-        self._viewport.shutdown()
-        sys.exit(0)

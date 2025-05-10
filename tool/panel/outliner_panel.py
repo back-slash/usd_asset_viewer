@@ -24,12 +24,12 @@ class OutlinerPanel(cbase.Panel):
     def __init__(self, frame: cbase.Frame):
         super().__init__("outliner", frame)
     
-    def draw(self, position: tuple[int, int]) -> None:
+    def draw(self) -> None:
         """
         Draw the outliner panel.
         """ 
         imgui.set_next_window_size((self._panel_width, self._panel_height))
-        imgui.set_next_window_pos(position)
+        imgui.set_next_window_pos(self._panel_position)
         imgui.begin(self._name, True, self._window_flags)
         imgui.text("Outliner")
 
