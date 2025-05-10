@@ -13,12 +13,6 @@ gl_color = [0.1, 0.1, 0.1, 1.0]
 vsync = true
 
 
-[hydra.paramater]
-drawMode = "DRAW_SHADED_SMOOTH"
-enableLighting = true
-enableSampleAlphaToCoverage = true
-
-
 [config]
 docking = false
 
@@ -166,7 +160,7 @@ default_draw_style = "flat"
 grid_color = [0.25, 0.25, 0.25, 1.0]
 axis_size = 30
 axis_width = 3.0
-clipping_range = [0.1, 1000000.0]
+clipping_range = [0.1, 10000000.0]
 focal_length = 50.0
 grid_size = 1500
 grid_density = 15

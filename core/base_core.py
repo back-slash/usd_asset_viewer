@@ -594,6 +594,7 @@ class Frame:
         """
         Shutdown the frame and its panels.
         """
+        glfw.set_window_should_close(self._window, True)
         self._render_context_manager.remove_context(self._context)
 
 
@@ -996,7 +997,6 @@ class RenderContextManager:
         Remove a context from the context list.
         """
         if context in self.context_list:
-            self._glfw.stop_render_loop()
             self.context_list.remove(context)
             imgui.set_current_context(context)
             imgui.backends.glfw_shutdown()
@@ -1090,7 +1090,7 @@ class GLFWOpenGLWindow:
         """
         Render loop for the GLFW window.
         """
-        while not glfw.window_should_close(self._window) and self._should_render:
+        while not glfw.window_should_close(self._window):
             self._set_imgui_window_size()
             glfw.poll_events()
             gl.glClearColor(*self._cfg_gl_color)
@@ -1111,12 +1111,6 @@ class GLFWOpenGLWindow:
         """
         self._render_loop()
 
-    def stop_render_loop(self):
-        """
-        Stop the render loop.
-        """
-        self._should_render = False
-
     def get_window(self):
         """
         Get the GLFW window.
@@ -1133,5 +1127,6 @@ class GLFWOpenGLWindow:
         """
         Shutdown the GLFW window.
         """
+        glfw.destroy_window(self._window)
         glfw.terminate()
         sys.exit()      
