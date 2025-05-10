@@ -50,6 +50,11 @@ class ViewportPanel(cbase.Panel):
         self._window = frame.get_window()
         self._init_viewport_draw_styles()
         self._update_hydra_render_params()
+        self._calc_up_axis()
+
+    def _init_config(self):
+        super()._init_config()
+        self._up_axis = self._cfg["viewport"]["up_axis"]
 
     def _init_viewport_draw_styles(self):
         """
@@ -79,7 +84,7 @@ class ViewportPanel(cbase.Panel):
             self._camera = self._create_camera()
             self._hydra.SetCameraPath(self._camera.GetPath())
             self._scene_bbox_center, self._scene_bbox_size = self._create_scene_bounding_box()
-            self._calc_frame_scene(self._scene_bbox_size, self._scene_bbox_center)
+            self._calc_frame_scene()
         else:
             raise RuntimeError("No renderer plugins available")
 
@@ -93,6 +98,17 @@ class ViewportPanel(cbase.Panel):
         self._hydra_rend_params.drawMode = getattr(pimg.DrawMode, selected_draw_style_dict["draw_mode"])
         self._hydra_rend_params.enableLighting = selected_draw_style_dict["enable_lighting"]
         self._hydra_rend_params.enableSampleAlphaToCoverage = True
+
+    def _calc_up_axis(self):
+        """
+        Initialize the up axis matrix.
+        """
+        if self._up_axis == "Y":
+            self._up_axis_matrix = pgf.Matrix4d().SetRotate(pgf.Rotation(pgf.Vec3d(1, 0, 0), 0))
+        elif self._up_axis == "Z":
+            self._up_axis_matrix = pgf.Matrix4d().SetRotate(pgf.Rotation(pgf.Vec3d(1, 0, 0), -90))
+        else:
+            raise ValueError("Invalid up axis specified")
 
     #CONVERT TO IMGUI
     def _process_glfw_events(self):
@@ -169,22 +185,20 @@ class ViewportPanel(cbase.Panel):
         bbox_size: pgf.Vec3d = bbox_max - bbox_min
         return bbox_center, bbox_size
 
-    #NEEDS WORK
     def _update_hydra_camera(self):
         """
         Update the viewport camera.
         """
         if not hasattr(self, "_user_transform"):
             self._user_transform = pgf.Matrix4d().SetIdentity()
-        bbox_center, bbox_size = self._create_scene_bounding_box()
-        bbox_quatified = bbox_size.GetLength() / 5000.0
+        bbox_quatified = self._scene_bbox_size.GetLength() / 5000.0
         cursor_pos = glfw.get_cursor_pos(self._window)
         if self._orbit or self._zoom or self._pan:
             cursor_pos = glfw.get_cursor_pos(self._window)
             delta_x = cursor_pos[0] - self._prev_cursor_pos[0]
             delta_y = cursor_pos[1] - self._prev_cursor_pos[1]
             if self._orbit:
-                self._calc_viewport_orbit(bbox_center, delta_x, delta_y)
+                self._calc_viewport_orbit(delta_x, delta_y)
             elif self._zoom:
                 self._calc_viewport_zoom(delta_x, delta_y)
             elif self._pan:
@@ -194,18 +208,19 @@ class ViewportPanel(cbase.Panel):
         if self._incremental_zoom_out:
             self._calc_incremental_zoom(bbox_quatified, out=True)
         if self._frame_scene:
-            self._calc_frame_scene(bbox_size, bbox_center)
+            self._calc_frame_scene()
         self._prev_cursor_pos = cursor_pos
 
-    def _calc_viewport_orbit(self, bbox_center: pgf.Vec3d, delta_x: float, delta_y: float) -> None:
+    def _calc_viewport_orbit(self, delta_x: float, delta_y: float) -> None:
         """
         Calculate the orbit transformation for the viewport.
         """
-        pivot_point = bbox_center
+        pivot_point = self._scene_bbox_center
         camera_xform: pgf.Matrix4d = self._camera.GetAttribute("xformOp:transform").Get()        
         camera_position = camera_xform.ExtractTranslation()
         x_rotation_axis = camera_xform.TransformDir(pgf.Vec3d(1, 0, 0))
-        rot_matrix_y = pgf.Matrix4d().SetRotate(pgf.Rotation(pgf.Vec3d(0, 1, 0), -delta_x * 0.1))
+        rot_axis = pgf.Vec3d(0, 1, 0) if self._up_axis == "Y" else pgf.Vec3d(0, 0, 1)
+        rot_matrix_y = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x * 0.1))
         rot_matrix_x = pgf.Matrix4d().SetRotate(pgf.Rotation(x_rotation_axis, -delta_y * 0.1))
         world_rotation: pgf.Matrix4d = (rot_matrix_x * rot_matrix_y)
         relative_pos: pgf.Vec3d = camera_position - pivot_point
@@ -242,21 +257,21 @@ class ViewportPanel(cbase.Panel):
         transform = transform * camera_xform
         self._camera.GetAttribute("xformOp:transform").Set(transform)
 
-    def _calc_frame_scene(self, bbox_size, bbox_center) -> None:
+    def _calc_frame_scene(self) -> None:
         """
         Frame the scene in the viewport.
         """
-        max_dimension = max(bbox_size[0], bbox_size[1], bbox_size[2])
+        max_dimension = max(self._scene_bbox_size[0], self._scene_bbox_size[1], self._scene_bbox_size[2])
         if max_dimension <= 0:
             max_dimension = 1.0
         distance_factor = 2.0
         distance = max_dimension * distance_factor
-        camera_position = bbox_center + pgf.Vec3d(0, 0, distance)
+        camera_position = self._scene_bbox_center + pgf.Vec3d(0, 0, distance)
         transform = pgf.Matrix4d().SetIdentity()
         transform.SetTranslateOnly(camera_position)
         up = pgf.Vec3d(0, 1, 0)
-        rotation = pgf.Matrix4d().SetLookAt(-camera_position, bbox_center, up)
-        transform = transform * rotation
+        rotation = pgf.Matrix4d().SetLookAt(-camera_position, self._scene_bbox_center, up)
+        transform = transform * rotation * self._up_axis_matrix.GetInverse()
         self._camera.GetAttribute("xformOp:transform").Set(transform)
 
     def _draw_opengl_grid(self) -> None:
@@ -281,10 +296,9 @@ class ViewportPanel(cbase.Panel):
         left = -right
         gl.glFrustum(left, right, bottom, top, near, far)
 
-
         gl.glMatrixMode(gl.GL_MODELVIEW)
         gl.glLoadIdentity()
-        camera_transform: pgf.Matrix4d = self._camera.GetAttribute("xformOp:transform").Get()  
+        camera_transform: pgf.Matrix4d = self._camera.GetAttribute("xformOp:transform").Get()  * self._up_axis_matrix
         camera_transform_offset = camera_transform.GetInverse()
         camera_transform_offset_np = np.array([camera_transform_offset.GetRow(i) for i in range(4)])
         gl.glMultMatrixf(camera_transform_offset_np.flatten())
@@ -310,20 +324,24 @@ class ViewportPanel(cbase.Panel):
         gl.glLineWidth(axis_width)
         gl.glBegin(gl.GL_LINES)
 
-        #X
-        gl.glColor3f(1, 0.0, 0.0)
+        #PRI
+        pri_color = (1.0, 0.0, 0.0, 1.0)
+        gl.glColor4f(*pri_color)
         gl.glVertex3f(0.0, 0.0, 0.0)
         gl.glVertex3f(axis_size, 0.0, 0.0)
 
-        #Y
-        gl.glColor3f(0.0, 1, 0.0)
+        #SEC
+        sec_color = (0.0, 1.0, 0.0, 1.0) if self._up_axis == "Y" else (0.0, 0.0, 1.0, 1.0)
+        gl.glColor4f(*sec_color)
         gl.glVertex3f(0.0, 0.0, 0.0)
         gl.glVertex3f(0.0, axis_size, 0.0)
 
-        #Z
-        gl.glColor3f(0.0, 0.0, 1)
+        #UP
+        up_color = (0.0, 0.0, 1.0, 1.0) if self._up_axis == "Y" else (0.0, 1.0, 0.0, 1.0)
+        gl.glColor4f(*up_color)
         gl.glVertex3f(0.0, 0.0, 0.0)
-        gl.glVertex3f(0.0, 0.0, axis_size)
+        up_axis_size = axis_size if self._up_axis == "Y" else -axis_size
+        gl.glVertex3f(0.0, 0.0, up_axis_size)
         
         gl.glEnd()
         gl.glPopMatrix()
@@ -343,6 +361,39 @@ class ViewportPanel(cbase.Panel):
         self._update_hydra_camera()
         self._hydra.Render(self._stage.GetPseudoRoot(), self._hydra_rend_params)
         self._draw_opengl_grid()
+
+    def _draw_up_axis_dropdown(self):
+        """
+        Draw the up axis dropdown.
+        """
+        imgui.set_cursor_pos_x(0)
+        imgui.push_font(self._frame._font_small)
+        imgui.push_style_var(imgui.StyleVar_.frame_rounding, 3)
+        imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0)
+        imgui.push_style_var(imgui.StyleVar_.frame_padding, (10, 5))
+        imgui.push_style_var(imgui.StyleVar_.item_spacing, (5, 5))
+
+        imgui.push_style_color(imgui.Col_.button, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.button_active, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.button_hovered, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.frame_bg, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.frame_bg_active, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.frame_bg_hovered, (0, 0, 0, 0))
+
+        imgui.push_item_width(30)
+
+        if imgui.begin_combo("##up_axis", "", imgui.ComboFlags_.height_largest):          
+            for axis in ["Y", "Z"]:
+                selected, clicked = imgui.selectable(f"{axis}-Up", self._up_axis == axis)
+                if selected:
+                    if self._stage:
+                        self._up_axis = axis
+                        self._calc_up_axis()
+                        self._calc_frame_scene()
+            imgui.end_combo()
+        imgui.pop_style_var(4)
+        imgui.pop_style_color(6)
+        imgui.pop_font()
 
     #MOVE
     def _draw_draw_style_radio(self):
@@ -393,6 +444,7 @@ class ViewportPanel(cbase.Panel):
         imgui.set_next_window_size((self._panel_width, self._panel_height))
         imgui.set_next_window_pos(self._panel_position)
         imgui.begin(self._name, True, self._window_flags)
+        self._draw_up_axis_dropdown()
         self._draw_draw_style_radio()
 
     def update_usd(self):
