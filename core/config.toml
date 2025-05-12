@@ -160,7 +160,7 @@ up_axis = "Z"
 default_draw_style = "flat"
 grid_color = [0.25, 0.25, 0.25, 1.0]
 clipping_range = [1.0, 10000000.0]
-focal_length = 50.0
+focal_length = 35.0
 grid_size = 1500
 grid_density = 15
 

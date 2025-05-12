@@ -1,7 +1,7 @@
 #####################################################################################################################################
 # USD Asset Viewer | Tool | Panel | Viewport
 # TODO:
-# -
+# -Blank scene camera / grid / rotatable lighting
 #####################################################################################################################################
 
 # PYTHON
@@ -18,6 +18,7 @@ import pxr.UsdGeom as pgeo
 import pxr.UsdImagingGL as pimg
 import pxr.Gf as pgf
 import pxr.Sdf as psdf
+import pxr.UsdLux as plux
 import pxr.UsdShade as pshd
 import numpy as np
 
@@ -162,6 +163,32 @@ class ViewportPanel(cbase.Panel):
         xform_op_order.Set(["xformOp:transform"])
         return camera.GetPrim()
 
+    def _create_lighting(self):
+        """
+        Create default 3 point lighting.
+        """
+        lights_xform = pgeo.Xform.Define(self._stage, "/LightNull")
+        lights_xform.GetPrim().CreateAttribute("xformOp:transform", psdf.ValueTypeNames.Matrix4d)
+        lights_xform_op_order = lights_xform.GetPrim().CreateAttribute("xformOpOrder", psdf.ValueTypeNames.TokenArray)
+        lights_xform_op_order.Set(["xformOp:transform"])
+
+        light_key = self._create_light("/LightNull/KeyLight", (1.0, .95, 0.9))
+        light_fill = self._create_light("/LightNull/FillLight", (0.9, 0.9, 1.0))
+        light_back = self._create_light("/LightNull/BackLight", (1.0, 1.0, 1.0))
+
+
+    def _create_light(self, path: str, color: tuple) -> plux.DistantLight:
+        """
+        Create a light for the scene.
+        """
+        light = plux.DistantLight.Define(self._stage, path)
+        light.CreateIntensityAttr(1000.0)
+        light.CreateColorAttr(pgf.Vec3f(*color))
+        light.GetPrim().CreateAttribute("xformOp:transform", psdf.ValueTypeNames.Matrix4d)
+        light_xform_op_order = light.GetPrim().CreateAttribute("xformOpOrder", psdf.ValueTypeNames.TokenArray)
+        light_xform_op_order.Set(["xformOp:transform"])
+        return light
+
     def _calc_fov(self):
         camera = pgeo.Camera(self._camera)
         fov = 2 * math.atan(camera.GetVerticalApertureAttr().Get() / (2 * camera.GetFocalLengthAttr().Get()))
@@ -203,6 +230,11 @@ class ViewportPanel(cbase.Panel):
             self._calc_frame_scene()
         self._prev_cursor_pos = cursor_pos
 
+    def _calc_lighting_rotate(self, delta_x: float, delta_y: float) -> None:
+        """
+        Calculate the user rotation of the lights.
+        """
+        
     def _calc_viewport_orbit(self, delta_x: float, delta_y: float) -> None:
         """
         Calculate the orbit transformation for the viewport.
@@ -277,7 +309,6 @@ class ViewportPanel(cbase.Panel):
         gl.glDepthFunc(gl.GL_LESS)
         gl.glEnable(gl.GL_MULTISAMPLE)
         
-
     def _draw_opengl_grid(self) -> None:
         """
         Draw a grid.
@@ -401,7 +432,6 @@ class ViewportPanel(cbase.Panel):
         gl.glPopMatrix()
         gl.glPopAttrib()
 
-
     def _hydra_render_loop(self) -> None:
         """
         Render loop for the Hydra renderer.
@@ -450,7 +480,6 @@ class ViewportPanel(cbase.Panel):
         imgui.pop_style_color(6)
         imgui.pop_font()
 
-    #MOVE
     def _draw_draw_style_radio(self):
         """
         Draw the render modes for the viewport.
