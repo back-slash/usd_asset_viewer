@@ -1073,18 +1073,24 @@ class GLFWOpenGLWindow:
         self._cfg_height = self._cfg["glfw"]["window_size"][1]
         self._cfg_title = self._cfg["glfw"]["title"]
         self._cfg_gl_color = self._cfg["glfw"]["gl_color"]
+        self._cfg_msaa = self._cfg["glfw"]["msaa"]
 
     def _init_frame(self):
         """
-        Initialize the GLFW window.
+        Initialize the GLFW window with 4x MSAA.
         """
         if not glfw.init():
             raise RuntimeError("Failed to initialize GLFW")
+        
+        if self._cfg_msaa > 0:
+            glfw.window_hint(glfw.SAMPLES, self._cfg_msaa)
+        
         self._window = glfw.create_window(self._cfg_width, self._cfg_height, self._cfg_title, None, None)
         if not self._window:
             glfw.terminate()
             raise RuntimeError("Failed to create GLFW window")
         glfw.make_context_current(self._window)
+    
 
     def _render_loop(self):
         """
