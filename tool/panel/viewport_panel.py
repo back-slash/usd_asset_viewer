@@ -349,7 +349,7 @@ class ViewportPanel(cbase.Panel):
 
         gl.glPushMatrix()
 
-        gizmo_size = 75
+        gizmo_size = 50
         gl.glViewport(int(self._hydra_x_min) + 10, int(self._hydra_y_min), gizmo_size, gizmo_size)
 
         gl.glMatrixMode(gl.GL_PROJECTION)

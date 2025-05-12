@@ -10,7 +10,6 @@ import ctypes
 import sys
 
 # ADDONS
-from attr import has
 from imgui_bundle import imgui
 import pxr.Usd as pusd
 import pxr.Gf as pgf

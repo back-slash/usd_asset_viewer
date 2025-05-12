@@ -11,7 +11,7 @@ title = "USD Asset Viewer"
 window_size = [1280, 720]
 gl_color = [0.1, 0.1, 0.1, 1.0]
 vsync = true
-msaa = 8
+msaa = 4
 
 [config]
 docking = false
