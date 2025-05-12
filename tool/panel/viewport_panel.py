@@ -275,6 +275,7 @@ class ViewportPanel(cbase.Panel):
         gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
         gl.glEnable(gl.GL_DEPTH_TEST)
         gl.glDepthFunc(gl.GL_LESS)
+        gl.glEnable(gl.GL_MULTISAMPLE)
         
 
     def _draw_opengl_grid(self) -> None:
@@ -296,7 +297,6 @@ class ViewportPanel(cbase.Panel):
         left = -right
         gl.glFrustum(left, right, bottom, top, near, far)
 
-
         gl.glMatrixMode(gl.GL_MODELVIEW)        
         gl.glLoadIdentity()
         camera_transform: pgf.Matrix4d = self._camera.GetAttribute("xformOp:transform").Get()  * self._up_axis_matrix
@@ -304,7 +304,6 @@ class ViewportPanel(cbase.Panel):
         camera_transform_offset_np = np.array([camera_transform_offset.GetRow(i) for i in range(4)])
         gl.glLoadMatrixf(camera_transform_offset_np.flatten())
 
-        #GRID
         grid_size = self._cfg["viewport"]["grid_size"]
         grid_density = self._cfg["viewport"]["grid_density"]
         grid_color = self._cfg["viewport"]["grid_color"]
@@ -379,7 +378,7 @@ class ViewportPanel(cbase.Panel):
         quad_size_min = axis_length * 0.1
         quad_size_max = axis_length
         gl.glBegin(gl.GL_QUADS)
-        
+
         gl.glColor4f(1, 1, 1, 0.25)
         gl.glVertex3f(quad_size_min, 0.0, quad_size_min)
         gl.glVertex3f(quad_size_max, 0.0, quad_size_min)
