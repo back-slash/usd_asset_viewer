@@ -5,9 +5,9 @@
 #####################################################################################################################################
 
 # PYTHON
+from turtle import up
 from typing import Any
 import math
-
 
 # ADDONS
 from imgui_bundle import imgui
@@ -75,11 +75,12 @@ class ViewportPanel(cbase.Panel):
         if render_plugins:
             glfw.set_scroll_callback(self._window, self._mouse_scroll_callback)
             self._hydra.SetRendererPlugin(render_plugins[0])
+            self._scene_bbox_center, self._scene_bbox_size = self._create_scene_bounding_box()
             self._camera = self._create_camera()
             self._hydra.SetCameraPath(self._camera.GetPath())
-            self._scene_bbox_center, self._scene_bbox_size = self._create_scene_bounding_box()
-            self._calc_frame_scene()
             self._init_opengl_settings()
+            self._create_lighting()
+            self._calc_frame_scene()
         else:
             raise RuntimeError("No renderer plugins available")
 
@@ -113,6 +114,7 @@ class ViewportPanel(cbase.Panel):
         self._orbit = False
         self._zoom = False
         self._pan = False
+        self._light_rotate = False
         self._incremental_zoom_in = False
         self._incremental_zoom_out = False
         self._frame_scene = False
@@ -133,6 +135,8 @@ class ViewportPanel(cbase.Panel):
             self._zoom = True
         elif self._key_alt == glfw.PRESS and self._key_mouse_middle == glfw.PRESS:
             self._pan = True
+        elif self._key_shift == glfw.PRESS and self._key_mouse_right == glfw.PRESS:
+            self._light_rotate = True
         elif self._key_scroll_up:
             self._incremental_zoom_in = True
         elif self._key_scroll_down:
@@ -163,31 +167,74 @@ class ViewportPanel(cbase.Panel):
         xform_op_order.Set(["xformOp:transform"])
         return camera.GetPrim()
 
+    def _calc_light_transform(self, light_position, target_position):
+        """
+        Calculate the light transform matrix.
+        """
+        world_up = pgf.Vec3d(0, 1, 0) if self._up_axis == "Y" else pgf.Vec3d(0, 0, 1)
+        light_matrix = cutils.calc_look_at(light_position, target_position, world_up, forward_neg=True)
+        return light_matrix
+
     def _create_lighting(self):
         """
-        Create default 3 point lighting.
+        Create default 3-point lighting.
         """
-        lights_xform = pgeo.Xform.Define(self._stage, "/LightNull")
-        lights_xform.GetPrim().CreateAttribute("xformOp:transform", psdf.ValueTypeNames.Matrix4d)
-        lights_xform_op_order = lights_xform.GetPrim().CreateAttribute("xformOpOrder", psdf.ValueTypeNames.TokenArray)
+        light_xform = pgeo.Xform.Define(self._stage, "/LightNull")
+        light_xform.GetPrim().CreateAttribute("xformOp:transform", psdf.ValueTypeNames.Matrix4d)
+        light_xform.GetPrim().GetAttribute("xformOp:transform").Set(pgf.Matrix4d().SetIdentity())
+        lights_xform_op_order = light_xform.GetPrim().CreateAttribute("xformOpOrder", psdf.ValueTypeNames.TokenArray)
         lights_xform_op_order.Set(["xformOp:transform"])
+        self._light_xform = light_xform.GetPrim()
+        
+        zero_position = pgf.Vec3d(0.0, 0.0, 0.0)
+        distance = 100
+        key_position = pgf.Vec3d(5.0, 5.0, 5.0).GetNormalized() * distance
+        fill_position = pgf.Vec3d(-5.0, 3.0, 5.0).GetNormalized() * distance
+        back_position = pgf.Vec3d(0.0, 5.0, -5.0).GetNormalized() * distance
 
-        light_key = self._create_light("/LightNull/KeyLight", (1.0, .95, 0.9))
-        light_fill = self._create_light("/LightNull/FillLight", (0.9, 0.9, 1.0))
-        light_back = self._create_light("/LightNull/BackLight", (1.0, 1.0, 1.0))
+        key_transform = self._calc_light_transform(key_position, zero_position)
+        fill_transform = self._calc_light_transform(fill_position, zero_position)
+        back_transform = self._calc_light_transform(back_position, zero_position)
+
+        self._light_key = self._create_light("/LightNull/KeyLight", (1.0, 0.95, 0.9), 15.0, key_transform)
+        self._light_fill = self._create_light("/LightNull/FillLight", (0.9, 0.9, 1.0), 8.0, fill_transform)
+        self._light_back = self._create_light("/LightNull/BackLight", (1.0, 1.0, 1.0), 10.0, back_transform)
 
 
-    def _create_light(self, path: str, color: tuple) -> plux.DistantLight:
+    def _create_helper(self, path: str, transform: pgf.Matrix4d) -> pusd.Prim:
         """
-        Create a light for the scene.
+        Create a helper for the scene.
+        """
+        helper = pgeo.Xform.Define(self._stage, path)
+        helper.GetPrim().CreateAttribute("xformOp:transform", psdf.ValueTypeNames.Matrix4d)
+        helper.GetPrim().GetAttribute("xformOp:transform").Set(transform)
+        helper_xform_op_order = helper.GetPrim().CreateAttribute("xformOpOrder", psdf.ValueTypeNames.TokenArray)
+        helper_xform_op_order.Set(["xformOp:transform"])
+        return helper.GetPrim()
+
+    def _create_light(self, path: str, color: tuple, intensity: float, transform: pgf.Matrix4d) -> pusd.Prim:
+        """
+        Create a light for the scene with a specified intensity.
         """
         light = plux.DistantLight.Define(self._stage, path)
-        light.CreateIntensityAttr(1000.0)
+        light.CreateIntensityAttr(intensity)
         light.CreateColorAttr(pgf.Vec3f(*color))
+        light.CreateAngleAttr(35.0)
         light.GetPrim().CreateAttribute("xformOp:transform", psdf.ValueTypeNames.Matrix4d)
+        light.GetPrim().GetAttribute("xformOp:transform").Set(transform)
         light_xform_op_order = light.GetPrim().CreateAttribute("xformOpOrder", psdf.ValueTypeNames.TokenArray)
         light_xform_op_order.Set(["xformOp:transform"])
-        return light
+        return light.GetPrim()
+
+    def _calc_lighting_rotate(self, delta_x:float, delta_y:float) -> None:
+        """
+        Calculate the user rotation of the lights.
+        """
+        rot_axis = pgf.Vec3d(0, 1, 0) if self._up_axis == "Y" else pgf.Vec3d(0, 0, 1)
+        rot_y_matrix = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x * 0.5))
+        light_transform = self._light_xform.GetAttribute("xformOp:transform").Get()
+        light_transform = light_transform * rot_y_matrix
+        self._light_xform.GetAttribute("xformOp:transform").Set(light_transform)
 
     def _calc_fov(self):
         camera = pgeo.Camera(self._camera)
@@ -198,7 +245,7 @@ class ViewportPanel(cbase.Panel):
         """
         Create a bounding box for the scene.
         """
-        bbox_cache = pgeo.BBoxCache(pusd.TimeCode.Default(), includedPurposes=[pgeo.Tokens.default_, pgeo.Tokens.render])
+        bbox_cache = pgeo.BBoxCache(pusd.TimeCode.Default(), includedPurposes=[pgeo.Tokens.default_, pgeo.Tokens.render]) ########################
         bbox = bbox_cache.ComputeWorldBound(self._stage.GetPseudoRoot())
         bbox_min = bbox.GetRange().GetMin()
         bbox_max = bbox.GetRange().GetMax()
@@ -206,13 +253,13 @@ class ViewportPanel(cbase.Panel):
         bbox_size: pgf.Vec3d = bbox_max - bbox_min
         return bbox_center, bbox_size
 
-    def _update_hydra_camera(self):
+    def _update_hydra_scene(self):
         """
-        Update the viewport camera.
+        Update the viewport scene.
         """
         bbox_quatified = self._scene_bbox_size.GetLength() / 7500.0
         cursor_pos = glfw.get_cursor_pos(self._window)
-        if self._orbit or self._zoom or self._pan:
+        if self._orbit or self._zoom or self._pan or self._light_rotate:
             cursor_pos = glfw.get_cursor_pos(self._window)
             delta_x = cursor_pos[0] - self._prev_cursor_pos[0]
             delta_y = cursor_pos[1] - self._prev_cursor_pos[1]
@@ -222,6 +269,8 @@ class ViewportPanel(cbase.Panel):
                 self._calc_viewport_zoom(delta_x, delta_y)
             elif self._pan:
                 self._calc_viewport_pan(delta_x, delta_y)
+            elif self._light_rotate:
+                self._calc_lighting_rotate(delta_x, delta_y)
         if self._incremental_zoom_in:
             self._calc_incremental_zoom(bbox_quatified, out=False)
         if self._incremental_zoom_out:
@@ -230,11 +279,6 @@ class ViewportPanel(cbase.Panel):
             self._calc_frame_scene()
         self._prev_cursor_pos = cursor_pos
 
-    def _calc_lighting_rotate(self, delta_x: float, delta_y: float) -> None:
-        """
-        Calculate the user rotation of the lights.
-        """
-        
     def _calc_viewport_orbit(self, delta_x: float, delta_y: float) -> None:
         """
         Calculate the orbit transformation for the viewport.
@@ -281,23 +325,69 @@ class ViewportPanel(cbase.Panel):
         transform = transform * camera_xform
         self._camera.GetAttribute("xformOp:transform").Set(transform)
 
-    #ROUGH
     def _calc_frame_scene(self) -> None:
         """
         Frame the scene in the viewport.
         """
-        max_dimension = max(self._scene_bbox_size[0], self._scene_bbox_size[1], self._scene_bbox_size[2])
-        if max_dimension <= 0:
-            max_dimension = 1.0
+        bbox_size_factor = self._scene_bbox_size.GetLength()
+        if bbox_size_factor <= 0:
+            bbox_size_factor = 1.0
         distance_factor = 2.0
-        distance = max_dimension * distance_factor
-        camera_position = self._scene_bbox_center + pgf.Vec3d(0, 0, distance)
-        transform = pgf.Matrix4d().SetIdentity()
-        transform.SetTranslateOnly(camera_position)
-        up = pgf.Vec3d(0, 1, 0)
-        rotation = pgf.Matrix4d().SetLookAt(-camera_position, self._scene_bbox_center, up)
-        transform = transform * rotation * self._up_axis_matrix.GetInverse()
+        distance = bbox_size_factor * distance_factor
+        world_up = pgf.Vec3d(0, 1, 0) if  self._up_axis == "Y" else pgf.Vec3d(0, 0, 1)
+        camera_position = self._camera.GetAttribute("xformOp:transform").Get().ExtractTranslation()
+        if camera_position == pgf.Vec3d(0, 0, 0):
+            camera_position = pgf.Vec3d(1000, 1000, 1000)
+        current_distance = (self._scene_bbox_center - camera_position).GetLength()
+        target_distance = distance / current_distance
+        transform = cutils.calc_look_at(camera_position * target_distance, self._scene_bbox_center, world_up, forward_neg=True)
         self._camera.GetAttribute("xformOp:transform").Set(transform)
+        target_scale = distance / 314
+        light_scale = pgf.Vec3d(target_scale, target_scale, target_scale)
+        self._light_xform.GetAttribute("xformOp:transform").Set(pgf.Matrix4d().SetScale(light_scale) * self._up_axis_matrix.GetInverse())
+
+    def _draw_light_debug(self) -> None:
+        """
+        Draw the light debug.
+        """
+        gl.glPushAttrib(gl.GL_ENABLE_BIT | gl.GL_TRANSFORM_BIT | gl.GL_VIEWPORT_BIT)
+        gl.glPushMatrix()
+
+        self._setup_opengl_viewport()
+        
+        helper_transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0.0, 0.0, -30))
+        key_light_xform = pgeo.Xformable(self._light_key)
+        key_light_color = plux.DistantLight(self._light_key).GetColorAttr().Get()
+        key_light_transform: pgf.Matrix4d = key_light_xform.ComputeLocalToWorldTransform(pusd.TimeCode.Default()) * self._up_axis_matrix
+        key_helper_transform: pgf.Matrix4d  = helper_transform * key_light_transform
+        fill_light_xform = pgeo.Xformable(self._light_fill)
+        fill_light_color = plux.DistantLight(self._light_fill).GetColorAttr().Get()
+        fill_light_transform: pgf.Matrix4d  = fill_light_xform.ComputeLocalToWorldTransform(pusd.TimeCode.Default()) * self._up_axis_matrix
+        fill_helper_transform: pgf.Matrix4d  = helper_transform * fill_light_transform
+        back_light_xform = pgeo.Xformable(self._light_back)
+        back_light_color = plux.DistantLight(self._light_back).GetColorAttr().Get()
+        back_light_transform: pgf.Matrix4d  = back_light_xform.ComputeLocalToWorldTransform(pusd.TimeCode.Default()) * self._up_axis_matrix
+        back_helper_transform: pgf.Matrix4d  = helper_transform * back_light_transform
+
+        gl.glLineWidth(2.0)
+        gl.glBegin(gl.GL_LINES)
+        
+        gl.glColor3f(0.0, 0.0, 0.0)
+        gl.glVertex3f(*key_light_transform.ExtractTranslation())
+        gl.glColor3f(*key_light_color[:3])
+        gl.glVertex3f(*key_helper_transform.ExtractTranslation())
+        gl.glColor3f(0.0, 0.0, 0.0)
+        gl.glVertex3f(*fill_light_transform.ExtractTranslation())
+        gl.glColor3f(*fill_light_color[:3])
+        gl.glVertex3f(*fill_helper_transform.ExtractTranslation())
+        gl.glColor3f(0.0, 0.0, 0.0)
+        gl.glVertex3f(*back_light_transform.ExtractTranslation())
+        gl.glColor3f(*back_light_color[:3])
+        gl.glVertex3f(*back_helper_transform.ExtractTranslation())
+
+        gl.glEnd()
+        gl.glPopMatrix()
+        gl.glPopAttrib()
 
     def _init_opengl_settings(self) -> None:
         """
@@ -308,13 +398,11 @@ class ViewportPanel(cbase.Panel):
         gl.glEnable(gl.GL_DEPTH_TEST)
         gl.glDepthFunc(gl.GL_LESS)
         gl.glEnable(gl.GL_MULTISAMPLE)
-        
-    def _draw_opengl_grid(self) -> None:
+
+    def _setup_opengl_viewport(self) -> None:
         """
-        Draw a grid.
+        Setup OpenGL viewport.
         """
-        gl.glPushAttrib(gl.GL_ENABLE_BIT | gl.GL_TRANSFORM_BIT | gl.GL_VIEWPORT_BIT)
-        gl.glPushMatrix()
         gl.glViewport(int(self._hydra_x_min), int(self._hydra_y_min), int(self._panel_width), int(self._panel_height))
         gl.glMatrixMode(gl.GL_PROJECTION)
         gl.glLoadIdentity()
@@ -330,10 +418,19 @@ class ViewportPanel(cbase.Panel):
 
         gl.glMatrixMode(gl.GL_MODELVIEW)        
         gl.glLoadIdentity()
-        camera_transform: pgf.Matrix4d = self._camera.GetAttribute("xformOp:transform").Get()  * self._up_axis_matrix
+        camera_transform: pgf.Matrix4d = self._camera.GetAttribute("xformOp:transform").Get() * self._up_axis_matrix
         camera_transform_offset = camera_transform.GetInverse()
         camera_transform_offset_np = np.array([camera_transform_offset.GetRow(i) for i in range(4)])
         gl.glLoadMatrixf(camera_transform_offset_np.flatten())
+
+    def _draw_opengl_grid(self) -> None:
+        """
+        Draw a grid.
+        """
+        gl.glPushAttrib(gl.GL_ENABLE_BIT | gl.GL_TRANSFORM_BIT | gl.GL_VIEWPORT_BIT)
+        gl.glPushMatrix()
+
+        self._setup_opengl_viewport()
 
         grid_size = self._cfg["viewport"]["grid_size"]
         grid_density = self._cfg["viewport"]["grid_density"]
@@ -410,19 +507,19 @@ class ViewportPanel(cbase.Panel):
         quad_size_max = axis_length
         gl.glBegin(gl.GL_QUADS)
 
-        gl.glColor4f(1, 1, 1, 0.25)
+        gl.glColor4f(1, 1, 1, 0.2)
         gl.glVertex3f(quad_size_min, 0.0, quad_size_min)
         gl.glVertex3f(quad_size_max, 0.0, quad_size_min)
         gl.glVertex3f(quad_size_max, 0.0, quad_size_max)
         gl.glVertex3f(quad_size_min, 0.0, quad_size_max)
 
-        gl.glColor4f(1, 1, 1, 0.25)
+        gl.glColor4f(1, 1, 1, 0.2)
         gl.glVertex3f(quad_size_min, quad_size_min, 0.0)
         gl.glVertex3f(quad_size_max, quad_size_min, 0.0)
         gl.glVertex3f(quad_size_max, quad_size_max, 0.0)
         gl.glVertex3f(quad_size_min, quad_size_max, 0.0)
 
-        gl.glColor4f(1, 1, 1, 0.25)
+        gl.glColor4f(1, 1, 1, 0.2)
         gl.glVertex3f(0.0, quad_size_min, quad_size_min)
         gl.glVertex3f(0.0, quad_size_max, quad_size_min)
         gl.glVertex3f(0.0, quad_size_max, quad_size_max)
@@ -442,10 +539,11 @@ class ViewportPanel(cbase.Panel):
         self._hydra_y_min = display_size[1] - self._panel_position[1] - self._panel_height
         self._hydra.SetRenderViewport((self._hydra_x_min, self._hydra_y_min, self._panel_width, self._panel_height))
         self._hydra.SetRenderBufferSize(pgf.Vec2i(int(self._panel_width), int(self._panel_height)))
-        self._update_hydra_camera()
+        self._update_hydra_scene()
         self._hydra.Render(self._stage.GetPseudoRoot(), self._hydra_rend_params)
         self._draw_opengl_grid()
         self._draw_opengl_gizmo()
+        self._draw_light_debug()
 
     def _draw_up_axis_dropdown(self):
         """

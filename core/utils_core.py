@@ -15,6 +15,7 @@ from imgui_bundle import imgui
 import OpenGL.GL as gl
 import pxr.Usd as pusd
 from PIL import Image
+import pxr.Gf as pgf
 
 # PROJECT
 import core.static_core as cstat
@@ -148,7 +149,6 @@ def set_window_flag(window_flags: int, config_section: dict, config_identifier: 
     return window_flags
 
 
-
 def set_flag(flag: int, value: bool):
     """
     Set a specific flag for the frame.
@@ -177,3 +177,22 @@ def push_style_color(config_section, config_identifier: str):
     if hasattr(imgui.Col_, config_identifier):
         imgui_identifier = getattr(imgui.Col_, config_identifier)
         imgui.push_style_color(imgui_identifier, color)
+
+def calc_look_at(source_position: pgf.Vec3d, target_position: pgf.Vec3d, up: pgf.Vec3d, forward_neg:bool = False) -> pgf.Matrix4d:
+    """
+    Calculate the look-at matrix.
+    """
+    forward_vector: pgf.Vec3d = (target_position - source_position)
+    forward_vector = forward_vector.GetNormalized()
+    up = up.GetNormalized()
+    if forward_neg:
+        forward_vector = -forward_vector
+    right_vector: pgf.Vec3d = up.GetCross(forward_vector).GetNormalized()
+    up_vector: pgf.Vec3d = forward_vector.GetCross(right_vector).GetNormalized()
+    look_at_matrix: pgf.Matrix4d = pgf.Matrix4d(
+        right_vector[0], right_vector[1], right_vector[2], 0,
+        up_vector[0], up_vector[1], up_vector[2], 0,
+        forward_vector[0], forward_vector[1], forward_vector[2], 0,
+        source_position[0], source_position[1], source_position[2], 1
+    )
+    return look_at_matrix
