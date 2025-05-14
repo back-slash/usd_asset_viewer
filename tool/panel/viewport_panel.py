@@ -617,10 +617,9 @@ class ViewportPanel(cbase.Panel):
         imgui.pop_style_color(7)
         imgui.pop_font()
 
-
     def _draw_light_dropdown(self):
         """
-        Draw the up axis dropdown.
+        Draw the light selection dropdown.
         """
         imgui.set_cursor_pos_x(self._panel_width - 60)
         imgui.push_font(self._frame._font_small)
@@ -639,7 +638,7 @@ class ViewportPanel(cbase.Panel):
 
         imgui.push_item_width(30)
 
-        if imgui.begin_combo("##lights", "", imgui.ComboFlags_.height_largest):
+        if imgui.begin_combo("##light", "", imgui.ComboFlags_.height_largest):
             if self._stage:       
                 selected, clicked = imgui.checkbox("Default", self._default_light)
                 if selected:
@@ -658,6 +657,45 @@ class ViewportPanel(cbase.Panel):
         imgui.pop_style_var(4)
         imgui.pop_style_color(7)
         imgui.pop_font()
+
+
+    def _draw_camera_dropdown(self):
+        """
+        Draw the camera selection dropdown.
+        """
+        imgui.set_cursor_pos_x(self._panel_width - 60)
+        imgui.push_font(self._frame._font_small)
+        imgui.push_style_var(imgui.StyleVar_.frame_rounding, 3)
+        imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0)
+        imgui.push_style_var(imgui.StyleVar_.frame_padding, (10, 5))
+        imgui.push_style_var(imgui.StyleVar_.item_spacing, (0, 0))
+
+        imgui.push_style_color(imgui.Col_.button, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.button_active, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.button_hovered, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.frame_bg, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.frame_bg_active, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.frame_bg_hovered, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.check_mark, (0.5, 0.5, 0.5, 1.0))
+
+        imgui.push_item_width(30)
+
+        if imgui.begin_combo("##camera", "", imgui.ComboFlags_.height_largest):
+            if self._stage:       
+                selected, clicked = imgui.checkbox("Default", self._default_light)
+                if selected:
+                    pass
+            imgui.end_combo()
+        imgui.same_line()
+        icon = cstat.Icon.CAMERA_ICON
+        camera_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, icon, (15, 15))
+        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 2)
+        imgui.image(camera_icon_id, (15, 15), tint_col=(0.75, 0.75, 0.75, 1))
+        imgui.pop_style_var(4)
+        imgui.pop_style_color(7)
+        imgui.pop_font()
+
+
 
     def _draw_draw_style_radio(self):
         """
@@ -710,6 +748,7 @@ class ViewportPanel(cbase.Panel):
         self._draw_draw_style_radio()
         self._draw_up_axis_dropdown()
         self._draw_light_dropdown()
+        self._draw_camera_dropdown()
     
     def update_usd(self):
         super().update_usd()
