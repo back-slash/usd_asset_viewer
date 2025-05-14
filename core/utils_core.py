@@ -178,14 +178,14 @@ def push_style_color(config_section, config_identifier: str):
         imgui_identifier = getattr(imgui.Col_, config_identifier)
         imgui.push_style_color(imgui_identifier, color)
 
-def calc_look_at(source_position: pgf.Vec3d, target_position: pgf.Vec3d, up: pgf.Vec3d, forward_neg:bool = False) -> pgf.Matrix4d:
+def calc_look_at(source_position: pgf.Vec3d, target_position: pgf.Vec3d, up: pgf.Vec3d, flip_forward:bool = False) -> pgf.Matrix4d:
     """
     Calculate the look-at matrix.
     """
     forward_vector: pgf.Vec3d = (target_position - source_position)
     forward_vector = forward_vector.GetNormalized()
     up = up.GetNormalized()
-    if forward_neg:
+    if flip_forward:
         forward_vector = -forward_vector
     right_vector: pgf.Vec3d = up.GetCross(forward_vector).GetNormalized()
     up_vector: pgf.Vec3d = forward_vector.GetCross(right_vector).GetNormalized()

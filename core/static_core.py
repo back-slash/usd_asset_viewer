@@ -42,6 +42,8 @@ class Icon(Enum):
     WIREFRAME_ICON = "icon_wireframe"
     FLAT_ICON = "icon_flat"
     FULL_ICON = "icon_full"
+    AXIS_Z_ICON = "icon_axis_z"
+    AXIS_Y_ICON = "icon_axis_y"
 
 
 class PanelTypes(Enum):

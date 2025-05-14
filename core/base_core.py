@@ -631,7 +631,7 @@ class Panel:
         """
         Update the stage data.
         """
-
+        
     def _set_window_flags(self):
         self._window_flags = 0
         for flag in self._cfg[self._name]['flags']:

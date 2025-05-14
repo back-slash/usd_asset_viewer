@@ -4,19 +4,33 @@
 
 ## Status
 - WORK IN PROGRESS
-- Expected completion: END OF MAY 2025
 
 
 ## Current Screenshot
 ![USD Asset Viewer WIP Screenshot](./docs/images/screenshot_WIP.png)
 
 
-## Planned Features
+## Features
 #### Core
 - Hydra viewport
+    - Default camera
+    - Default lighting
+    - Up axis selection
+    - View modes:
+        - Wireframe
+        - Shaded with wireframe
+        - Full shading
+    - Camera selection
+    - Disable scene or default lighting
+    - OGL visualization for non-geometry objects:
+        - Camera
+        - XForm
+        - Lights
+        - Bone
 - Outliner panel
 - Details panel
-- Trackbar panel (Animation support)
+- Trackbar panel
+    - Animation support
 #### Stretch
 - Node network
 

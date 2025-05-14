@@ -23,7 +23,69 @@ class OutlinerPanel(cbase.Panel):
     """
     def __init__(self, frame: cbase.Frame):
         super().__init__("outliner", frame)
-    
+
+    def _draw_vertical_separator(self) -> None:
+        """
+        Draw a vertical separator line.
+        """
+        draw_list = imgui.get_window_draw_list()
+        window_pos = imgui.get_window_pos()
+        window_size = imgui.get_window_size()
+        separator_min = imgui.ImVec2(window_pos[0] + window_size[0] - 1, window_pos[1])
+        separator_max = imgui.ImVec2(separator_min[0] + 1, separator_min[1] + window_size[1])
+        draw_list.add_rect_filled(separator_min, separator_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=0.0, flags=0)
+
+    def _draw_tab_bar(self) -> None:
+        """
+        Draw the tab bar for the outliner panel.
+        """
+        imgui.push_style_var(imgui.StyleVar_.tab_border_size, 1.0)
+        imgui.push_style_var(imgui.StyleVar_.tab_bar_border_size, 1.0)
+        imgui.push_style_var(imgui.StyleVar_.tab_rounding, 0.0)
+        imgui.push_style_var(imgui.StyleVar_.frame_padding, (10, 5))
+        imgui.push_style_var(imgui.StyleVar_.item_inner_spacing, (1, 1))
+
+        imgui.push_style_color(imgui.Col_.tab, (0.2, 0.2, 0.2, 1))
+        imgui.push_style_color(imgui.Col_.tab_selected, (0.3, 0.3, 0.3, 1))
+        imgui.push_style_color(imgui.Col_.tab_hovered, (0.35, 0.35, 0.35, 1))
+        
+        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() - 2)
+        imgui.begin_tab_bar("##outliner_tab_bar")
+        selected, clicked = imgui.begin_tab_item("Standard")
+        if selected:
+            self._draw_base_tab()
+            imgui.end_tab_item()
+        selected, clicked = imgui.begin_tab_item("Skeleton")
+        if selected:
+            self._draw_base_tab()
+            imgui.end_tab_item()
+        selected, clicked = imgui.begin_tab_item("Material")
+        if selected:
+            self._draw_base_tab()
+            imgui.end_tab_item()
+        imgui.end_tab_bar()
+        tab_rect = imgui.get_item_rect_max()
+        tab_line_min = imgui.ImVec2(0, tab_rect[1] - 1)
+        tab_line_max = imgui.ImVec2(tab_line_min[0] + imgui.get_window_width(), tab_line_min[1] + 1)
+        draw_list = imgui.get_window_draw_list()
+        draw_list.add_rect_filled(tab_line_min, tab_line_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=0.0, flags=0)
+
+        imgui.pop_style_var(5)
+        imgui.pop_style_color(3)
+
+    def _draw_base_tab(self) -> None:
+        """
+        Draw the standard tab of the outliner panel.
+        """
+        draw_list = imgui.get_window_draw_list()
+        cursor_pos = imgui.get_cursor_pos()
+        window_pos = imgui.get_window_pos()
+        window_size = imgui.get_window_size()
+        bg_rect_min = imgui.ImVec2(window_pos[0], window_pos[1] + cursor_pos[1] - 5)
+        bg_rect_max = imgui.ImVec2(window_size[0], window_size[1]) + window_pos
+        draw_list.add_rect_filled(bg_rect_min, bg_rect_max, imgui.get_color_u32((0.15, 0.15, 0.15, 1)), rounding=0.0, flags=0)
+
+
     def draw(self) -> None:
         """
         Draw the outliner panel.
@@ -31,7 +93,10 @@ class OutlinerPanel(cbase.Panel):
         imgui.set_next_window_size((self._panel_width, self._panel_height))
         imgui.set_next_window_pos(self._panel_position)
         imgui.begin(self._name, True, self._window_flags)
-        imgui.text("Outliner")
+        self._draw_tab_bar()
+        self._draw_vertical_separator()    
+
+    
 
 
 #####################################################################################################################################

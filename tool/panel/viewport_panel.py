@@ -5,7 +5,6 @@
 #####################################################################################################################################
 
 # PYTHON
-from turtle import up
 from typing import Any
 import math
 
@@ -80,6 +79,8 @@ class ViewportPanel(cbase.Panel):
             self._hydra.SetCameraPath(self._camera.GetPath())
             self._init_opengl_settings()
             self._create_lighting()
+            self._disable_scene_lights()
+            self._enable_default_lights()
             self._calc_frame_scene()
         else:
             raise RuntimeError("No renderer plugins available")
@@ -172,7 +173,7 @@ class ViewportPanel(cbase.Panel):
         Calculate the light transform matrix.
         """
         world_up = pgf.Vec3d(0, 1, 0) if self._up_axis == "Y" else pgf.Vec3d(0, 0, 1)
-        light_matrix = cutils.calc_look_at(light_position, target_position, world_up, forward_neg=True)
+        light_matrix = cutils.calc_look_at(light_position, target_position, world_up, flip_forward=True)
         return light_matrix
 
     def _create_lighting(self):
@@ -200,18 +201,6 @@ class ViewportPanel(cbase.Panel):
         self._light_fill = self._create_light("/LightNull/FillLight", (0.9, 0.9, 1.0), 8.0, fill_transform)
         self._light_back = self._create_light("/LightNull/BackLight", (1.0, 1.0, 1.0), 10.0, back_transform)
 
-
-    def _create_helper(self, path: str, transform: pgf.Matrix4d) -> pusd.Prim:
-        """
-        Create a helper for the scene.
-        """
-        helper = pgeo.Xform.Define(self._stage, path)
-        helper.GetPrim().CreateAttribute("xformOp:transform", psdf.ValueTypeNames.Matrix4d)
-        helper.GetPrim().GetAttribute("xformOp:transform").Set(transform)
-        helper_xform_op_order = helper.GetPrim().CreateAttribute("xformOpOrder", psdf.ValueTypeNames.TokenArray)
-        helper_xform_op_order.Set(["xformOp:transform"])
-        return helper.GetPrim()
-
     def _create_light(self, path: str, color: tuple, intensity: float, transform: pgf.Matrix4d) -> pusd.Prim:
         """
         Create a light for the scene with a specified intensity.
@@ -224,6 +213,7 @@ class ViewportPanel(cbase.Panel):
         light.GetPrim().GetAttribute("xformOp:transform").Set(transform)
         light_xform_op_order = light.GetPrim().CreateAttribute("xformOpOrder", psdf.ValueTypeNames.TokenArray)
         light_xform_op_order.Set(["xformOp:transform"])
+        light.GetPrim().GetAttribute("visibility").Set(pgeo.Tokens.inherited)
         return light.GetPrim()
 
     def _calc_lighting_rotate(self, delta_x:float, delta_y:float) -> None:
@@ -237,6 +227,9 @@ class ViewportPanel(cbase.Panel):
         self._light_xform.GetAttribute("xformOp:transform").Set(light_transform)
 
     def _calc_fov(self):
+        """
+        Calculate the field of view for the camera.
+        """
         camera = pgeo.Camera(self._camera)
         fov = 2 * math.atan(camera.GetVerticalApertureAttr().Get() / (2 * camera.GetFocalLengthAttr().Get()))
         return math.degrees(fov)
@@ -340,7 +333,7 @@ class ViewportPanel(cbase.Panel):
             camera_position = pgf.Vec3d(1000, 1000, 1000)
         current_distance = (self._scene_bbox_center - camera_position).GetLength()
         target_distance = distance / current_distance
-        transform = cutils.calc_look_at(camera_position * target_distance, self._scene_bbox_center, world_up, forward_neg=True)
+        transform = cutils.calc_look_at(camera_position * target_distance, self._scene_bbox_center, world_up, flip_forward=True)
         self._camera.GetAttribute("xformOp:transform").Set(transform)
         target_scale = distance / 314
         light_scale = pgf.Vec3d(target_scale, target_scale, target_scale)
@@ -350,12 +343,14 @@ class ViewportPanel(cbase.Panel):
         """
         Draw the light debug.
         """
+        if not self._default_light:
+            return
         gl.glPushAttrib(gl.GL_ENABLE_BIT | gl.GL_TRANSFORM_BIT | gl.GL_VIEWPORT_BIT)
         gl.glPushMatrix()
 
         self._setup_opengl_viewport()
         
-        helper_transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0.0, 0.0, -30))
+        helper_transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0.0, 0.0, -10))
         key_light_xform = pgeo.Xformable(self._light_key)
         key_light_color = plux.DistantLight(self._light_key).GetColorAttr().Get()
         key_light_transform: pgf.Matrix4d = key_light_xform.ComputeLocalToWorldTransform(pusd.TimeCode.Default()) * self._up_axis_matrix
@@ -401,7 +396,7 @@ class ViewportPanel(cbase.Panel):
 
     def _setup_opengl_viewport(self) -> None:
         """
-        Setup OpenGL viewport.
+        Setup OpenGL viewport and perspective.
         """
         gl.glViewport(int(self._hydra_x_min), int(self._hydra_y_min), int(self._panel_width), int(self._panel_height))
         gl.glMatrixMode(gl.GL_PROJECTION)
@@ -477,7 +472,7 @@ class ViewportPanel(cbase.Panel):
 
         gl.glPushMatrix()
 
-        gizmo_size = 50
+        gizmo_size = 60
         gl.glViewport(int(self._hydra_x_min) + 10, int(self._hydra_y_min), gizmo_size, gizmo_size)
 
         gl.glMatrixMode(gl.GL_PROJECTION)
@@ -492,13 +487,13 @@ class ViewportPanel(cbase.Panel):
         axis_length = 0.5
         gl.glLineWidth(2.0)
         gl.glBegin(gl.GL_LINES)
-        gl.glColor3f(1, 0.0, 0.0)
+        gl.glColor3f(1.0, 0.0, 0.0)
         gl.glVertex3f(0.0, 0.0, 0.0)
         gl.glVertex3f(axis_length, 0.0, 0.0)
-        gl.glColor3f(0.0, 1, 0.0)
+        gl.glColor3f(0.0, 1.0, 0.0)
         gl.glVertex3f(0.0, 0.0, 0.0)
         gl.glVertex3f(0.0, axis_length, 0.0)
-        gl.glColor3f(0.0, 0.0, 1)
+        gl.glColor3f(0.0, 0.0, 1.0)
         gl.glVertex3f(0.0, 0.0, 0.0)
         gl.glVertex3f(0.0, 0.0, axis_length)
         gl.glEnd()
@@ -529,6 +524,44 @@ class ViewportPanel(cbase.Panel):
         gl.glPopMatrix()
         gl.glPopAttrib()
 
+    def _disable_scene_lights(self):
+        """
+        Disable all lights in the scene.
+        """
+        self._scene_light = False
+        self._light_disable_list: list[pusd.Prim] = []
+        prim_list = self._stage.Traverse()
+        for prim in prim_list:
+            if prim.HasAPI(plux.LightAPI) and prim not in [self._light_key, self._light_fill, self._light_back]:
+                if prim.GetAttribute("visibility").Get() != pgeo.Tokens.invisible:
+                    self._light_disable_list.append(prim)
+                    prim.GetAttribute("visibility").Set(pgeo.Tokens.invisible)
+
+    def _enable_scene_lights(self):
+        """
+        Enable all lights in the scene.
+        """
+        self._scene_light = True
+        for light in self._light_disable_list:
+            light.GetAttribute("visibility").Set(pgeo.Tokens.inherited)
+        self._light_disable_list = []
+
+    def _disable_default_lights(self):
+        """
+        Disable all default lights in the scene.
+        """
+        self._default_light = False
+        for light in [self._light_key, self._light_fill, self._light_back]:
+            light.GetAttribute("visibility").Set(pgeo.Tokens.invisible)
+
+    def _enable_default_lights(self):
+        """
+        Enable all default lights in the scene.
+        """
+        self._default_light = True
+        for light in [self._light_key, self._light_fill, self._light_back]:
+            light.GetAttribute("visibility").Set(pgeo.Tokens.inherited)
+
     def _hydra_render_loop(self) -> None:
         """
         Render loop for the Hydra renderer.
@@ -549,12 +582,12 @@ class ViewportPanel(cbase.Panel):
         """
         Draw the up axis dropdown.
         """
-        imgui.set_cursor_pos_x(self._panel_width - 50)
+        imgui.set_cursor_pos_x(self._panel_width - 60)
         imgui.push_font(self._frame._font_small)
         imgui.push_style_var(imgui.StyleVar_.frame_rounding, 3)
         imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0)
-        imgui.push_style_var(imgui.StyleVar_.frame_padding, (10, 5))
-        imgui.push_style_var(imgui.StyleVar_.item_spacing, (5, 5))
+        imgui.push_style_var(imgui.StyleVar_.frame_padding, (5, 5))
+        imgui.push_style_var(imgui.StyleVar_.item_spacing, (0, 0))
 
         imgui.push_style_color(imgui.Col_.button, (0, 0, 0, 0))
         imgui.push_style_color(imgui.Col_.button_active, (0, 0, 0, 0))
@@ -562,20 +595,68 @@ class ViewportPanel(cbase.Panel):
         imgui.push_style_color(imgui.Col_.frame_bg, (0, 0, 0, 0))
         imgui.push_style_color(imgui.Col_.frame_bg_active, (0, 0, 0, 0))
         imgui.push_style_color(imgui.Col_.frame_bg_hovered, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.check_mark, (0.5, 0.5, 0.5, 1.0))
 
         imgui.push_item_width(30)
 
-        if imgui.begin_combo("##up_axis", "", imgui.ComboFlags_.height_largest):          
-            for axis in ["Y", "Z"]:
-                selected, clicked = imgui.selectable(f"  {axis}  ", self._up_axis == axis)
-                if selected:
-                    if self._stage:
+        if imgui.begin_combo("##up_axis", "", imgui.ComboFlags_.height_largest):    
+            if self._stage:      
+                for axis in ["Y", "Z"]:
+                    selected, clicked = imgui.checkbox(f"  {axis}  ", self._up_axis == axis)
+                    if selected:
                         self._up_axis = axis
                         self._calc_up_axis()
                         self._calc_frame_scene()
             imgui.end_combo()
+        imgui.same_line()
+        icon = cstat.Icon.AXIS_Y_ICON if self._up_axis == "Y" else cstat.Icon.AXIS_Z_ICON
+        axis_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, icon, (15, 15))
+        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 2)
+        imgui.image(axis_icon_id, (15, 15), tint_col=(0.75, 0.75, 0.75, 1))
         imgui.pop_style_var(4)
-        imgui.pop_style_color(6)
+        imgui.pop_style_color(7)
+        imgui.pop_font()
+
+
+    def _draw_light_dropdown(self):
+        """
+        Draw the up axis dropdown.
+        """
+        imgui.set_cursor_pos_x(self._panel_width - 60)
+        imgui.push_font(self._frame._font_small)
+        imgui.push_style_var(imgui.StyleVar_.frame_rounding, 3)
+        imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0)
+        imgui.push_style_var(imgui.StyleVar_.frame_padding, (10, 5))
+        imgui.push_style_var(imgui.StyleVar_.item_spacing, (0, 0))
+
+        imgui.push_style_color(imgui.Col_.button, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.button_active, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.button_hovered, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.frame_bg, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.frame_bg_active, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.frame_bg_hovered, (0, 0, 0, 0))
+        imgui.push_style_color(imgui.Col_.check_mark, (0.5, 0.5, 0.5, 1.0))
+
+        imgui.push_item_width(30)
+
+        if imgui.begin_combo("##lights", "", imgui.ComboFlags_.height_largest):
+            if self._stage:       
+                selected, clicked = imgui.checkbox("Default", self._default_light)
+                if selected:
+                    self._enable_default_lights()
+                    self._disable_scene_lights()
+                selected, clicked = imgui.checkbox("Scene", self._scene_light)
+                if selected:
+                    self._disable_default_lights()
+                    self._enable_scene_lights()
+            imgui.end_combo()
+        imgui.same_line()
+        icon = cstat.Icon.LIGHT_ICON
+        light_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, icon, (15, 15))
+        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 2)
+        imgui.image(light_icon_id, (15, 15), tint_col=(0.75, 0.75, 0.75, 1))
+        imgui.pop_style_var(4)
+        imgui.pop_style_color(7)
         imgui.pop_font()
 
     def _draw_draw_style_radio(self):
@@ -628,6 +709,7 @@ class ViewportPanel(cbase.Panel):
         imgui.begin(self._name, True, self._window_flags)
         self._draw_draw_style_radio()
         self._draw_up_axis_dropdown()
+        self._draw_light_dropdown()
     
     def update_usd(self):
         super().update_usd()

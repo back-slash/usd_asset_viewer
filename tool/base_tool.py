@@ -73,8 +73,15 @@ class USDAssetViewer(cbase.Frame):
             if imgui.menu_item_simple("Exit", "", False, True):
                 self._shutdown()
             imgui.end_menu()
-        imgui.end_menu_bar() 
+        imgui.end_menu_bar()
         menu_bar_size = imgui.get_item_rect_size()   
+        item_rect_max = imgui.get_item_rect_max()        
+        draw_list = imgui.get_window_draw_list()
+        window_pos = imgui.get_window_pos()
+        window_size = imgui.get_window_size()
+        menu_line_min = imgui.ImVec2(window_pos[0], window_pos[1] + item_rect_max.y)
+        menu_line_max = imgui.ImVec2(menu_line_min[0] + window_size[0], menu_line_min[1] + 1)
+        draw_list.add_rect_filled(menu_line_min, menu_line_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=0.0, flags=0)
         imgui.end()
         return menu_bar_size
 
@@ -83,7 +90,7 @@ class USDAssetViewer(cbase.Frame):
         Draw the USD Asset Viewer.
         """
         self._menu_bar_size = self._draw_menu_bar()
-        min_y = self._menu_bar_size.y + 1
+        min_y = self._menu_bar_size.y + 2
         trackbar_min_y = self._display_size[1] - self._cfg['trackbar']['height']
         trackbar_size_x = self._display_size[0]
         trackbar_size_y = self._cfg['trackbar']['height']
