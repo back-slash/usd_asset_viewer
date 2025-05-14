@@ -51,6 +51,9 @@ class USDAssetViewer(cbase.Frame):
             usd_path = os.path.join(cutils.get_usd_default_path(), self._cfg['settings']['default_usd'])
         self._scene_manager = cbase.SceneManager(usd_path)
         self._viewport.update_usd()
+        self._outliner_panel.update_usd()
+        self._details_panel.update_usd()
+        self._trackbar_panel.update_usd()
 
     def _set_window_flags(self):
         super()._set_window_flags()
