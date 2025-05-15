@@ -26,7 +26,9 @@ import core.static_core as cstat
 import core.utils_core as cutils
 import core.base_core as cbase
 #####################################################################################################################################
-           
+
+
+
 
 
 
@@ -167,6 +169,61 @@ class ViewportPanel(cbase.Panel):
            xform_op_order = camera.GetPrim().CreateAttribute("xformOpOrder", psdf.ValueTypeNames.TokenArray)
         xform_op_order.Set(["xformOp:transform"])
         return camera.GetPrim()
+
+    def _disable_scene_lights(self):
+        """
+        Disable all lights in the scene.
+        """
+        self._scene_light = False
+        self._light_disable_list: list[pusd.Prim] = []
+        prim_list = self._stage.Traverse()
+        for prim in prim_list:
+            if prim.HasAPI(plux.LightAPI) and prim not in [self._light_key, self._light_fill, self._light_back]:
+                if prim.GetAttribute("visibility").Get() != pgeo.Tokens.invisible:
+                    self._light_disable_list.append(prim)
+                    prim.GetAttribute("visibility").Set(pgeo.Tokens.invisible)
+
+    def _enable_scene_lights(self):
+        """
+        Enable all lights in the scene.
+        """
+        self._scene_light = True
+        for light in self._light_disable_list:
+            light.GetAttribute("visibility").Set(pgeo.Tokens.inherited)
+        self._light_disable_list = []
+
+    def _disable_default_lights(self):
+        """
+        Disable all default lights in the scene.
+        """
+        self._default_light = False
+        for light in [self._light_key, self._light_fill, self._light_back]:
+            light.GetAttribute("visibility").Set(pgeo.Tokens.invisible)
+
+    def _enable_default_lights(self):
+        """
+        Enable all default lights in the scene.
+        """
+        self._default_light = True
+        for light in [self._light_key, self._light_fill, self._light_back]:
+            light.GetAttribute("visibility").Set(pgeo.Tokens.inherited)
+
+    def _hydra_render_loop(self) -> None:
+        """
+        Render loop for the Hydra renderer.
+        """
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+        display_size = glfw.get_window_size(self._window)
+        self._hydra_x_min = self._panel_position[0]
+        self._hydra_y_min = display_size[1] - self._panel_position[1] - self._panel_height
+        self._hydra.SetRenderViewport((self._hydra_x_min, self._hydra_y_min, self._panel_width, self._panel_height))
+        self._hydra.SetRenderBufferSize(pgf.Vec2i(int(self._panel_width), int(self._panel_height)))
+        self._update_hydra_scene()
+        self._hydra.Render(self._stage.GetPseudoRoot(), self._hydra_rend_params)
+        self._draw_opengl_grid()
+        self._draw_opengl_gizmo()
+        for light_matrix in self._create_light_transform_list():
+            self.draw_opengl_distance_light(light_matrix, pgf.Vec3d(0.0, 0.0, -1.0))
 
     def _calc_light_transform(self, light_position, target_position):
         """
@@ -339,51 +396,6 @@ class ViewportPanel(cbase.Panel):
         light_scale = pgf.Vec3d(target_scale, target_scale, target_scale)
         self._light_xform.GetAttribute("xformOp:transform").Set(pgf.Matrix4d().SetScale(light_scale) * self._up_axis_matrix.GetInverse())
 
-    def _draw_light_debug(self) -> None:
-        """
-        Draw the light debug.
-        """
-        if not self._default_light:
-            return
-        gl.glPushAttrib(gl.GL_ENABLE_BIT | gl.GL_TRANSFORM_BIT | gl.GL_VIEWPORT_BIT)
-        gl.glPushMatrix()
-
-        self._setup_opengl_viewport()
-        
-        helper_transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0.0, 0.0, -10))
-        key_light_xform = pgeo.Xformable(self._light_key)
-        key_light_color = plux.DistantLight(self._light_key).GetColorAttr().Get()
-        key_light_transform: pgf.Matrix4d = key_light_xform.ComputeLocalToWorldTransform(pusd.TimeCode.Default()) * self._up_axis_matrix
-        key_helper_transform: pgf.Matrix4d  = helper_transform * key_light_transform
-        fill_light_xform = pgeo.Xformable(self._light_fill)
-        fill_light_color = plux.DistantLight(self._light_fill).GetColorAttr().Get()
-        fill_light_transform: pgf.Matrix4d  = fill_light_xform.ComputeLocalToWorldTransform(pusd.TimeCode.Default()) * self._up_axis_matrix
-        fill_helper_transform: pgf.Matrix4d  = helper_transform * fill_light_transform
-        back_light_xform = pgeo.Xformable(self._light_back)
-        back_light_color = plux.DistantLight(self._light_back).GetColorAttr().Get()
-        back_light_transform: pgf.Matrix4d  = back_light_xform.ComputeLocalToWorldTransform(pusd.TimeCode.Default()) * self._up_axis_matrix
-        back_helper_transform: pgf.Matrix4d  = helper_transform * back_light_transform
-
-        gl.glLineWidth(2.0)
-        gl.glBegin(gl.GL_LINES)
-        
-        gl.glColor3f(0.0, 0.0, 0.0)
-        gl.glVertex3f(*key_light_transform.ExtractTranslation())
-        gl.glColor3f(*key_light_color[:3])
-        gl.glVertex3f(*key_helper_transform.ExtractTranslation())
-        gl.glColor3f(0.0, 0.0, 0.0)
-        gl.glVertex3f(*fill_light_transform.ExtractTranslation())
-        gl.glColor3f(*fill_light_color[:3])
-        gl.glVertex3f(*fill_helper_transform.ExtractTranslation())
-        gl.glColor3f(0.0, 0.0, 0.0)
-        gl.glVertex3f(*back_light_transform.ExtractTranslation())
-        gl.glColor3f(*back_light_color[:3])
-        gl.glVertex3f(*back_helper_transform.ExtractTranslation())
-
-        gl.glEnd()
-        gl.glPopMatrix()
-        gl.glPopAttrib()
-
     def _init_opengl_settings(self) -> None:
         """
         Initialize OpenGL settings.
@@ -523,60 +535,75 @@ class ViewportPanel(cbase.Panel):
 
         gl.glPopMatrix()
         gl.glPopAttrib()
+    
+    def draw_opengl_distance_light(self, transform_matrix: pgf.Matrix4d, forward_vector: pgf.Vec3d) -> None:
+        """
+        Draw a direction/distance light represenatation in OpenGL.
+        """
+        widget_size = self._scene_bbox_size.GetLength() / 20.0
+        gl.glPushAttrib(gl.GL_ENABLE_BIT | gl.GL_TRANSFORM_BIT | gl.GL_VIEWPORT_BIT)
+        gl.glPushMatrix()
 
-    def _disable_scene_lights(self):
+        self._setup_opengl_viewport()
+
+        gl.glBegin(gl.GL_LINES)
+        gl.glColor3f(1.0, 1.0, 0.0)
+        transform_matrix = transform_matrix * self._up_axis_matrix
+        box_vertex_1_matrix: pgf.Matrix4d = pgf.Matrix4d().SetTranslate(pgf.Vec3d(widget_size, widget_size, 0.0)) * transform_matrix
+        box_vertex_2_matrix: pgf.Matrix4d = pgf.Matrix4d().SetTranslate(pgf.Vec3d(-widget_size, widget_size, 0.0)) * transform_matrix
+        box_vertex_3_matrix: pgf.Matrix4d = pgf.Matrix4d().SetTranslate(pgf.Vec3d(-widget_size, -widget_size, 0.0)) * transform_matrix
+        box_vertex_4_matrix: pgf.Matrix4d = pgf.Matrix4d().SetTranslate(pgf.Vec3d(widget_size, -widget_size, 0.0)) * transform_matrix 
+        gl.glVertex3f(*box_vertex_1_matrix.ExtractTranslation())
+        gl.glVertex3f(*box_vertex_2_matrix.ExtractTranslation())
+        gl.glVertex3f(*box_vertex_2_matrix.ExtractTranslation())
+        gl.glVertex3f(*box_vertex_3_matrix.ExtractTranslation())
+        gl.glVertex3f(*box_vertex_3_matrix.ExtractTranslation())
+        gl.glVertex3f(*box_vertex_4_matrix.ExtractTranslation())
+        gl.glVertex3f(*box_vertex_4_matrix.ExtractTranslation())
+        gl.glVertex3f(*box_vertex_1_matrix.ExtractTranslation())
+        gl.glEnd()
+        gl.glBegin(gl.GL_LINES)
+        gl.glColor3f(1.0, 1.0, 0.0)
+        direction_vertex_1 = transform_matrix.Transform(pgf.Vec3d(0.0, 0.0, 0.0))
+        direction_vertex_2 = transform_matrix.Transform(forward_vector * widget_size)
+        gl.glVertex3f(*direction_vertex_1)
+        gl.glVertex3f(*direction_vertex_2)
+        gl.glEnd()
+
+        gl.glBegin(gl.GL_LINE_LOOP)
+        gl.glColor3f(1.0, 1.0, 0.0)
+        num_segments = 128
+        radius = widget_size * 0.75
+        for index in range(num_segments):
+            theta = 2.0 * math.pi * index / num_segments
+            x = radius * math.cos(theta)
+            y = radius * math.sin(theta)
+            transformed_vertex = transform_matrix.Transform(pgf.Vec3d(x, y, 0.0))
+            gl.glVertex3f(*transformed_vertex)
+        gl.glEnd()
+
+        gl.glPopMatrix()
+        gl.glPopAttrib()
+    
+    def _create_light_transform_list(self):
         """
-        Disable all lights in the scene.
+        Create a list of lights in the scene.
         """
-        self._scene_light = False
-        self._light_disable_list: list[pusd.Prim] = []
+        if not self._stage:
+            return []
+        light_list: list[pusd.Prim] = []
         prim_list = self._stage.Traverse()
         for prim in prim_list:
-            if prim.HasAPI(plux.LightAPI) and prim not in [self._light_key, self._light_fill, self._light_back]:
+            if prim.HasAPI(plux.LightAPI):
                 if prim.GetAttribute("visibility").Get() != pgeo.Tokens.invisible:
-                    self._light_disable_list.append(prim)
-                    prim.GetAttribute("visibility").Set(pgeo.Tokens.invisible)
-
-    def _enable_scene_lights(self):
-        """
-        Enable all lights in the scene.
-        """
-        self._scene_light = True
-        for light in self._light_disable_list:
-            light.GetAttribute("visibility").Set(pgeo.Tokens.inherited)
-        self._light_disable_list = []
-
-    def _disable_default_lights(self):
-        """
-        Disable all default lights in the scene.
-        """
-        self._default_light = False
-        for light in [self._light_key, self._light_fill, self._light_back]:
-            light.GetAttribute("visibility").Set(pgeo.Tokens.invisible)
-
-    def _enable_default_lights(self):
-        """
-        Enable all default lights in the scene.
-        """
-        self._default_light = True
-        for light in [self._light_key, self._light_fill, self._light_back]:
-            light.GetAttribute("visibility").Set(pgeo.Tokens.inherited)
-
-    def _hydra_render_loop(self) -> None:
-        """
-        Render loop for the Hydra renderer.
-        """
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-        display_size = glfw.get_window_size(self._window)
-        self._hydra_x_min = self._panel_position[0]
-        self._hydra_y_min = display_size[1] - self._panel_position[1] - self._panel_height
-        self._hydra.SetRenderViewport((self._hydra_x_min, self._hydra_y_min, self._panel_width, self._panel_height))
-        self._hydra.SetRenderBufferSize(pgf.Vec2i(int(self._panel_width), int(self._panel_height)))
-        self._update_hydra_scene()
-        self._hydra.Render(self._stage.GetPseudoRoot(), self._hydra_rend_params)
-        self._draw_opengl_grid()
-        self._draw_opengl_gizmo()
-        self._draw_light_debug()
+                    xformable = pgeo.Xformable(prim)
+                    world_transform = xformable.ComputeLocalToWorldTransform(pusd.TimeCode.Default())
+                    world_transform_orthonormalized = pgf.Matrix4d(world_transform).GetOrthonormalized()
+                    world_rotation = world_transform_orthonormalized.ExtractRotation()
+                    world_translate = world_transform.ExtractTranslation()
+                    world_transform = pgf.Matrix4d().SetTranslateOnly(world_translate).SetRotateOnly(world_rotation)
+                    light_list.append(world_transform)
+        return light_list
 
     def _draw_up_axis_dropdown(self):
         """
@@ -609,7 +636,7 @@ class ViewportPanel(cbase.Panel):
                         self._calc_frame_scene()
             imgui.end_combo()
         imgui.same_line()
-        icon = cstat.Icon.AXIS_Y_ICON if self._up_axis == "Y" else cstat.Icon.AXIS_Z_ICON
+        icon = cstat.Icon.ICON_VIEWPORT_AXIS_Y if self._up_axis == "Y" else cstat.Icon.ICON_VIEWPORT_AXIS_Z
         axis_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, icon, (15, 15))
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 2)
         imgui.image(axis_icon_id, (15, 15), tint_col=(0.75, 0.75, 0.75, 1))
@@ -650,14 +677,13 @@ class ViewportPanel(cbase.Panel):
                     self._enable_scene_lights()
             imgui.end_combo()
         imgui.same_line()
-        icon = cstat.Icon.LIGHT_ICON
+        icon = cstat.Icon.ICON_VIEWPORT_LIGHT
         light_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, icon, (15, 15))
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 2)
         imgui.image(light_icon_id, (15, 15), tint_col=(0.75, 0.75, 0.75, 1))
         imgui.pop_style_var(4)
         imgui.pop_style_color(7)
         imgui.pop_font()
-
 
     def _draw_camera_dropdown(self):
         """
@@ -687,15 +713,13 @@ class ViewportPanel(cbase.Panel):
                     pass
             imgui.end_combo()
         imgui.same_line()
-        icon = cstat.Icon.CAMERA_ICON
+        icon = cstat.Icon.ICON_VIEWPORT_CAMERA
         camera_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, icon, (15, 15))
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 2)
         imgui.image(camera_icon_id, (15, 15), tint_col=(0.75, 0.75, 0.75, 1))
         imgui.pop_style_var(4)
         imgui.pop_style_color(7)
         imgui.pop_font()
-
-
 
     def _draw_draw_style_radio(self):
         """

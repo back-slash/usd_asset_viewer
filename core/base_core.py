@@ -34,7 +34,7 @@ class Node:
     Class representing a node.
     """
     _node_color = (0.5, 0.5, 0.5, 1.0)
-    _node_icon = cstat.Icon.UNKNOWN_ICON
+    _node_icon = cstat.Icon.ICON_UNKNOWN
     _name = None
     def __init__(self, data_object):
         self._data_object: pusd.Prim | dict = data_object
@@ -226,7 +226,7 @@ class XForm(Primative):
     def _init_node_data(self):
         super()._init_node_data()
         self._node_color = (0.4, 0.8, 0.4, 1.0)
-        self._node_icon = cstat.Icon.NULL_ICON
+        self._node_icon = cstat.Icon.ICON_NULL
 
 
 class Mesh(Primative):
@@ -242,7 +242,7 @@ class Mesh(Primative):
         super()._init_node_data()
         self._data_object = pgeo.Mesh(self._data_object)  
         self._node_color = (0.8, 0.4, 0.4, 1.0)
-        self._node_icon = cstat.Icon.MESH_ICON
+        self._node_icon = cstat.Icon.ICON_MESH
         self._display_color = self._data_object.GetDisplayColorAttr()
         self._init_materials()
 
@@ -269,7 +269,7 @@ class Light(Primative):
         super()._init_node_data()
         self._data_object: plux.BoundableLightBase | plux.NonboundableLightBase
         self._node_color = (0.9, 0.9, 0.4, 1.0)
-        self._node_icon = cstat.Icon.LIGHT_ICON
+        self._node_icon = cstat.Icon.ICON_LIGHT
 
 
 class Camera(Primative):
@@ -282,7 +282,7 @@ class Camera(Primative):
     def _init_node_data(self):
         super()._init_node_data()    
         self._node_color = (0.4, 0.4, 0.8, 1.0)
-        self._node_icon = cstat.Icon.CAMERA_ICON
+        self._node_icon = cstat.Icon.ICON_CAMERA
 
 
 class Skeleton(Primative):
@@ -296,7 +296,7 @@ class Skeleton(Primative):
         super()._init_node_data()
         self._data_object = pskl.Skeleton(self._data_object)
         self._node_color = (0.6, 0.4, 0.8, 1.0)
-        self._node_icon = cstat.Icon.SKELETON_ICON
+        self._node_icon = cstat.Icon.ICON_SKELETON
         self._init_skeleton_bones()
 
     def _init_skeleton_bones(self):
@@ -317,7 +317,7 @@ class Material(Primative):
     def _init_node_data(self):
         super()._init_node_data()    
         self._node_color = (0.8, 0.4, 0.6, 1.0)
-        self._node_icon = cstat.Icon.MATERIAL_ICON
+        self._node_icon = cstat.Icon.ICON_MATERIAL
 
     def _init_textures(self):
         """
@@ -335,7 +335,7 @@ class Curve(Primative):
     def _init_node_data(self):
         super()._init_node_data()
         self._node_color = (0.8, 0.8, 0.4, 1.0)
-        self._node_icon = cstat.Icon.CURVE_ICON
+        self._node_icon = cstat.Icon.ICON_CURVE
 
 
 class Data(Node):
@@ -367,7 +367,7 @@ class Texture(Data):
     def _init_node_data(self):
         super()._init_node_data()
         self._node_color = (0.4, 0.8, 0.8, 1.0)
-        self._node_icon = cstat.Icon.TEXTURE_ICON
+        self._node_icon = cstat.Icon.ICON_TEXTURE
 
 
 class Bone(Data):
@@ -380,13 +380,13 @@ class Bone(Data):
     def _init_node_data(self):
         super()._init_node_data()
         self._node_color = (0.8, 0.6, 0.4, 1.0)
-        self._node_icon = cstat.Icon.BONE_ICON
+        self._node_icon = cstat.Icon.ICON_BONE
 
 
 #####################################################################################################################################
 
 
-class Pencil:
+class NodePencil:
     """
     Class representing an draw pencil.
     """
@@ -809,9 +809,9 @@ class SceneManager:
         """
         Get appropriate data type and init.
         """
-        if isinstance(data_object["owner"], pskl.Skeleton):
+        if data_object["owner"].isA(pskl.Skeleton):
             return Skeleton(data_object)
-        elif isinstance(data_object["owner"], pshd.Material):
+        elif data_object["owner"].isA(pshd.Material):
             return Material(data_object)
         else:
             return None
@@ -847,7 +847,7 @@ class SceneManager:
                 return path_node
         path_node = self._init_internal_node(data_object)
         if not path_node:
-            print(f"Unknown data object type: {data_object.GetTypeName()}")
+            #print(f"Unknown path object type: {data_object.GetTypeName()}")
             return None
         self._add_path_node(path_node)
         return path_node

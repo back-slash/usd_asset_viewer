@@ -188,19 +188,19 @@ window_rounding = 0.0
 
 [viewport.draw_style.wireframe]
 name = "Wireframe"
-icon = "WIREFRAME_ICON"
+icon = "ICON_VIEWPORT_WIREFRAME"
 draw_mode = "DRAW_WIREFRAME"
 enable_lighting = false
 
 [viewport.draw_style.flat]
 name = "Flat Shading"
-icon = "FLAT_ICON"
+icon = "ICON_VIEWPORT_FLAT"
 draw_mode = "DRAW_WIREFRAME_ON_SURFACE"
 enable_lighting = false
 
 [viewport.draw_style.full]
 name = "Full Shading"
-icon = "FULL_ICON"
+icon = "ICON_VIEWPORT_FULL"
 draw_mode = "DRAW_SHADED_SMOOTH"
 enable_lighting = true
 

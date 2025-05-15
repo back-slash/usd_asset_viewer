@@ -25,6 +25,8 @@ class OutlinerPanel(cbase.Panel):
     """
     Outliner panel for displaying usd contents.
     """
+    _internal_test_node_dict = {}
+    _internal_test_icon_dict = {}
     def __init__(self, frame: cbase.Frame):
         super().__init__("outliner", frame)
 
@@ -93,7 +95,7 @@ class OutlinerPanel(cbase.Panel):
         window_size = imgui.get_window_size()
         bg_rect_min = imgui.ImVec2(window_pos[0], window_pos[1] + cursor_pos[1])
         bg_rect_max = imgui.ImVec2(window_size[0], window_size[1]) + window_pos
-        draw_list.add_rect_filled(bg_rect_min, bg_rect_max, imgui.get_color_u32((0.1, 0.1, 0.1, 1)), rounding=0.0, flags=0)
+        draw_list.add_rect_filled(bg_rect_min, bg_rect_max, imgui.get_color_u32((0.15, 0.15, 0.15, 1)), rounding=0.0, flags=0)
 
     def _draw_standard_tab(self) -> None:
         if self._stage:
@@ -112,12 +114,16 @@ class OutlinerPanel(cbase.Panel):
                 for child in node_children:
                     self._recursive_node_draw(child, indent + 1)
             
-
     def _draw_test_node(self, node: pusd.Prim, indent: int) -> None:
         """
         Draw a test node in the outliner.
         """
-        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 33)
+        if node not in self._internal_test_node_dict:
+            self._internal_test_node_dict[node] = self._scene_manager.init_path_node(node)
+        internal_node: cbase.Pathed = self._internal_test_node_dict[node]
+        if not internal_node:
+            return
+        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 22 + 10)
         indent_size_x = 20
         odd_index = self._node_index % 2 == 0
         draw_list = imgui.get_window_draw_list()
@@ -127,27 +133,38 @@ class OutlinerPanel(cbase.Panel):
         imgui.set_cursor_pos_x(0)
         bg_max_x = imgui.get_content_region_avail()[0] - 2
         bg_rect_min = imgui.ImVec2(imgui.get_cursor_pos_x(), imgui.get_cursor_pos_y())
-        bg_rect_max = imgui.ImVec2(bg_max_x, bg_rect_min[1] + 21)
-        bg_color = (0.2, 0.2, 0.2, 0.1) if odd_index else (0.4, 0.4, 0.4, 0.1)
+        bg_rect_max = imgui.ImVec2(bg_max_x, bg_rect_min[1] + 22)
+        bg_color = (0.1, 0.1, 0.1, 1) if odd_index else (0.12, 0.12, 0.12, 1)
         draw_list.add_rect_filled(bg_rect_min, bg_rect_max, imgui.get_color_u32(bg_color), rounding=2.0)
         
         node_rect_min = (indent_cursor_pos_x + 2, imgui.get_cursor_pos_y() + 1)
-        node_rect_max = (node_rect_min[0] +  250, node_rect_min[1] + 19)
+        node_rect_max = (node_rect_min[0] +  250, node_rect_min[1] + 20)
         node_base_color = (0.25, 0.25, 0.25, 1)
-        node_hover_color = (0.35, 0.35, 0.35, 1)
-        node_selected_color = (0.45, 0.45, 0.45, 1)
         draw_list.add_rect_filled(node_rect_min, node_rect_max, imgui.get_color_u32(node_base_color), rounding=2.0)
         draw_list.add_rect(node_rect_min, node_rect_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=2.0)
-
+        icon_bg_min = node_rect_min
+        icon_bg_max = (node_rect_min[0] + 20, node_rect_min[1] + 20)
+        internal_color = internal_node.get_color()
+        internal_icon = internal_node.get_icon()
+        draw_list.add_rect_filled(icon_bg_min, icon_bg_max, imgui.get_color_u32(internal_color), rounding=2.0)
+        draw_list.add_rect(icon_bg_min, icon_bg_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=2.0)
+        if internal_icon not in self._internal_test_icon_dict:
+            self._internal_test_icon_dict[internal_icon] = cutils.FileHelper.read(cstat.Filetype.ICON, internal_icon, (20, 20))
+        internal_icon_id = self._internal_test_icon_dict[internal_icon]
+        icon_min = (icon_bg_min[0], icon_bg_min[1])
+        icon_max = (icon_min[0] + 20, icon_min[1] + 20)
+        draw_list.add_image(internal_icon_id, icon_min, icon_max, col=imgui.get_color_u32((0, 0, 0, 1)))
         imgui.push_style_color(imgui.Col_.text, (0.66, 0.66, 0.66, 1))
         imgui.same_line()
-        imgui.set_cursor_pos_x(indent_cursor_pos_x + 20)
+        imgui.set_cursor_pos_x(indent_cursor_pos_x + 25)
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 10)
         imgui.text(node_name)
+        imgui.get_text_line_height()
+        imgui.set_cursor_pos_x(0)
+        
         imgui.pop_style_color(1)
-        self._node_index += 1
         imgui.new_line()
-
+        self._node_index += 1
 
     def draw(self) -> None:
         """
@@ -158,13 +175,10 @@ class OutlinerPanel(cbase.Panel):
         imgui.begin(self._name, True, self._window_flags)
         self._draw_tab_bar()
         self._draw_vertical_separator()
-
-    
-
-
+  
 #####################################################################################################################################
 
-class OutlinerEntryPencil(cbase.Pencil):
+class OutlinerEntryPencil(cbase.NodePencil):
     """
     Pencil class drawing entries in the outliner.
     """
@@ -237,7 +251,7 @@ class OutlinerEntryPencil(cbase.Pencil):
         self._draw_node()
 
 
-class OutlinerPropertyPencil(cbase.Pencil):
+class OutlinerPropertyPencil(cbase.NodePencil):
     """
     Class representing a node in the outliner.
     """
@@ -271,10 +285,6 @@ class OutlinerPropertyPencil(cbase.Pencil):
         """
         self._draw_navigation()
         self._draw_node()
-
-
-
-
 
 
 #####################################################################################################################################
