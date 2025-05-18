@@ -14,7 +14,7 @@ set(OPENUSD_PATH "P:/DATA/CODE/OpenUSD")
 
 set(GLAD_PATH "P:/DATA/CODE/_SRC/glad")
 
-set(PYTHON_PATH "C:/Users/Nikolas/AppData/Local/Programs/Python/Python311")
+set(PYTHON_PATH "~/AppData/Local/Programs/Python/Python311")
 
 set(PYBIND11_PATH "P:/DATA/CODE/_SRC/pybind11")
 
@@ -56,6 +56,7 @@ set_target_properties(c_draw_opengl PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/../core
 )
 target_link_libraries(c_draw_opengl PRIVATE usd_gf glad)
+
 
 #################################################################################################################
 #################################################################################################################

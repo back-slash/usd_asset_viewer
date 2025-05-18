@@ -56,7 +56,7 @@
 #### C++
 - OpenUSD
 - glad
-
+- pybind11
 
 ## Usage
 - File > Open USD > *.usd

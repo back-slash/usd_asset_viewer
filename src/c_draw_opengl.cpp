@@ -140,6 +140,12 @@ void c_draw_opengl_bones(
             );
             pxr::GfVec3d child_root_vert = child_matrix.ExtractTranslation();
 
+            double bone_length = (child_root_vert - root_vert).GetLength();
+            if (bone_length < 0.001) {
+                continue;
+            }
+            pxr::GfVec3d bone_direction = (child_root_vert - root_vert).GetNormalized();
+            double bone_radius = 5.0;
             glLineWidth(2.0f);
             glBegin(GL_LINES);
             glColor3f(0.75f, 0.75f, 0.75f);

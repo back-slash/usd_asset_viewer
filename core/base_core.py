@@ -759,7 +759,7 @@ class Panel:
         """
         self._panel_width = int(size[0])
         self._panel_height = int(size[1])
-        self._panel_position = (int(position[0]), int((position[1])))
+        self._panel_position = (int(position[0]), int(position[1]))
         self._update_stage_data()
         self._set_window_flags()
         self._push_panel_style()
