@@ -17,5 +17,5 @@ textures/
 
 #C++
 build/
-c_*
+*.pyd
 
