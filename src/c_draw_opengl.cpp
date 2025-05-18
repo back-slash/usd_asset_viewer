@@ -2,9 +2,11 @@
 #include <iostream>
 #include <vector>
 
-// OpenUSD
+// PyBind11
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+
+// OpenUSD
 #include <pxr/base/gf/matrix4d.h>
 #include <pxr/base/gf/rotation.h>
 #include <pxr/base/gf/vec3d.h>
