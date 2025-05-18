@@ -339,7 +339,7 @@ class Skeleton(Primative):
                 "owner": self._data_object,
                 "path": sdf_path,
                 "name": path_split[-1],
-                "transform": transform,
+                "matrix": transform,
             }
             bone_object = self._scene_manager.init_data_object(bone_entry_dict)
             self._bone_dict[bone_object] = bone_entry_dict
@@ -757,9 +757,9 @@ class Panel:
         """
         Update the frame.
         """
-        self._panel_width = size[0]
-        self._panel_height = size[1]
-        self._panel_position = position
+        self._panel_width = int(size[0])
+        self._panel_height = int(size[1])
+        self._panel_position = (int(position[0]), int((position[1])))
         self._update_stage_data()
         self._set_window_flags()
         self._push_panel_style()

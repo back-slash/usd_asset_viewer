@@ -715,61 +715,29 @@ class ViewportPanel(cbase.Panel):
         gl.glPopMatrix()
         gl.glPopAttrib()
 
-    def _draw_opengl_bones(self) -> None:
+    def _create_c_opengl_draw_dict(self) -> dict:
         """
-        Draw a bone representation in OpenGL.
+        Create a dictionary for OpenGL drawing.
         """
-        gl.glPushAttrib(gl.GL_ENABLE_BIT | gl.GL_TRANSFORM_BIT | gl.GL_VIEWPORT_BIT)
-        gl.glPushMatrix()
-        self._setup_opengl_viewport()
-        line_color = (0.5, 0.5, 0.5)
-        data_node_list: list[cbase.Bone] = self._scene_manager.get_data_node_list()
-        for data_node in data_node_list:
-            data_dict = data_node.get_data_object()
-            bone_transform: pgf.Matrix4d = data_dict["transform"]
-            bone_transform = bone_transform * self._up_axis_matrix
-            root_vert = bone_transform.ExtractTranslation()           
-            gl.glLineWidth(1.0)
-            gl.glBegin(gl.GL_LINES)
-            gl.glColor3f(1,0,0)
-            gl.glVertex3f(*root_vert)
-            gl.glVertex3f(*bone_transform.Transform(pgf.Vec3d(2.5, 0.0, 0.0)))
-            gl.glColor3f(0,1,0)
-            gl.glVertex3f(*root_vert)
-            gl.glVertex3f(*bone_transform.Transform(pgf.Vec3d(0, 2.5, 0.0)))
-            gl.glColor3f(0,0,1)
-            gl.glVertex3f(*root_vert)
-            gl.glVertex3f(*bone_transform.Transform(pgf.Vec3d(0, 0.0, 2.5)))
-            gl.glEnd()
-            gl.glBegin(gl.GL_LINES)
-            gl.glColor3f(*line_color)
-            for child in data_node.get_child_nodes():
-                child: cbase.Bone
-                child_data_dict = child.get_data_object()
-                child_transform: pgf.Matrix4d = child_data_dict["transform"]
-                child_transform = child_transform * self._up_axis_matrix
-                child_vert = child_transform.ExtractTranslation()
-                gl.glVertex3f(*root_vert)
-                gl.glVertex3f(*child_vert)
-            gl.glEnd()
-        gl.glPopAttrib()
-        gl.glPopMatrix()
+        camera_matrix = self._camera.GetAttribute("xformOp:transform").Get()
+        camera_matrix_np = np.array(camera_matrix).flatten()
+        up_axis_marix_np = np.array(self._up_axis_matrix).flatten()
+        draw_dict = {}
+        draw_dict["camera_matrix"] = camera_matrix_np
+        draw_dict["up_axis_matrix"] = up_axis_marix_np
+        draw_dict["panel_width"] = self._panel_width
+        draw_dict["panel_height"] = self._panel_height
+        draw_dict["hydra_x_min"] = self._hydra_x_min
+        draw_dict["hydra_y_min"] = self._hydra_y_min
+        draw_dict["fov"] = self._calc_fov()
+        draw_dict["near_z"] = self._cfg["viewport"]["clipping_range"][0]
+        draw_dict["far_z"] = self._cfg["viewport"]["clipping_range"][1]
+        return draw_dict
 
     def _draw_c_opengl_bones(self) -> None:
         camera_matrix: pgf.Matrix4d = self._camera.GetAttribute("xformOp:transform").Get()
-        cdraw.c_draw_opengl_bones(
-            self._scene_manager.get_data_node_list(),
-            list(np.array(self._up_axis_matrix).flatten()),
-            list(np.array(camera_matrix).flatten()),
-            self._hydra_x_min,
-            self._hydra_y_min,
-            int(self._panel_width),
-            int(self._panel_height),
-            self._calc_fov(),
-            self._cfg["viewport"]["clipping_range"][0],
-            self._cfg["viewport"]["clipping_range"][1],
-        )  
-
+        cdraw.c_draw_opengl_bones(self._scene_manager.get_data_node_list(), self._create_c_opengl_draw_dict())
+            
     def _hydra_render_loop(self) -> None:
         """
         Render loop for the Hydra renderer.
@@ -784,7 +752,6 @@ class ViewportPanel(cbase.Panel):
         self._update_hydra_scene()
         self._hydra.Render(self._stage.GetPseudoRoot(), self._hydra_rend_params)
         if self._user_cfg["show"]["bones"]:
-            #self._draw_opengl_bones()
             self._draw_c_opengl_bones()
         if self._user_cfg["show"]["grid"]:
             self._draw_opengl_grid()

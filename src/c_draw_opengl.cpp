@@ -56,16 +56,18 @@ void ConvertMatrixListUSD(const pybind11::list& glMatrix, pxr::GfMatrix4d& usdMa
 }    
 
 void c_setup_opengl_viewport(
-    int hydra_x_min,
-    int hydra_y_min,
-    int panel_width,
-    int panel_height,
-    double fov, 
-    double near_plane, 
-    double far_plane, 
-    pxr::GfMatrix4d& up_axis_matrix,
-    pxr::GfMatrix4d& camera_transform
+    pybind11::dict draw_dict
 ) {
+    int hydra_x_min = draw_dict["hydra_x_min"].cast<int>();
+    int hydra_y_min = draw_dict["hydra_y_min"].cast<int>();
+    int panel_width = draw_dict["panel_width"].cast<int>();
+    int panel_height = draw_dict["panel_height"].cast<int>();
+    double fov = draw_dict["fov"].cast<double>();
+    double near_plane = draw_dict["near_z"].cast<double>();
+    double far_plane = draw_dict["far_z"].cast<double>();
+    pxr::GfMatrix4d camera_matrix;
+    ConvertMatrixListUSD(draw_dict["camera_matrix"].cast<pybind11::list>(), camera_matrix);
+
     glViewport(hydra_x_min, hydra_y_min, panel_width, panel_height);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -77,90 +79,66 @@ void c_setup_opengl_viewport(
     glFrustum(left, right, bottom, top, near_plane, far_plane);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    pxr::GfMatrix4d camera_transform_offset = camera_transform.GetInverse();
-    float camera_transform_offset_gl[16];
-    ConvertMatrixUSDGL(camera_transform_offset, camera_transform_offset_gl);    
-    glLoadMatrixf(camera_transform_offset_gl);
+    float camera_matrix_inverse_gl[16];
+    ConvertMatrixUSDGL(camera_matrix.GetInverse(), camera_matrix_inverse_gl);    
+    glLoadMatrixf(camera_matrix_inverse_gl);
 }
 
 
 void c_draw_opengl_bones(
     pybind11::list bone_list,
-    pybind11::list up_axis_matrix,
-    pybind11::list camera_transform,
-    int hydra_x_min, 
-    int hydra_y_min, 
-    int panel_width, 
-    int panel_height,
-    double fov, 
-    double near_plane, 
-    double far_plane
+    pybind11::dict draw_dict
 ) {
-    pxr::GfMatrix4d up_axis_matrix_gf;
-    pxr::GfMatrix4d camera_transform_gf;
-    
+    pxr::GfMatrix4d camera_matrix;
+        ConvertMatrixListUSD(
+        draw_dict["camera_matrix"],
+        camera_matrix
+    );
+
     glPushMatrix();
 
-    ConvertMatrixListUSD(
-        up_axis_matrix,
-        up_axis_matrix_gf
-    );
-    ConvertMatrixListUSD(
-        camera_transform,
-        camera_transform_gf
-    );
-
     c_setup_opengl_viewport(
-        hydra_x_min, 
-        hydra_y_min, 
-        panel_width, 
-        panel_height,
-        fov, 
-        near_plane, 
-        far_plane,
-        up_axis_matrix_gf,
-        camera_transform_gf
+        draw_dict
     );
 
     for (auto bone : bone_list) {
         pybind11::dict data_dict = bone.attr("get_data_object")();
-        pybind11::list py_transform_list = data_dict["transform"];
-        pxr::GfMatrix4d py_transform;
-        py_transform.SetIdentity();  
+        pybind11::list bone_matrix_list = data_dict["matrix"];
+        pxr::GfMatrix4d bone_matrix;
+        bone_matrix.SetIdentity();  
         
         ConvertMatrixListUSD(
-            py_transform_list,
-            py_transform
+            bone_matrix_list,
+            bone_matrix
         );
 
-        pxr::GfMatrix4d bone_transform = py_transform;
-        pxr::GfVec3d root_vert = bone_transform.ExtractTranslation();
+        pxr::GfVec3d root_vert = bone_matrix.ExtractTranslation();
 
         glLineWidth(1.0f);
         glBegin(GL_LINES);
         glColor3f(1.0f, 0.0f, 0.0f);
         glVertex3d(root_vert[0], root_vert[1], root_vert[2]);
-        pxr::GfVec3d x_axis = bone_transform.Transform(pxr::GfVec3d(2.5, 0.0, 0.0));
+        pxr::GfVec3d x_axis = bone_matrix.Transform(pxr::GfVec3d(2.5, 0.0, 0.0));
         glVertex3d(x_axis[0], x_axis[1], x_axis[2]);
         glColor3f(0.0f, 1.0f, 0.0f);
         glVertex3d(root_vert[0], root_vert[1], root_vert[2]);
-        pxr::GfVec3d y_axis = bone_transform.Transform(pxr::GfVec3d(0.0, 2.5, 0.0));
+        pxr::GfVec3d y_axis = bone_matrix.Transform(pxr::GfVec3d(0.0, 2.5, 0.0));
         glVertex3d(y_axis[0], y_axis[1], y_axis[2]);
         glColor3f(0.0f, 0.0f, 1.0f);
         glVertex3d(root_vert[0], root_vert[1], root_vert[2]);
-        pxr::GfVec3d z_axis = bone_transform.Transform(pxr::GfVec3d(0.0, 0.0, 2.5));
+        pxr::GfVec3d z_axis = bone_matrix.Transform(pxr::GfVec3d(0.0, 0.0, 2.5));
         glVertex3d(z_axis[0], z_axis[1], z_axis[2]);
         glEnd();
 
         for (auto child : bone.attr("get_child_nodes")()) {
             pybind11::dict child_data_dict = child.attr("get_data_object")();
-            pybind11::list child_transform_list = child_data_dict["transform"];
-            pxr::GfMatrix4d child_transform;
+            pybind11::list child_matrix_list = child_data_dict["matrix"];
+            pxr::GfMatrix4d child_matrix;
             ConvertMatrixListUSD(
-                child_transform_list,
-                child_transform
+                child_matrix_list,
+                child_matrix
             );
-            pxr::GfVec3d child_root_vert = child_transform.ExtractTranslation();
+            pxr::GfVec3d child_root_vert = child_matrix.ExtractTranslation();
 
             glLineWidth(2.0f);
             glBegin(GL_LINES);
@@ -193,15 +171,7 @@ void c_init_glad() {
 PYBIND11_MODULE(c_draw_opengl, m) {
     m.def("c_draw_opengl_bones", &c_draw_opengl_bones, "Draw OpenGL bones",
           pybind11::arg("bone_list"),
-          pybind11::arg("up_axis_matrix"),
-          pybind11::arg("camera_transform"),
-          pybind11::arg("hydra_x_min"),
-          pybind11::arg("hydra_y_min"),
-          pybind11::arg("panel_width"),
-          pybind11::arg("panel_height"),
-          pybind11::arg("fov"),
-          pybind11::arg("near_plane"),
-          pybind11::arg("far_plane"));
+          pybind11::arg("draw_dict"));
     m.def("c_init_glad", &c_init_glad, "Initialize GLAD");
 }
 
