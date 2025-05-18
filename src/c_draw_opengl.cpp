@@ -38,17 +38,14 @@ void ConvertMatrixListUSD(const pybind11::list& glMatrix, pxr::GfMatrix4d& usdMa
     usdMatrix[0][1] = glMatrix[1].cast<double>();
     usdMatrix[0][2] = glMatrix[2].cast<double>();
     usdMatrix[0][3] = glMatrix[3].cast<double>();
-
     usdMatrix[1][0] = glMatrix[4].cast<double>();
     usdMatrix[1][1] = glMatrix[5].cast<double>();
     usdMatrix[1][2] = glMatrix[6].cast<double>();
     usdMatrix[1][3] = glMatrix[7].cast<double>();
-
     usdMatrix[2][0] = glMatrix[8].cast<double>();
     usdMatrix[2][1] = glMatrix[9].cast<double>();
     usdMatrix[2][2] = glMatrix[10].cast<double>();
     usdMatrix[2][3] = glMatrix[11].cast<double>();
-
     usdMatrix[3][0] = glMatrix[12].cast<double>();
     usdMatrix[3][1] = glMatrix[13].cast<double>();
     usdMatrix[3][2] = glMatrix[14].cast<double>();
@@ -164,7 +161,6 @@ void c_draw_opengl_bones(
     }
 }
 
-float g_rotationAngle = 0.0f;
 
 void c_init_glad() {
     if (!gladLoadGL()) {
