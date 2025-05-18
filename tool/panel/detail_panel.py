@@ -35,6 +35,20 @@ class DetailPanel(cbase.Panel):
         separator_max = imgui.ImVec2(separator_min[0] + 1, separator_min[1] + window_size[1])
         draw_list.add_rect_filled(separator_min, separator_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=0.0, flags=0)
 
+    def _draw_detail_tab(self) -> None:
+        """
+        Draw the detail tab.
+        """
+        if self._stage:
+            pass
+
+    def _draw_scene_tab(self) -> None:
+        """
+        Draw the scene tab.
+        """
+        if self._stage:
+            pass
+
     def draw(self) -> None:
         """
         Draw the outliner panel.
@@ -43,4 +57,9 @@ class DetailPanel(cbase.Panel):
         imgui.set_next_window_pos(self._panel_position)
         imgui.begin(self._name, True, self._window_flags)
         self._draw_vertical_separator()
+        detail_tab_dict = {
+            "detail": self._draw_detail_tab,
+            "scene": self._draw_scene_tab,
+        }
+        cutils.draw_tab_bar("detail", detail_tab_dict)
         

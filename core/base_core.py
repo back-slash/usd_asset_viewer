@@ -8,9 +8,11 @@ from typing import Any
 import os
 import ctypes
 import sys
+import pprint as pp
 
 # ADDONS
 from imgui_bundle import imgui
+import numpy as np
 import pxr.Usd as pusd
 import pxr.Gf as pgf
 import pxr.Sdf as psdf
@@ -140,6 +142,7 @@ class Primative(Pathed):
         """
         Load the attributes of the node.
         """
+        self._attribute_list = []
         for attribute in self._data_object.GetAttributes():
             node_attribute = self._scene_manager.init_path_node(attribute)
             self._add_attribute(node_attribute)
@@ -155,6 +158,7 @@ class Primative(Pathed):
         """
         Load the children of the node.
         """
+        self._child_list = []
         for child in self._data_object.GetChildren():
             node_child = self._scene_manager.init_path_node(child)
             self._add_child(node_child)
@@ -171,6 +175,20 @@ class Primative(Pathed):
         Get the child nodes.
         """
         return self._child_list   
+
+
+class Root(Primative):
+    """
+    Class representing the root node.
+    """
+    def __init__(self, data_object: pusd.Prim):
+        super().__init__(data_object)
+        self._data_object: pusd.Prim
+
+    def _init_node_data(self):
+        super()._init_node_data()
+        self._node_color = (0.5, 0.5, 0.5, 1.0)
+        self._node_icon = cstat.Icon.ICON_ROOT
 
 
 class Attribute(Pathed):
@@ -290,7 +308,9 @@ class Skeleton(Primative):
     Class representing a skeleton node.
     """
     def __init__(self, data_object):
+        print("Skeleton INIT START")
         super().__init__(data_object)
+        print("Skeleton INIT END")
         
     def _init_node_data(self):
         super()._init_node_data()
@@ -298,13 +318,63 @@ class Skeleton(Primative):
         self._node_color = (0.6, 0.4, 0.8, 1.0)
         self._node_icon = cstat.Icon.ICON_SKELETON
         self._init_skeleton_bones()
+    
 
     def _init_skeleton_bones(self):
         """
         Load the skeleton of the node.
         """
+        self._bone_dict: dict[Bone, Any] = {}
+        self._data_object: pskl.Skeleton
         bone_attribute = self._data_object.GetJointsAttr()
-        bone_token_list = bone_attribute.Get()
+        bone_transform_list = self._data_object.GetBindTransformsAttr().Get()
+        bone_path_list = bone_attribute.Get(self._scene_manager.get_current_time())
+        for index, path in enumerate(bone_path_list):
+            sdf_path = psdf.Path(path)
+            path_split = str(path).split("/")
+            transform: pgf.Matrix4d = bone_transform_list[index]
+            transform = list(np.array(transform).flatten())
+            bone_entry_dict = {
+                "index": index,
+                "owner": self._data_object,
+                "path": sdf_path,
+                "name": path_split[-1],
+                "transform": transform,
+            }
+            bone_object = self._scene_manager.init_data_object(bone_entry_dict)
+            self._bone_dict[bone_object] = bone_entry_dict
+        for bone in self._bone_dict:
+            parent_path = bone.get_relative_path().GetParentPath()
+            if parent_path == psdf.Path("."):
+                self._add_child(bone)
+            else:
+                parent_bone = self._get_bone_from_path(parent_path)
+                if parent_bone:
+                    parent_bone.add_child(bone)
+
+    def _get_bone_from_path(self, path: psdf.Path) -> 'Bone':
+        """
+        Get a bone from the path.
+        """
+        for bone in self._bone_dict:
+            if bone.get_relative_path() == path:
+                return bone
+        return None
+
+class Animation(Primative):
+    """
+    Class representing a skeleton node.
+    """
+    def __init__(self, data_object):
+        super().__init__(data_object)
+        
+    def _init_node_data(self):
+        super()._init_node_data()
+        self._data_object = pskl.Animation(self._data_object)
+        self._node_color = (0.2, 0.3, 0.7, 1.0)
+        self._node_icon = cstat.Icon.ICON_ANIMATION
+
+
 
 
 class Material(Primative):
@@ -348,9 +418,9 @@ class Data(Node):
     def _init_node_data(self):
         self._set_name(self._data_object["name"])
         self._parent_node: pusd.Prim = self._data_object["owner"]
-        self._relative_path = self._data_object["relative_path"]
+        self._relative_path = self._data_object["path"]
 
-    def get_relateive_path(self) -> str:
+    def get_relative_path(self) -> psdf.Path:
         """
         Get the relative path of the node.
         """
@@ -376,11 +446,25 @@ class Bone(Data):
     """
     def __init__(self, data_object):
         super().__init__(data_object)
+        self._child_list: list['Bone'] = []
 
     def _init_node_data(self):
         super()._init_node_data()
         self._node_color = (0.8, 0.6, 0.4, 1.0)
         self._node_icon = cstat.Icon.ICON_BONE
+    
+    def add_child(self, child: 'Bone'):
+        """
+        Add a child node to the bone.
+        """
+        if child and child not in self._child_list and child != self:
+            self._child_list.append(child)
+    
+    def get_child_nodes(self) -> list['Bone']:
+        """
+        Get the child nodes.
+        """
+        return self._child_list
 
 
 #####################################################################################################################################
@@ -724,6 +808,9 @@ class SceneManager:
     _instance = None
     _usd_path = None
     _root = None
+    _start_time = 0
+    _end_time = 1
+    _current_time = 0
     def __new__(cls, usd_path: str=None):
         if cls._instance is None:
             cls._initialized = False
@@ -738,34 +825,25 @@ class SceneManager:
             self._init_usd_scene()
             self._init_time_manager()
             self._initialized = True
-        if usd_path:
+        elif usd_path:
             self.set_usd_file(usd_path)
     
     def _init_usd_scene(self):
         """
         Initialize USD scene.
         """
+        print(f"Loading USD file: {self._usd_path}")
         self._stage: pusd.Stage = pusd.Stage.Open(self._usd_path)
         self._root = self._stage.GetPseudoRoot()
-        self._traverse_hierarchy()
-
-    def _traverse_hierarchy(self):
-        """
-        Traverse the hierarchy and init nodes.
-        """
-        for self._temp_prim in self._stage.Traverse():
-            internal_node = self._init_internal_node(self._temp_prim)
-            self._add_path_node(internal_node)
-            for self._temp_attribute in self._temp_prim.GetAttributes():
-                internal_attribute = self._init_internal_node(self._temp_attribute)
-                if internal_attribute and internal_attribute not in self._path_node_list:
-                    self._add_path_node(internal_attribute)
+        internal_root = self._init_internal_node(self._root)
+        self._add_path_node(internal_root)
   
     def _init_internal_node(self, input_object: pusd.Prim | pusd.Attribute) -> Node | None:
         """
         Get appropriate node type and init.
         """
         prim_classes = {
+            "": Root,
             "Xform": XForm,
             "Mesh": Mesh,
             "DistantLight": Light,
@@ -779,6 +857,8 @@ class SceneManager:
             "LightPortal": Light,
             "Camera": Camera,
             "Skeleton": Skeleton,
+            "SkelRoot": XForm,
+            "SkelAnimation": Animation,
             "Material": Material,
             "BasisCurves": Curve,
             "NurbsCurves": Curve,
@@ -803,16 +883,18 @@ class SceneManager:
         input_object_type = str(input_object.GetTypeName())
         if input_object_type in prim_classes:
             return prim_classes[input_object_type](input_object)
+        else:
+            print(f"Unknown node type: {input_object_type}")
         return None
 
     def _init_internal_data(self, data_object: dict[str, str | pusd.Prim]) -> Data:
         """
         Get appropriate data type and init.
         """
-        if data_object["owner"].isA(pskl.Skeleton):
-            return Skeleton(data_object)
-        elif data_object["owner"].isA(pshd.Material):
-            return Material(data_object)
+        if isinstance(data_object["owner"], pskl.Skeleton):
+            return Bone(data_object)
+        elif isinstance(data_object["owner"], pshd.Material):
+            return Texture(data_object)
         else:
             return None
 
@@ -823,6 +905,28 @@ class SceneManager:
         self._current_time = self._stage.GetStartTimeCode()
         self._start_time = self._stage.GetStartTimeCode()
         self._end_time = self._stage.GetEndTimeCode()
+
+    def get_path_node_list(self) -> list[Pathed]:
+        """
+        Get the list of path nodes.
+        """
+        return self._path_node_list
+    
+    def get_path_node_list_by_type(self, node_type) -> list[Pathed]:
+        """
+        Get the list of path nodes by type.
+        """
+        node_list = []
+        for node in self._path_node_list:
+            if isinstance(node, node_type):
+                node_list.append(node)
+        return node_list
+
+    def get_data_node_list(self) -> list[Data]:
+        """
+        Get the list of data nodes.
+        """
+        return self._data_node_list
 
     def _add_path_node(self, node: Pathed):
         """
@@ -837,6 +941,7 @@ class SceneManager:
         """
         if node and node not in self._data_node_list:
             self._data_node_list.append(node)
+
 
     def init_path_node(self, data_object: pusd.Prim) -> Pathed:
         """
@@ -910,7 +1015,7 @@ class SceneManager:
         """
         Get the path node from psdf.Path | pusd.Prim | pusd.Attributes.
         """
-        if isinstance(input, pusd.Prim):
+        if isinstance(input, pusd.Prim) and not isinstance(input, pusd.Attribute):
             for node in self._path_node_list:
                 if node.get_data_object() == input:
                     return node
@@ -928,7 +1033,7 @@ class SceneManager:
         Get the data node by its relative path.
         """
         for node in self._data_node_list:
-            if node.get_relateive_path() == input:
+            if node.get_relative_path() == input:
                 return node
             elif node.get_name() == input:
                 return node
@@ -1099,7 +1204,7 @@ class GLFWOpenGLWindow:
             self._set_imgui_window_size()
             glfw.poll_events()
             gl.glClearColor(*self._cfg_gl_color)
-            gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+            gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
             self._render_loop_function()
             glfw.swap_buffers(self._window)
         self._shutdown()

@@ -138,14 +138,14 @@ no_docking = true
 
 
 [detail.style_color]
-window_bg = [0.15, 0.15, 0.15, 1.0]
+window_bg = [0.1, 0.1, 0.1, 1.0]
 border = [0.0, 0.0, 0.0, 1.0]
 text = [0.65, 0.65, 0.65, 1.0]
 
 
 [detail.style_var]
 item_spacing = [5, 5]
-window_padding = [10, 10]
+window_padding = [0, 0]
 window_border_size = 0.0
 window_rounding = 0.0
 
@@ -159,10 +159,9 @@ window_rounding = 0.0
 up_axis = "Z"
 default_draw_style = "full"
 grid_color = [0.25, 0.25, 0.25, 1.0]
-clipping_range = [10.0, 10000000.0]
+clipping_range = [1.0, 1000000.0]
 focal_length = 35.0
-grid_size = 1500
-grid_density = 15
+grid_density = 10
 
 [viewport.flags]
 no_move = true

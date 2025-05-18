@@ -1,15 +1,21 @@
 #COMPILED
 __pycache__/
 
-
 #HIDDEN
 .*
 
-
 #OTHER
 usd_asset_viewer.code-workspace
-example_3point.usdc
-example_gun.usdc
-imgui.ini
 *.psd
+imgui.ini
+
+# TEST ASSETS
+example_3point.usdc
+example_ue.usdc
+example_gun.usdc
+textures/
+
+#C++
+build/
+c_*
 

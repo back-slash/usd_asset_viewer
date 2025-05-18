@@ -20,7 +20,8 @@ import core.static_core as cstat
 import core.utils_core as cutils
 import core.base_core as cbase
 #####################################################################################################################################
-      
+
+#####################################################################################################################################      
 class OutlinerPanel(cbase.Panel):
     """
     Outliner panel for displaying usd contents.
@@ -41,94 +42,47 @@ class OutlinerPanel(cbase.Panel):
         separator_max = imgui.ImVec2(separator_min[0] + 1, separator_min[1] + window_size[1])
         draw_list.add_rect_filled(separator_min, separator_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=0.0, flags=0)
 
-    def _draw_tab_bar(self) -> None:
+    def _draw_skeleton_tab(self) -> None:
         """
-        Draw the tab bar for the outliner panel.
+        Draw the skeleton tab.
         """
-        imgui.push_style_var(imgui.StyleVar_.tab_border_size, 1.0)
-        imgui.push_style_var(imgui.StyleVar_.tab_bar_border_size, 1.0)
-        imgui.push_style_var(imgui.StyleVar_.tab_rounding, 0.0)
-        imgui.push_style_var(imgui.StyleVar_.frame_padding, (10, 5))
-        imgui.push_style_var(imgui.StyleVar_.item_inner_spacing, (1, 1))
-        imgui.push_style_var(imgui.StyleVar_.item_spacing, (5, 0))
+        if self._stage:
+            pass
 
-        imgui.push_style_color(imgui.Col_.tab, (0.2, 0.2, 0.2, 1))
-        imgui.push_style_color(imgui.Col_.tab_selected, (0.3, 0.3, 0.3, 1))
-        imgui.push_style_color(imgui.Col_.tab_hovered, (0.35, 0.35, 0.35, 1))
-        
-        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() - 2)
-        imgui.begin_tab_bar("##outliner_tab_bar")
-        selected, clicked = imgui.begin_tab_item("Standard")
-        if selected:
-            self._draw_base_tab()
-            imgui.set_cursor_pos_y(imgui.get_cursor_pos_y())
-            if imgui.begin_child("##outliner_standard", (0, 0)):
-                imgui.new_line()
-                imgui.set_cursor_pos_y(imgui.get_cursor_pos_y())
-                self._draw_standard_tab()
-                imgui.end_child()
-            imgui.end_tab_item()
-        selected, clicked = imgui.begin_tab_item("Skeleton")
-        if selected:
-            self._draw_base_tab()
-            imgui.end_tab_item()
-        selected, clicked = imgui.begin_tab_item("Material")
-        if selected:
-            self._draw_base_tab()
-            imgui.end_tab_item()
-        imgui.end_tab_bar()
-        tab_rect = imgui.get_item_rect_max()
-        tab_line_min = imgui.ImVec2(0, tab_rect[1] - 1)
-        tab_line_max = imgui.ImVec2(tab_line_min[0] + imgui.get_window_width(), tab_line_min[1] + 1)
-        draw_list = imgui.get_window_draw_list()
-        draw_list.add_rect_filled(tab_line_min, tab_line_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=0.0, flags=0)
-        imgui.pop_style_var(6)
-        imgui.pop_style_color(3)
-
-    def _draw_base_tab(self) -> None:
+    def _draw_material_tab(self) -> None:
         """
-        Draw the standard tab of the outliner panel.
+        Draw the material tab.
         """
-        draw_list = imgui.get_window_draw_list()
-        cursor_pos = imgui.get_cursor_pos()
-        window_pos = imgui.get_window_pos()
-        window_size = imgui.get_window_size()
-        bg_rect_min = imgui.ImVec2(window_pos[0], window_pos[1] + cursor_pos[1])
-        bg_rect_max = imgui.ImVec2(window_size[0], window_size[1]) + window_pos
-        draw_list.add_rect_filled(bg_rect_min, bg_rect_max, imgui.get_color_u32((0.15, 0.15, 0.15, 1)), rounding=0.0, flags=0)
+        if self._stage:
+            pass
 
     def _draw_standard_tab(self) -> None:
         if self._stage:
             root = self._scene_manager.get_root()
-            self._node_index = 0
-            self._recursive_node_draw(root, 0)
-                
-    def _recursive_node_draw(self, node: pusd.Prim, indent: int) -> None:
+            internal_root = self._scene_manager.get_path_node(root)
+            if internal_root:
+                self._node_index = 0
+                self._recursive_node_draw(internal_root, 0)
+
+    def _recursive_node_draw(self, node: cbase.Primative, indent: int) -> None:
         """
         Recursively traverse the USD stage and draw the nodes.
         """
-        if node.IsValid():
-            self._draw_test_node(node, indent)
-            node_children = node.GetChildren()
-            if node_children:
-                for child in node_children:
-                    self._recursive_node_draw(child, indent + 1)
+        self._draw_test_node(node, indent)
+        node_children = node.get_child_nodes()
+        if node_children:
+            for child in node_children:
+                self._recursive_node_draw(child, indent + 1)
             
-    def _draw_test_node(self, node: pusd.Prim, indent: int) -> None:
+    def _draw_test_node(self, node: cbase.Primative, indent: int) -> None:
         """
         Draw a test node in the outliner.
         """
-        if node not in self._internal_test_node_dict:
-            self._internal_test_node_dict[node] = self._scene_manager.init_path_node(node)
-        internal_node: cbase.Pathed = self._internal_test_node_dict[node]
-        if not internal_node:
-            return
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 22 + 10)
-        indent_size_x = 20
+        indent_size_x = 0
         odd_index = self._node_index % 2 == 0
         draw_list = imgui.get_window_draw_list()
-        node_name = node.GetName()
-        node_type = node.GetTypeName()
+        node_name = node.get_name()
         indent_cursor_pos_x = indent * indent_size_x
         imgui.set_cursor_pos_x(0)
         bg_max_x = imgui.get_content_region_avail()[0] - 2
@@ -144,8 +98,8 @@ class OutlinerPanel(cbase.Panel):
         draw_list.add_rect(node_rect_min, node_rect_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=2.0)
         icon_bg_min = node_rect_min
         icon_bg_max = (node_rect_min[0] + 20, node_rect_min[1] + 20)
-        internal_color = internal_node.get_color()
-        internal_icon = internal_node.get_icon()
+        internal_color = node.get_color()
+        internal_icon = node.get_icon()
         draw_list.add_rect_filled(icon_bg_min, icon_bg_max, imgui.get_color_u32(internal_color), rounding=2.0)
         draw_list.add_rect(icon_bg_min, icon_bg_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=2.0)
         if internal_icon not in self._internal_test_icon_dict:
@@ -173,7 +127,12 @@ class OutlinerPanel(cbase.Panel):
         imgui.set_next_window_size((self._panel_width, self._panel_height))
         imgui.set_next_window_pos(self._panel_position)
         imgui.begin(self._name, True, self._window_flags)
-        self._draw_tab_bar()
+        tab_dict = {
+            "standard" : self._draw_standard_tab,
+            "skeleton" : self._draw_skeleton_tab,
+            "material" : self._draw_material_tab,
+        }
+        cutils.draw_tab_bar("outliner", tab_dict)
         self._draw_vertical_separator()
   
 #####################################################################################################################################

@@ -28,6 +28,7 @@ class Icon(Enum):
     """
     Enum for node types.
     """
+    ICON_ROOT = "icon_root"
     ICON_MESH = "icon_mesh"
     ICON_LIGHT = "icon_light"
     ICON_CAMERA = "icon_camera"
@@ -38,6 +39,7 @@ class Icon(Enum):
     ICON_BONE = "icon_bone"
     ICON_LOCATOR = "icon_locator"
     ICON_SKELETON = "icon_skeleton"
+    ICON_ANIMATION = "icon_animation"
     ICON_UNKNOWN = "icon_unknown"
     ICON_VIEWPORT_WIREFRAME = "icon_viewport_wireframe"
     ICON_VIEWPORT_FLAT = "icon_viewport_flat"
@@ -46,6 +48,7 @@ class Icon(Enum):
     ICON_VIEWPORT_AXIS_Y = "icon_viewport_axis_y"
     ICON_VIEWPORT_LIGHT = "icon_viewport_light"
     ICON_VIEWPORT_CAMERA = "icon_viewport_camera"
+    ICON_VIEWPORT_SETTINGS = "icon_viewport_settings"
 
 
 

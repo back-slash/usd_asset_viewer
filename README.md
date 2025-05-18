@@ -28,11 +28,24 @@
         - Lights
         - Bone
 - Outliner panel
+    - Standard view
+    - Skeleton view
+    - Material view
 - Details panel
+    - Input / Output
 - Trackbar panel
-    - Animation support
-#### Stretch
-- Node network
+    - Animation playback
+    - Scrubbing
+#### Future
+- Animation blending
+    - Node based
+    - Nodes
+        - Add
+        - Subtract
+        - Mask
+- Nodes
+    - Visualize the scene as nodes
+
 
 
 ## Dependencies
@@ -42,7 +55,7 @@
 - toml
 #### C++
 - OpenUSD
-- imgui
+- glad
 
 
 ## Usage

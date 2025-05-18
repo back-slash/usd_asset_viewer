@@ -6,6 +6,7 @@
 
 # PYTHON
 import os
+from numpy import identity
 import toml
 from typing import Any, Dict, List, Tuple
 
@@ -196,3 +197,52 @@ def calc_look_at(source_position: pgf.Vec3d, target_position: pgf.Vec3d, up: pgf
         source_position[0], source_position[1], source_position[2], 1
     )
     return look_at_matrix
+
+
+def draw_tab_bar(name, tab_dict: dict[str, Any]) -> None:
+    """
+    Draw a generic tab bar.
+    """
+    imgui.push_style_var(imgui.StyleVar_.tab_border_size, 1.0)
+    imgui.push_style_var(imgui.StyleVar_.tab_bar_border_size, 1.0)
+    imgui.push_style_var(imgui.StyleVar_.tab_rounding, 0.0)
+    imgui.push_style_var(imgui.StyleVar_.frame_padding, (10, 5))
+    imgui.push_style_var(imgui.StyleVar_.item_inner_spacing, (1, 1))
+    imgui.push_style_var(imgui.StyleVar_.item_spacing, (5, 0))
+
+    imgui.push_style_color(imgui.Col_.tab, (0.2, 0.2, 0.2, 1))
+    imgui.push_style_color(imgui.Col_.tab_selected, (0.3, 0.3, 0.3, 1))
+    imgui.push_style_color(imgui.Col_.tab_hovered, (0.35, 0.35, 0.35, 1))
+    
+    imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() - 2)
+    imgui.begin_tab_bar(f"##{name}_tab_bar")
+    for tab_name in tab_dict:
+        selected, clicked = imgui.begin_tab_item(tab_name.title())
+        tab_rect = imgui.get_item_rect_max()
+        if selected:
+            draw_base_tab()
+            if imgui.begin_child("##tab_{name}_{tab_name}", (0, 0)):
+                imgui.new_line()
+                tab_dict[tab_name]()
+                imgui.end_child()
+            imgui.end_tab_item()
+    imgui.end_tab_bar()
+    window_pos = imgui.get_window_pos()
+    tab_line_min = imgui.ImVec2(window_pos[0], tab_rect[1] - 1)
+    tab_line_max = imgui.ImVec2(tab_line_min[0] + imgui.get_window_width(), tab_line_min[1] + 1)
+    draw_list = imgui.get_window_draw_list()
+    draw_list.add_rect_filled(tab_line_min, tab_line_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=0.0, flags=0)
+    imgui.pop_style_var(6)
+    imgui.pop_style_color(3)
+
+def draw_base_tab() -> None:
+    """
+    Draw the base tab.
+    """
+    draw_list = imgui.get_window_draw_list()
+    cursor_pos = imgui.get_cursor_pos()
+    window_pos = imgui.get_window_pos()
+    window_size = imgui.get_window_size()
+    bg_rect_min = imgui.ImVec2(window_pos[0], window_pos[1] + cursor_pos[1])
+    bg_rect_max = imgui.ImVec2(window_size[0], window_size[1]) + window_pos
+    draw_list.add_rect_filled(bg_rect_min, bg_rect_max, imgui.get_color_u32((0.15, 0.15, 0.15, 1)), rounding=0.0, flags=0)
