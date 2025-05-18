@@ -7,7 +7,7 @@
 
 
 ## Current Screenshot
-![USD Asset Viewer WIP Screenshot](docs/images/screenshot_WIP.png)
+![USD Asset Viewer WIP Screenshot](docs/current_wip.png)
 
 
 ## Features
