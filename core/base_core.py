@@ -333,7 +333,6 @@ class Skeleton(Primative):
             sdf_path = psdf.Path(path)
             path_split = str(path).split("/")
             transform: pgf.Matrix4d = bone_transform_list[index]
-            transform = list(np.array(transform).flatten())
             bone_entry_dict = {
                 "index": index,
                 "owner": self._data_object,

@@ -10,9 +10,7 @@ usd_asset_viewer.code-workspace
 imgui.ini
 
 # TEST ASSETS
-example_3point.usdc
-example_ue.usdc
-example_gun.usdc
+example_p_*
 textures/
 
 #C++

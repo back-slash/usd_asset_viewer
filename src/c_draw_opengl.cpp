@@ -1,8 +1,16 @@
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// USD Asset Viewer | SRC | C++ Draw OpenGL
+// TODO:
+// 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // C++
 #include <iostream>
 #include <vector>
+#include <string>
 
 // PyBind11
+#include "usd_pybind_cast.h"
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
@@ -14,49 +22,21 @@
 // OpenGL
 #include <glad/glad.h>
 
+// Project
+#include "c_draw_utils.cpp"
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ConvertMatrixUSDGL(const pxr::GfMatrix4d& usdMatrix, GLfloat glMatrix[16]) {
-    glMatrix[0]  = static_cast<GLfloat>(usdMatrix[0][0]);
-    glMatrix[1]  = static_cast<GLfloat>(usdMatrix[0][1]);
-    glMatrix[2]  = static_cast<GLfloat>(usdMatrix[0][2]);
-    glMatrix[3]  = static_cast<GLfloat>(usdMatrix[0][3]);
-    glMatrix[4]  = static_cast<GLfloat>(usdMatrix[1][0]);
-    glMatrix[5]  = static_cast<GLfloat>(usdMatrix[1][1]);
-    glMatrix[6]  = static_cast<GLfloat>(usdMatrix[1][2]);
-    glMatrix[7]  = static_cast<GLfloat>(usdMatrix[1][3]);
-    glMatrix[8]  = static_cast<GLfloat>(usdMatrix[2][0]);
-    glMatrix[9]  = static_cast<GLfloat>(usdMatrix[2][1]);
-    glMatrix[10] = static_cast<GLfloat>(usdMatrix[2][2]);
-    glMatrix[11] = static_cast<GLfloat>(usdMatrix[2][3]);
-    glMatrix[12] = static_cast<GLfloat>(usdMatrix[3][0]);
-    glMatrix[13] = static_cast<GLfloat>(usdMatrix[3][1]);
-    glMatrix[14] = static_cast<GLfloat>(usdMatrix[3][2]);
-    glMatrix[15] = static_cast<GLfloat>(usdMatrix[3][3]);
+
+void  c_init_opengl_settings() {
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glEnable(GL_MULTISAMPLE);
 }
 
 
-void ConvertMatrixListUSD(const pybind11::list& glMatrix, pxr::GfMatrix4d& usdMatrix) {
-    usdMatrix[0][0] = glMatrix[0].cast<double>();
-    usdMatrix[0][1] = glMatrix[1].cast<double>();
-    usdMatrix[0][2] = glMatrix[2].cast<double>();
-    usdMatrix[0][3] = glMatrix[3].cast<double>();
-    usdMatrix[1][0] = glMatrix[4].cast<double>();
-    usdMatrix[1][1] = glMatrix[5].cast<double>();
-    usdMatrix[1][2] = glMatrix[6].cast<double>();
-    usdMatrix[1][3] = glMatrix[7].cast<double>();
-    usdMatrix[2][0] = glMatrix[8].cast<double>();
-    usdMatrix[2][1] = glMatrix[9].cast<double>();
-    usdMatrix[2][2] = glMatrix[10].cast<double>();
-    usdMatrix[2][3] = glMatrix[11].cast<double>();
-    usdMatrix[3][0] = glMatrix[12].cast<double>();
-    usdMatrix[3][1] = glMatrix[13].cast<double>();
-    usdMatrix[3][2] = glMatrix[14].cast<double>();
-    usdMatrix[3][3] = glMatrix[15].cast<double>();
-}    
-
-void c_setup_opengl_viewport(
-    pybind11::dict draw_dict
-) {
+void c_setup_opengl_viewport(pybind11::dict draw_dict) {
     int hydra_x_min = draw_dict["hydra_x_min"].cast<int>();
     int hydra_y_min = draw_dict["hydra_y_min"].cast<int>();
     int panel_width = draw_dict["panel_width"].cast<int>();
@@ -64,8 +44,7 @@ void c_setup_opengl_viewport(
     double fov = draw_dict["fov"].cast<double>();
     double near_plane = draw_dict["near_z"].cast<double>();
     double far_plane = draw_dict["far_z"].cast<double>();
-    pxr::GfMatrix4d camera_matrix;
-    ConvertMatrixListUSD(draw_dict["camera_matrix"].cast<pybind11::list>(), camera_matrix);
+    pxr::GfMatrix4d camera_matrix = draw_dict["camera_matrix"].cast<pxr::GfMatrix4d>();
 
     glViewport(hydra_x_min, hydra_y_min, panel_width, panel_height);
     glMatrixMode(GL_PROJECTION);
@@ -79,21 +58,77 @@ void c_setup_opengl_viewport(
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     float camera_matrix_inverse_gl[16];
-    ConvertMatrixUSDGL(camera_matrix.GetInverse(), camera_matrix_inverse_gl);    
+    convet_matrix_usd_gl(camera_matrix.GetInverse(), camera_matrix_inverse_gl);    
     glLoadMatrixf(camera_matrix_inverse_gl);
 }
 
+void  c_draw_opengl_grid(pybind11::dict draw_dict) {
+    glPushAttrib(GL_ENABLE_BIT | GL_TRANSFORM_BIT | GL_VIEWPORT_BIT);
+    glPushMatrix();
 
-void c_draw_opengl_bones(
-    pybind11::list bone_list,
-    pybind11::dict draw_dict
-) {
-    pxr::GfMatrix4d camera_matrix;
-        ConvertMatrixListUSD(
-        draw_dict["camera_matrix"],
-        camera_matrix
+    c_setup_opengl_viewport(draw_dict);
+
+    int grid_density = draw_dict["grid_density"].cast<int>();
+    pxr::GfVec3d bbox_size = draw_dict["scene_bbox_size"].cast<pxr::GfVec3d>();
+    int grid_size = int(bbox_size.GetLength() * 2.0);
+    float step = static_cast<float>(grid_size) / static_cast<float>(grid_density);
+    std::vector<float> grid_color = draw_dict["grid_color"].cast<std::vector<float>>();
+    std::string up_axis = draw_dict["up_axis"].cast<std::string>();
+    glLineWidth(0.75f);
+    glColor4f(
+        static_cast<GLfloat>(grid_color[0]), 
+        static_cast<GLfloat>(grid_color[1]),
+        static_cast<GLfloat>(grid_color[2]), 
+        static_cast<GLfloat>(grid_color[3])
     );
+    glBegin(GL_LINES);      
+    for (int index = -grid_density; index <= grid_density; ++index) {
+        glColor4f(
+            static_cast<GLfloat>(grid_color[0]), 
+            static_cast<GLfloat>(grid_color[1]),
+            static_cast<GLfloat>(grid_color[2]), 
+            static_cast<GLfloat>(grid_color[3])
+        );
+        if (index == 0) {
+            if (up_axis == "Y") {
+                glColor4f(0, 0, 1, 1);
+            } else {
+                glColor4f(0, 1, 0, 1);
+            }
+        }
+        if (up_axis == "Y") {
+            glVertex3f(index * step, 0.0f, -grid_size);
+            glVertex3f(index * step, 0.0f, grid_size);
 
+        } else {
+            glVertex3f(index * step, -grid_size, 0.0f);
+            glVertex3f(index * step, grid_size, 0.0f);
+        }
+        glColor4f(
+            static_cast<GLfloat>(grid_color[0]), 
+            static_cast<GLfloat>(grid_color[1]),
+            static_cast<GLfloat>(grid_color[2]), 
+            static_cast<GLfloat>(grid_color[3])
+        );
+        if (index == 0) {
+            glColor4f(1, 0, 0, 1);
+        }
+        if (up_axis == "Y") {
+            glVertex3f(-grid_size, 0.0f, index * step);
+            glVertex3f(grid_size, 0.0f, index * step);
+        } else {
+            glVertex3f(-grid_size, index * step, 0.0f);
+            glVertex3f(grid_size, index * step, 0.0f);            
+        }
+
+    }
+    glEnd();
+    glPopMatrix();
+    glPopAttrib();
+}
+
+
+void c_draw_opengl_bones(pybind11::list bone_list, pybind11::dict draw_dict) {
     glPushMatrix();
 
     c_setup_opengl_viewport(
@@ -102,15 +137,7 @@ void c_draw_opengl_bones(
 
     for (auto bone : bone_list) {
         pybind11::dict data_dict = bone.attr("get_data_object")();
-        pybind11::list bone_matrix_list = data_dict["matrix"];
-        pxr::GfMatrix4d bone_matrix;
-        bone_matrix.SetIdentity();  
-        
-        ConvertMatrixListUSD(
-            bone_matrix_list,
-            bone_matrix
-        );
-
+        pxr::GfMatrix4d bone_matrix = data_dict["matrix"].cast<pxr::GfMatrix4d>();
         pxr::GfVec3d root_vert = bone_matrix.ExtractTranslation();
 
         glLineWidth(1.0f);
@@ -131,14 +158,9 @@ void c_draw_opengl_bones(
 
         for (auto child : bone.attr("get_child_nodes")()) {
             pybind11::dict child_data_dict = child.attr("get_data_object")();
-            pybind11::list child_matrix_list = child_data_dict["matrix"];
-            pxr::GfMatrix4d child_matrix;
-            ConvertMatrixListUSD(
-                child_matrix_list,
-                child_matrix
-            );
+            pxr::GfMatrix4d child_matrix = child_data_dict["matrix"].cast<pxr::GfMatrix4d>();
             pxr::GfVec3d child_root_vert = child_matrix.ExtractTranslation();
-
+            
             double bone_length = (child_root_vert - root_vert).GetLength();
             if (bone_length < 0.001) {
                 continue;
@@ -163,19 +185,25 @@ void c_draw_opengl_bones(
     }
 }
 
-
 void c_init_glad() {
     if (!gladLoadGL()) {
         std::cerr << "Failed to initialize GLAD" << std::endl;
         return;
     }
+    else {
+        c_init_opengl_settings();
+    }
 }
 
 
 PYBIND11_MODULE(c_draw_opengl, m) {
-    m.def("c_draw_opengl_bones", &c_draw_opengl_bones, "Draw OpenGL bones",
+    m.def("c_init_glad", &c_init_glad, "Initialize GLAD");  
+    m.def("c_init_opengl_settings", &c_init_opengl_settings, "Initialize OpenGL Settings");
+    m.def("c_draw_opengl_bones", &c_draw_opengl_bones, "Draw OpenGL Bones",
           pybind11::arg("bone_list"),
           pybind11::arg("draw_dict"));
-    m.def("c_init_glad", &c_init_glad, "Initialize GLAD");
+    m.def("c_draw_opengl_grid", &c_draw_opengl_grid, "Draw OpenGL Grid",
+          pybind11::arg("draw_dict"));
+
 }
 

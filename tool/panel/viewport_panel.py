@@ -474,56 +474,8 @@ class ViewportPanel(cbase.Panel):
         gl.glLoadIdentity()
         camera_transform: pgf.Matrix4d = self._camera.GetAttribute("xformOp:transform").Get() * self._up_axis_matrix
         camera_transform_offset = camera_transform.GetInverse()
-        camera_transform_offset_np = np.array([camera_transform_offset.GetRow(i) for i in range(4)])
-        gl.glLoadMatrixf(camera_transform_offset_np.flatten())
-
-    def _draw_opengl_grid(self) -> None:
-        """
-        Draw a grid.
-        """
-        gl.glPushAttrib(gl.GL_ENABLE_BIT | gl.GL_TRANSFORM_BIT | gl.GL_VIEWPORT_BIT)
-        gl.glPushMatrix()
-
-        self._setup_opengl_viewport()
-
-        grid_density = self._cfg["viewport"]["grid_density"]
-        
-        #TEST
-        grid_size = int(self._scene_bbox_size.GetLength() * 2.0)
-        grid_color = self._cfg["viewport"]["grid_color"]
-        step = grid_size / grid_density
-
-        gl.glLineWidth(0.75)
-        gl.glColor4f(*grid_color)
-        gl.glBegin(gl.GL_LINES)        
-        for index in range(-grid_density, grid_density + 1):
-            gl.glVertex3f(index * step, 0.0, -grid_size)
-            if index == 0:
-                gl.glColor4f(0,0,1,1)  if self._up_axis == "Y" else gl.glColor4f(0,1,0,1)
-            gl.glVertex3f(index * step, 0.0, 0.0)
-            if index == 0:
-                gl.glColor4f(*grid_color)
-            gl.glVertex3f(index * step, 0.0, grid_size)
-            if index == 0:
-                gl.glColor4f(0,0,1,1)  if self._up_axis == "Y" else gl.glColor4f(0,1,0,1) 
-            gl.glVertex3f(index * step, 0.0, 0.0)
-            if index == 0:
-                gl.glColor4f(*grid_color)           
-            gl.glVertex3f(-grid_size, 0.0, index * step)
-            if index == 0:
-                gl.glColor4f(1,0,0,1)          
-            gl.glVertex3f(0.0, 0.0, index * step)
-            if index == 0:
-                gl.glColor4f(*grid_color)
-            gl.glVertex3f(grid_size, 0.0, index * step)
-            if index == 0:
-                gl.glColor4f(1,0,0,1)            
-            gl.glVertex3f(0.0, 0.0, index * step)
-            if index == 0:
-                gl.glColor4f(*grid_color)        
-        gl.glEnd()
-        gl.glPopMatrix()
-        gl.glPopAttrib()
+        camera_transform_offset_np = np.array(camera_transform_offset).flatten()
+        gl.glLoadMatrixf(camera_transform_offset_np)
 
     def _draw_opengl_gizmo(self) -> None:
         """
@@ -643,7 +595,6 @@ class ViewportPanel(cbase.Panel):
         gl.glPopMatrix()
         gl.glPopAttrib()
 
-
     def _draw_opengl_cameras(self) -> None:
         """
         Draw a direction/distance light represenatation in OpenGL.
@@ -720,11 +671,9 @@ class ViewportPanel(cbase.Panel):
         Create a dictionary for OpenGL drawing.
         """
         camera_matrix = self._camera.GetAttribute("xformOp:transform").Get()
-        camera_matrix_np = np.array(camera_matrix).flatten()
-        up_axis_marix_np = np.array(self._up_axis_matrix).flatten()
         draw_dict = {}
-        draw_dict["camera_matrix"] = camera_matrix_np
-        draw_dict["up_axis_matrix"] = up_axis_marix_np
+        draw_dict["camera_matrix"] = camera_matrix
+        draw_dict["up_axis_matrix"] = self._up_axis_matrix
         draw_dict["panel_width"] = self._panel_width
         draw_dict["panel_height"] = self._panel_height
         draw_dict["hydra_x_min"] = self._hydra_x_min
@@ -732,11 +681,11 @@ class ViewportPanel(cbase.Panel):
         draw_dict["fov"] = self._calc_fov()
         draw_dict["near_z"] = self._cfg["viewport"]["clipping_range"][0]
         draw_dict["far_z"] = self._cfg["viewport"]["clipping_range"][1]
+        draw_dict["scene_bbox_size"] = self._scene_bbox_size
+        draw_dict["grid_density"] = self._cfg["viewport"]["grid_density"]
+        draw_dict["grid_color"] = self._cfg["viewport"]["grid_color"]
+        draw_dict["up_axis"] = self._up_axis
         return draw_dict
-
-    def _draw_c_opengl_bones(self) -> None:
-        camera_matrix: pgf.Matrix4d = self._camera.GetAttribute("xformOp:transform").Get()
-        cdraw.c_draw_opengl_bones(self._scene_manager.get_data_node_list(), self._create_c_opengl_draw_dict())
             
     def _hydra_render_loop(self) -> None:
         """
@@ -752,16 +701,15 @@ class ViewportPanel(cbase.Panel):
         self._update_hydra_scene()
         self._hydra.Render(self._stage.GetPseudoRoot(), self._hydra_rend_params)
         if self._user_cfg["show"]["bones"]:
-            self._draw_c_opengl_bones()
+            cdraw.c_draw_opengl_bones(self._scene_manager.get_data_node_list(), self._create_c_opengl_draw_dict())
         if self._user_cfg["show"]["grid"]:
-            self._draw_opengl_grid()
+            cdraw.c_draw_opengl_grid(self._create_c_opengl_draw_dict())
         if self._user_cfg["show"]["lights"]:
             self._draw_opengl_lights()
         if self._user_cfg["show"]["camera"]:
             self._draw_opengl_cameras()
         if self._user_cfg["show"]["gizmo"]:
             self._draw_opengl_gizmo()
-
 
     def _options_backdrop(self) -> None:
         """
