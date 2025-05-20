@@ -62,6 +62,63 @@ void c_setup_opengl_viewport(pybind11::dict draw_dict) {
     glLoadMatrixf(camera_matrix_inverse_gl);
 }
 
+void c_draw_opengl_bones(pybind11::list bone_list, pybind11::dict draw_dict) {
+    glPushMatrix();
+
+    c_setup_opengl_viewport(
+        draw_dict
+    );
+
+    for (auto bone : bone_list) {
+        pybind11::dict data_dict = bone.attr("get_data_object")();
+        pxr::GfMatrix4d bone_matrix = data_dict["matrix"].cast<pxr::GfMatrix4d>();
+        pxr::GfVec3d root_vert = bone_matrix.ExtractTranslation();
+
+        glLineWidth(1.0f);
+        glBegin(GL_LINES);
+        glColor3f(1.0f, 0.0f, 0.0f);
+        glVertex3d(root_vert[0], root_vert[1], root_vert[2]);
+        pxr::GfVec3d x_axis = bone_matrix.Transform(pxr::GfVec3d(2.5, 0.0, 0.0));
+        glVertex3d(x_axis[0], x_axis[1], x_axis[2]);
+        glColor3f(0.0f, 1.0f, 0.0f);
+        glVertex3d(root_vert[0], root_vert[1], root_vert[2]);
+        pxr::GfVec3d y_axis = bone_matrix.Transform(pxr::GfVec3d(0.0, 2.5, 0.0));
+        glVertex3d(y_axis[0], y_axis[1], y_axis[2]);
+        glColor3f(0.0f, 0.0f, 1.0f);
+        glVertex3d(root_vert[0], root_vert[1], root_vert[2]);
+        pxr::GfVec3d z_axis = bone_matrix.Transform(pxr::GfVec3d(0.0, 0.0, 2.5));
+        glVertex3d(z_axis[0], z_axis[1], z_axis[2]);
+        glEnd();
+
+        for (auto child : bone.attr("get_child_nodes")()) {
+            pybind11::dict child_data_dict = child.attr("get_data_object")();
+            pxr::GfMatrix4d child_matrix = child_data_dict["matrix"].cast<pxr::GfMatrix4d>();
+            pxr::GfVec3d child_root_vert = child_matrix.ExtractTranslation();
+            
+            double bone_length = (child_root_vert - root_vert).GetLength();
+            if (bone_length < 0.001) {
+                continue;
+            }
+            pxr::GfVec3d bone_direction = (child_root_vert - root_vert).GetNormalized();
+            double bone_radius = 5.0;
+            glLineWidth(2.0f);
+            glBegin(GL_LINES);
+            glColor3f(0.75f, 0.75f, 0.75f);
+            glVertex3d(root_vert[0], root_vert[1], root_vert[2]);
+            glVertex3d(child_root_vert[0], child_root_vert[1], child_root_vert[2]);
+            glEnd();
+        }
+    
+    }
+
+    glPopMatrix();
+
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        std::cerr << "OpenGL error: " << err << std::endl;
+    }
+}
+
 void  c_draw_opengl_grid(pybind11::dict draw_dict) {
     glPushAttrib(GL_ENABLE_BIT | GL_TRANSFORM_BIT | GL_VIEWPORT_BIT);
     glPushMatrix();
@@ -125,64 +182,6 @@ void  c_draw_opengl_grid(pybind11::dict draw_dict) {
     glEnd();
     glPopMatrix();
     glPopAttrib();
-}
-
-
-void c_draw_opengl_bones(pybind11::list bone_list, pybind11::dict draw_dict) {
-    glPushMatrix();
-
-    c_setup_opengl_viewport(
-        draw_dict
-    );
-
-    for (auto bone : bone_list) {
-        pybind11::dict data_dict = bone.attr("get_data_object")();
-        pxr::GfMatrix4d bone_matrix = data_dict["matrix"].cast<pxr::GfMatrix4d>();
-        pxr::GfVec3d root_vert = bone_matrix.ExtractTranslation();
-
-        glLineWidth(1.0f);
-        glBegin(GL_LINES);
-        glColor3f(1.0f, 0.0f, 0.0f);
-        glVertex3d(root_vert[0], root_vert[1], root_vert[2]);
-        pxr::GfVec3d x_axis = bone_matrix.Transform(pxr::GfVec3d(2.5, 0.0, 0.0));
-        glVertex3d(x_axis[0], x_axis[1], x_axis[2]);
-        glColor3f(0.0f, 1.0f, 0.0f);
-        glVertex3d(root_vert[0], root_vert[1], root_vert[2]);
-        pxr::GfVec3d y_axis = bone_matrix.Transform(pxr::GfVec3d(0.0, 2.5, 0.0));
-        glVertex3d(y_axis[0], y_axis[1], y_axis[2]);
-        glColor3f(0.0f, 0.0f, 1.0f);
-        glVertex3d(root_vert[0], root_vert[1], root_vert[2]);
-        pxr::GfVec3d z_axis = bone_matrix.Transform(pxr::GfVec3d(0.0, 0.0, 2.5));
-        glVertex3d(z_axis[0], z_axis[1], z_axis[2]);
-        glEnd();
-
-        for (auto child : bone.attr("get_child_nodes")()) {
-            pybind11::dict child_data_dict = child.attr("get_data_object")();
-            pxr::GfMatrix4d child_matrix = child_data_dict["matrix"].cast<pxr::GfMatrix4d>();
-            pxr::GfVec3d child_root_vert = child_matrix.ExtractTranslation();
-            
-            double bone_length = (child_root_vert - root_vert).GetLength();
-            if (bone_length < 0.001) {
-                continue;
-            }
-            pxr::GfVec3d bone_direction = (child_root_vert - root_vert).GetNormalized();
-            double bone_radius = 5.0;
-            glLineWidth(2.0f);
-            glBegin(GL_LINES);
-            glColor3f(0.75f, 0.75f, 0.75f);
-            glVertex3d(root_vert[0], root_vert[1], root_vert[2]);
-            glVertex3d(child_root_vert[0], child_root_vert[1], child_root_vert[2]);
-            glEnd();
-        }
-    
-    }
-
-    glPopMatrix();
-
-    GLenum err = glGetError();
-    if (err != GL_NO_ERROR) {
-        std::cerr << "OpenGL error: " << err << std::endl;
-    }
 }
 
 void c_init_glad() {
