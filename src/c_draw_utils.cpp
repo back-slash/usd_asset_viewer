@@ -22,7 +22,7 @@
 #include <glad/glad.h>
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void convet_matrix_usd_gl(const pxr::GfMatrix4d& usdMatrix, GLfloat glMatrix[16]) {
+void convert_matrix_usd_gl(const pxr::GfMatrix4d& usdMatrix, GLfloat glMatrix[16]) {
     glMatrix[0]  = static_cast<GLfloat>(usdMatrix[0][0]);
     glMatrix[1]  = static_cast<GLfloat>(usdMatrix[0][1]);
     glMatrix[2]  = static_cast<GLfloat>(usdMatrix[0][2]);
@@ -39,4 +39,33 @@ void convet_matrix_usd_gl(const pxr::GfMatrix4d& usdMatrix, GLfloat glMatrix[16]
     glMatrix[13] = static_cast<GLfloat>(usdMatrix[3][1]);
     glMatrix[14] = static_cast<GLfloat>(usdMatrix[3][2]);
     glMatrix[15] = static_cast<GLfloat>(usdMatrix[3][3]);
+}
+
+void c_draw_text(pybind11::dict draw_dict) {
+
+    std::string text = draw_dict["text"].cast<std::string>();
+    double x = draw_dict["x"].cast<double>();
+    double y = draw_dict["y"].cast<double>();
+    double z = draw_dict["z"].cast<double>();
+
+    glColor3f(1.0f, 1.0f, 1.0f);
+
+    glRasterPos3d(x, y, z);
+
+    for (char c : text) {
+        //glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, c);
+    }
+}
+//NOT GOOD
+pxr::GfMatrix4d calc_look_at(const pxr::GfVec3d source, const pxr::GfVec3d target, const pxr::GfVec3d up) {
+    pxr::GfVec3d forward = (target - source).GetNormalized();
+    pxr::GfVec3d right = pxr::GfCross(forward, up).GetNormalized();
+    pxr::GfVec3d up_axis = pxr::GfCross(forward, right).GetNormalized();
+    pxr::GfMatrix4d look_at_matrix(
+        right[0], right[1], right[2], 0.0,
+        up_axis[0], up_axis[1], up_axis[2], 0.0,
+        forward[0], forward[1], forward[2], 0.0,
+        source[0], source[1], source[2], 1.0
+    );
+    return look_at_matrix;
 }

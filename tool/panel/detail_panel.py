@@ -56,10 +56,9 @@ class DetailPanel(cbase.Panel):
         imgui.set_next_window_size((self._panel_width, self._panel_height))
         imgui.set_next_window_pos(self._panel_position)
         imgui.begin(self._name, True, self._window_flags)
-        self._draw_vertical_separator()
         detail_tab_dict = {
             "detail": self._draw_detail_tab,
             "scene": self._draw_scene_tab,
         }
         cutils.draw_tab_bar("detail", detail_tab_dict)
-        
+        self._draw_vertical_separator()        
