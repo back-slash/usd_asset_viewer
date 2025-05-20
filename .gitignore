@@ -16,4 +16,5 @@ textures/
 #C++
 build/
 *.pyd
+*.so
 
