@@ -24,6 +24,7 @@
 
 namespace pybind11 { namespace detail {
 
+// GfMatrix4d
 template <> struct type_caster<pxr::GfMatrix4d> {
 public:
     PYBIND11_TYPE_CASTER(pxr::GfMatrix4d, _("GfMatrix4d"));
