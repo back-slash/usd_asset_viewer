@@ -61,7 +61,30 @@ set_target_properties(c_draw_opengl PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/../core
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../core   
 )
-target_link_libraries(c_draw_opengl PRIVATE usd_gf glad)
+target_link_libraries(c_draw_opengl
+    PRIVATE
+        usd_gf
+        usd_tf
+        usd_sdf
+        usd_usd
+        usd_usdGeom
+        usd_usdLux
+        usd_usdShade
+        usd_usdSkel
+        usd_usdRender
+        usd_usdUtils
+        usd_kind
+        usd_ar
+        usd_js
+        usd_plug
+        usd_work
+        usd_arch
+        usd_pcp
+        usd_vt
+        usd_trace
+        usd_python
+        glad
+)
 
 
 #################################################################################################################

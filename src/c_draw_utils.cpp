@@ -110,3 +110,10 @@ void c_check_opengl_error() {
         std::cerr << "OpenGL error: " << err << std::endl;
     }
 }
+
+void check_gl_error(const char* msg) {
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        std::cerr << "OpenGL error (" << msg << "): " << err << std::endl;
+    }
+}

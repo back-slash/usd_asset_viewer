@@ -205,9 +205,10 @@ class ViewportPanel(cbase.Panel):
                     world_rotation = world_transform_orthonormalized.ExtractRotation()
                     world_translate = world_transform.ExtractTranslation()
                     world_transform = pgf.Matrix4d().SetTranslateOnly(world_translate).SetRotateOnly(world_rotation)
-                    camera_dict[prim] = {
-                        "transform": world_transform,
-                        "visibility": prim.GetAttribute("visibility").Get()
+                    camera_dict[str(prim.GetName())] = {
+                        "prim": prim,
+                        "matrix": world_transform,
+                        "visibility": True if prim.GetAttribute("visibility").Get() == pgeo.Tokens.inherited else False,
                     }
         return camera_dict
 
@@ -216,7 +217,7 @@ class ViewportPanel(cbase.Panel):
         Create a list of lights in the scene.
         """
         if not self._stage:
-            return []
+            return {}
         light_dict: dict = {}
         prim_list = self._stage.Traverse()
         for prim in prim_list:
@@ -227,10 +228,11 @@ class ViewportPanel(cbase.Panel):
                 world_rotation = world_transform_orthonormalized.ExtractRotation()
                 world_translate = world_transform.ExtractTranslation()
                 world_transform = pgf.Matrix4d().SetTranslateOnly(world_translate).SetRotateOnly(world_rotation)
-                light_dict[prim] = {
-                    "transform": world_transform,
+                light_dict[str(prim.GetName())] = {
+                    "prim": prim,
+                    "matrix": world_transform,
                     "color": prim.GetAttribute("inputs:color").Get(),
-                    "visibility": prim.GetAttribute("visibility").Get(),
+                    "visibility": True if prim.GetAttribute("visibility").Get() == pgeo.Tokens.inherited else False,
                 }
         return light_dict
 
@@ -478,135 +480,6 @@ class ViewportPanel(cbase.Panel):
         camera_transform_offset = camera_transform.GetInverse()
         camera_transform_offset_np = np.array(camera_transform_offset).flatten()
         gl.glLoadMatrixf(camera_transform_offset_np)
-    
-    def _draw_opengl_lights(self) -> None:
-        """
-        Draw a direction/distance light represenatation in OpenGL.
-        """
-        gl.glPushAttrib(gl.GL_ENABLE_BIT | gl.GL_TRANSFORM_BIT | gl.GL_VIEWPORT_BIT)
-        gl.glPushMatrix()
-        self._setup_opengl_viewport()
-
-        light_dict = self._create_light_info_dict()
-        for light_prim in light_dict:
-            scale_factor = (20.0 if light_dict[light_prim]["visibility"] == pgeo.Tokens.inherited else 60.0)
-            widget_size = self._scene_bbox_size.GetLength() / scale_factor
-            light_color = light_dict[light_prim]["color"] if light_dict[light_prim]["visibility"] == pgeo.Tokens.inherited else (0.0, 0.0, 0.0)
-            transform_matrix: pgf.Matrix4d = light_dict[light_prim]["transform"]
-            forward_vector= pgf.Vec3d(0.0, 0.0, -1.0)
-
-            light_outer_color = (1.0, 1.0, 0.0) if light_dict[light_prim]["visibility"] == pgeo.Tokens.inherited else (0.0, 0.0, 0.0)  
-
-            gl.glLineWidth(1.0)
-            gl.glBegin(gl.GL_LINES)
-            gl.glColor3f(*light_outer_color)
-            transform_matrix = transform_matrix * self._up_axis_matrix
-            box_vertex_1_matrix: pgf.Matrix4d = pgf.Matrix4d().SetTranslate(pgf.Vec3d(widget_size, widget_size, 0.0)) * transform_matrix
-            box_vertex_2_matrix: pgf.Matrix4d = pgf.Matrix4d().SetTranslate(pgf.Vec3d(-widget_size, widget_size, 0.0)) * transform_matrix
-            box_vertex_3_matrix: pgf.Matrix4d = pgf.Matrix4d().SetTranslate(pgf.Vec3d(-widget_size, -widget_size, 0.0)) * transform_matrix
-            box_vertex_4_matrix: pgf.Matrix4d = pgf.Matrix4d().SetTranslate(pgf.Vec3d(widget_size, -widget_size, 0.0)) * transform_matrix 
-            gl.glVertex3f(*box_vertex_1_matrix.ExtractTranslation())
-            gl.glVertex3f(*box_vertex_2_matrix.ExtractTranslation())
-            gl.glVertex3f(*box_vertex_2_matrix.ExtractTranslation())
-            gl.glVertex3f(*box_vertex_3_matrix.ExtractTranslation())
-            gl.glVertex3f(*box_vertex_3_matrix.ExtractTranslation())
-            gl.glVertex3f(*box_vertex_4_matrix.ExtractTranslation())
-            gl.glVertex3f(*box_vertex_4_matrix.ExtractTranslation())
-            gl.glVertex3f(*box_vertex_1_matrix.ExtractTranslation())
-            gl.glEnd()
-
-            gl.glBegin(gl.GL_LINES)
-            direction_vertex_1 = transform_matrix.Transform(pgf.Vec3d(0.0, 0.0, 0.0))
-            direction_vertex_2 = transform_matrix.Transform(forward_vector * widget_size)
-            gl.glColor3f(*light_color)
-            gl.glVertex3f(*direction_vertex_1)
-            gl.glVertex3f(*direction_vertex_2)
-            gl.glEnd()
-
-            gl.glBegin(gl.GL_LINE_LOOP)
-            gl.glColor3f(*light_outer_color)
-            num_segments = 128
-            radius = widget_size * 0.75
-            for index in range(num_segments):
-                theta = 2.0 * math.pi * index / num_segments
-                x = radius * math.cos(theta)
-                y = radius * math.sin(theta)
-                transformed_vertex = transform_matrix.Transform(pgf.Vec3d(x, y, 0.0))
-                gl.glVertex3f(*transformed_vertex)
-            gl.glEnd()
-        gl.glPopMatrix()
-        gl.glPopAttrib()
-
-    def _draw_opengl_cameras(self) -> None:
-        """
-        Draw a direction/distance light represenatation in OpenGL.
-        """
-        gl.glPushAttrib(gl.GL_ENABLE_BIT | gl.GL_TRANSFORM_BIT | gl.GL_VIEWPORT_BIT)
-        gl.glPushMatrix()
-        self._setup_opengl_viewport()
-
-        camera_dict = self._create_camera_info_dict()
-        for camera_prim in camera_dict:
-            scale_factor = (50.0 if camera_dict[camera_prim]["visibility"] == pgeo.Tokens.inherited else 150.0)
-            widget_size = self._scene_bbox_size.GetLength() / scale_factor
-            transform_matrix: pgf.Matrix4d = camera_dict[camera_prim]["transform"]
-            forward_vector= pgf.Vec3d(0.0, 0.0, -1.0)
-            camera_color = (0.2, 0.2, 0.2) if camera_dict[camera_prim]["visibility"] == pgeo.Tokens.inherited else (0.0, 0.0, 0.0)
-            gl.glLineWidth(1.0)
-            gl.glBegin(gl.GL_LINES)
-            direction_vertex_1 = transform_matrix.Transform(pgf.Vec3d(0.0, 0.0, 0.0))
-            direction_vertex_2 = transform_matrix.Transform(forward_vector * widget_size)
-            gl.glColor3f(*camera_color)
-            gl.glVertex3f(*direction_vertex_1)
-            gl.glVertex3f(*direction_vertex_2)
-            gl.glEnd()
-
-            gl.glBegin(gl.GL_LINE_LOOP)
-            gl.glColor3f(*camera_color)
-            num_segments = 128
-            radius = widget_size * 0.75
-            for index in range(num_segments):
-                theta = 2.0 * math.pi * index / num_segments
-                x = radius * math.cos(theta)
-                y = radius * math.sin(theta)
-                transformed_vertex = transform_matrix.Transform(pgf.Vec3d(x, y, 0.0))
-                gl.glVertex3f(*transformed_vertex)
-            gl.glEnd()
-
-            gl.glBegin(gl.GL_LINE_LOOP)
-            gl.glColor3f(*camera_color)
-            num_segments = 128
-            radius = widget_size * 0.75
-            for index in range(num_segments):
-                theta = 2.0 * math.pi * index / num_segments
-                x = radius * math.cos(theta)
-                y = radius * math.sin(theta)
-                transformed_vertex = transform_matrix.Transform(pgf.Vec3d(x, y, widget_size))
-                gl.glVertex3f(*transformed_vertex)
-            gl.glEnd()
-
-            gl.glBegin(gl.GL_LINES)
-            gl.glColor3f(*camera_color)
-            camera_edge_vert_1 = transform_matrix.Transform(pgf.Vec3d(radius, 0.0, 0.0))
-            camera_edge_vert_2 = transform_matrix.Transform(pgf.Vec3d(radius, 0.0, widget_size))
-            camera_edge_vert_3 = transform_matrix.Transform(pgf.Vec3d(0.0, radius, 0.0))
-            camera_edge_vert_4 = transform_matrix.Transform(pgf.Vec3d(0.0, radius, widget_size))
-            camera_edge_vert_5 = transform_matrix.Transform(pgf.Vec3d(-radius, 0.0, 0.0))
-            camera_edge_vert_6 = transform_matrix.Transform(pgf.Vec3d(-radius, 0.0, widget_size))
-            camera_edge_vert_7 = transform_matrix.Transform(pgf.Vec3d(0.0, -radius, 0.0))
-            camera_edge_vert_8 = transform_matrix.Transform(pgf.Vec3d(0.0, -radius, widget_size))
-            gl.glVertex3f(*camera_edge_vert_1)
-            gl.glVertex3f(*camera_edge_vert_2)
-            gl.glVertex3f(*camera_edge_vert_3)
-            gl.glVertex3f(*camera_edge_vert_4)
-            gl.glVertex3f(*camera_edge_vert_5)
-            gl.glVertex3f(*camera_edge_vert_6)
-            gl.glVertex3f(*camera_edge_vert_7)
-            gl.glVertex3f(*camera_edge_vert_8)
-            gl.glEnd()
-
-        gl.glPopMatrix()
-        gl.glPopAttrib()
 
     def _create_c_opengl_draw_dict(self) -> dict:
         """
@@ -615,7 +488,7 @@ class ViewportPanel(cbase.Panel):
         camera_matrix = self._camera.GetAttribute("xformOp:transform").Get()
         draw_dict = {}
         draw_dict["camera_matrix"] = camera_matrix
-        draw_dict["up_axis_matrix"] = self._up_axis_matrix
+        draw_dict["up_matrix"] = self._up_axis_matrix
         draw_dict["panel_width"] = self._panel_width
         draw_dict["panel_height"] = self._panel_height
         draw_dict["hydra_x_min"] = self._hydra_x_min
@@ -627,7 +500,7 @@ class ViewportPanel(cbase.Panel):
         draw_dict["grid_density"] = self._cfg["viewport"]["grid_density"]
         draw_dict["grid_color"] = self._cfg["viewport"]["grid_color"]
         draw_dict["up_axis"] = self._up_axis
-        return draw_dict
+        return draw_dict 
             
     def _hydra_render_loop(self) -> None:
         """
@@ -643,18 +516,20 @@ class ViewportPanel(cbase.Panel):
         self._update_hydra_scene()
         if self._user_cfg["show"]["mesh"]:
             self._hydra.Render(self._stage.GetPseudoRoot(), self._hydra_rend_params)
+        if self._user_cfg["show"]["grid"]:
+            cdraw.c_draw_opengl_grid(self._create_c_opengl_draw_dict())
+        if self._user_cfg["show"]["gizmo"]:
+            cdraw.c_draw_opengl_gizmo(self._create_c_opengl_draw_dict())    
+        if self._user_cfg["show"]["lights"]:
+            cdraw.c_draw_opengl_light(self._create_c_opengl_draw_dict(), self._create_light_info_dict())  
+        if self._user_cfg["show"]["camera"]:
+            cdraw.c_draw_opengl_camera(self._create_c_opengl_draw_dict(), self._create_camera_info_dict())                      
         if self._user_cfg["show"]["bones"]:
             cdraw.c_draw_opengl_bone(self._scene_manager.get_data_node_list(), self._create_c_opengl_draw_dict())
         if self._user_cfg["show"]["xray"]:
             cdraw.c_draw_opengl_bone_xray(self._scene_manager.get_data_node_list(), self._create_c_opengl_draw_dict())
-        if self._user_cfg["show"]["grid"]:
-            cdraw.c_draw_opengl_grid(self._create_c_opengl_draw_dict())
-        if self._user_cfg["show"]["lights"]:
-            self._draw_opengl_lights()
-        if self._user_cfg["show"]["camera"]:
-            self._draw_opengl_cameras()
-        if self._user_cfg["show"]["gizmo"]:
-            cdraw.c_draw_opengl_gizmo(self._create_c_opengl_draw_dict())
+
+
 
     def _options_backdrop(self) -> None:
         """
