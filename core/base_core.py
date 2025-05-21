@@ -308,9 +308,7 @@ class Skeleton(Primative):
     Class representing a skeleton node.
     """
     def __init__(self, data_object):
-        print("Skeleton INIT START")
         super().__init__(data_object)
-        print("Skeleton INIT END")
         
     def _init_node_data(self):
         super()._init_node_data()

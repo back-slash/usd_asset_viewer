@@ -57,11 +57,13 @@ class ViewportPanel(cbase.Panel):
         self._up_axis = self._cfg["viewport"]["up_axis"]
         self._user_cfg = {}
         self._user_cfg["show"] = {}
+        self._user_cfg["show"]["mesh"] = True
         self._user_cfg["show"]["grid"] = True
         self._user_cfg["show"]["gizmo"] = True
         self._user_cfg["show"]["lights"] = True
         self._user_cfg["show"]["camera"] = True
         self._user_cfg["show"]["bones"] = True
+        self._user_cfg["show"]["xray"] = False
 
     def _init_viewport_draw_styles(self):
         """
@@ -439,7 +441,7 @@ class ViewportPanel(cbase.Panel):
         target_distance = distance / current_distance
         transform = cutils.calc_look_at(camera_position * target_distance, self._scene_bbox_center, world_up, flip_forward=True)
         self._camera.GetAttribute("xformOp:transform").Set(transform)
-        target_scale = distance / 314
+        target_scale = distance / 200
         light_scale = pgf.Vec3d(target_scale, target_scale, target_scale)
         self._light_xform.GetAttribute("xformOp:transform").Set(pgf.Matrix4d().SetScale(light_scale) * self._up_axis_matrix.GetInverse())
 
@@ -699,9 +701,12 @@ class ViewportPanel(cbase.Panel):
         self._hydra.SetRenderBufferSize(pgf.Vec2i(int(self._panel_width), int(self._panel_height))) 
         self._update_hydra_time()      
         self._update_hydra_scene()
-        self._hydra.Render(self._stage.GetPseudoRoot(), self._hydra_rend_params)
+        if self._user_cfg["show"]["mesh"]:
+            self._hydra.Render(self._stage.GetPseudoRoot(), self._hydra_rend_params)
         if self._user_cfg["show"]["bones"]:
-            cdraw.c_draw_opengl_bones(self._scene_manager.get_data_node_list(), self._create_c_opengl_draw_dict())
+            cdraw.c_draw_opengl_bone(self._scene_manager.get_data_node_list(), self._create_c_opengl_draw_dict())
+        if self._user_cfg["show"]["xray"]:
+            cdraw.c_draw_opengl_bone_xray(self._scene_manager.get_data_node_list(), self._create_c_opengl_draw_dict())
         if self._user_cfg["show"]["grid"]:
             cdraw.c_draw_opengl_grid(self._create_c_opengl_draw_dict())
         if self._user_cfg["show"]["lights"]:
@@ -877,7 +882,16 @@ class ViewportPanel(cbase.Panel):
                 vis_setting: str
                 selected, clicked = imgui.checkbox(f" {vis_setting.title()}", self._user_cfg["show"][vis_setting])
                 if selected:
-                    self._user_cfg["show"][vis_setting] = not self._user_cfg["show"][vis_setting]     
+                    if vis_setting == "bones":
+                        self._user_cfg["show"]["bones"] = not self._user_cfg["show"]["bones"]
+                        if self._user_cfg["show"]["bones"]:
+                            self._user_cfg["show"]["xray"] = False
+                    elif vis_setting == "xray":
+                        self._user_cfg["show"]["xray"] = not self._user_cfg["show"]["xray"]
+                        if self._user_cfg["show"]["bones"]:
+                            self._user_cfg["show"]["bones"] = False
+                    else:
+                        self._user_cfg["show"][vis_setting] = not self._user_cfg["show"][vis_setting]     
             imgui.end_combo()
 
         imgui.pop_style_var(4)
