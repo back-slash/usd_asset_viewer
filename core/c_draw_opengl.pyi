@@ -5,9 +5,9 @@ def c_init_glad() -> None:
     Initialize GLAD (OpenGL function loader).
     """
 
-def c_draw_opengl_settings() -> None:
+def c_init_opengl_settings() -> None:
     """
-    Initialize OpenGL context and settings.
+    Initialize OpenGL settings.
     """
 
 
