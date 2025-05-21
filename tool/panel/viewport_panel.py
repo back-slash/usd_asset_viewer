@@ -545,7 +545,7 @@ class ViewportPanel(cbase.Panel):
         icon = cstat.Icon.ICON_VIEWPORT_AXIS_Y if self._up_axis == "Y" else cstat.Icon.ICON_VIEWPORT_AXIS_Z
         axis_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, icon, (15, 15))
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 2)
-        imgui.image(axis_icon_id, (15, 15), tint_col=(0.75, 0.75, 0.75, 1))
+        imgui.image(axis_icon_id, (15, 15))
         imgui.pop_style_var(4)
         imgui.pop_style_color(7)
         imgui.pop_font()
@@ -586,7 +586,7 @@ class ViewportPanel(cbase.Panel):
         icon = cstat.Icon.ICON_VIEWPORT_LIGHT
         light_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, icon, (15, 15))
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 2)
-        imgui.image(light_icon_id, (15, 15), tint_col=(0.75, 0.75, 0.75, 1))
+        imgui.image(light_icon_id, (15, 15))
         imgui.pop_style_var(4)
         imgui.pop_style_color(7)
         imgui.pop_font()
@@ -622,7 +622,7 @@ class ViewportPanel(cbase.Panel):
         icon = cstat.Icon.ICON_VIEWPORT_CAMERA
         camera_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, icon, (15, 15))
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 2)
-        imgui.image(camera_icon_id, (15, 15), tint_col=(0.75, 0.75, 0.75, 1))
+        imgui.image(camera_icon_id, (15, 15))
         imgui.pop_style_var(4)
         imgui.pop_style_color(7)
         imgui.pop_font()
@@ -651,7 +651,7 @@ class ViewportPanel(cbase.Panel):
         icon = cstat.Icon.ICON_VIEWPORT_SETTINGS
         settings_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, icon, (15, 15))
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 2)
-        imgui.image(settings_icon_id, (15, 15), tint_col=(0.75, 0.75, 0.75, 1))
+        imgui.image(settings_icon_id, (15, 15))
         
         imgui.same_line()
         imgui.push_item_width(30)
@@ -709,7 +709,7 @@ class ViewportPanel(cbase.Panel):
             imgui.same_line()
             icon_size = (16, 16)
             icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, getattr(cstat.Icon, icon), icon_size)
-            imgui.image(icon_id, icon_size, tint_col=(0.75, 0.75, 0.75, 1))
+            imgui.image(icon_id, icon_size)
             imgui.new_line()
 
         imgui.pop_style_var(4)
