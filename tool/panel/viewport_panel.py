@@ -94,7 +94,6 @@ class ViewportPanel(cbase.Panel):
             self._camera = self._create_camera()
             self._hydra.SetCameraPath(self._camera.GetPath())
             cdraw.c_init_glad()
-            self._init_opengl_settings()
             self._create_lighting()
             self._disable_scene_lights()
             self._enable_default_lights()
@@ -446,40 +445,6 @@ class ViewportPanel(cbase.Panel):
         target_scale = distance / 200
         light_scale = pgf.Vec3d(target_scale, target_scale, target_scale)
         self._light_xform.GetAttribute("xformOp:transform").Set(pgf.Matrix4d().SetScale(light_scale) * self._up_axis_matrix.GetInverse())
-
-    def _init_opengl_settings(self) -> None:
-        """
-        Initialize OpenGL settings.
-        """
-        gl.glEnable(gl.GL_BLEND)
-        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
-        gl.glEnable(gl.GL_DEPTH_TEST)
-        gl.glDepthFunc(gl.GL_LESS)
-        gl.glEnable(gl.GL_MULTISAMPLE)
-
-    def _setup_opengl_viewport(self) -> None:
-        """
-        Setup OpenGL viewport and perspective.
-        """
-        gl.glViewport(int(self._hydra_x_min), int(self._hydra_y_min), int(self._panel_width), int(self._panel_height))
-        gl.glMatrixMode(gl.GL_PROJECTION)
-        gl.glLoadIdentity()
-        fov = self._calc_fov()
-        aspect_ratio = self._panel_width / self._panel_height
-        near = self._cfg["viewport"]["clipping_range"][0]
-        far = self._cfg["viewport"]["clipping_range"][1]
-        top = near * math.tan(math.radians(fov) / 2)
-        bottom = -top
-        right = top * aspect_ratio
-        left = -right
-        gl.glFrustum(left, right, bottom, top, near, far)
-
-        gl.glMatrixMode(gl.GL_MODELVIEW)        
-        gl.glLoadIdentity()
-        camera_transform: pgf.Matrix4d = self._camera.GetAttribute("xformOp:transform").Get() * self._up_axis_matrix
-        camera_transform_offset = camera_transform.GetInverse()
-        camera_transform_offset_np = np.array(camera_transform_offset).flatten()
-        gl.glLoadMatrixf(camera_transform_offset_np)
 
     def _create_c_opengl_draw_dict(self) -> dict:
         """

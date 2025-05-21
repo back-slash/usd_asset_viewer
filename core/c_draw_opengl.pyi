@@ -5,12 +5,17 @@ def c_init_glad() -> None:
     Initialize GLAD (OpenGL function loader).
     """
 
-def c_draw_opengl_bone(bone_list: List[Any], draw_dict: Dict[str, Any]) -> None:
+def c_draw_opengl_settings() -> None:
     """
-    Draw bones using OpenGL.
+    Initialize OpenGL context and settings.
+    """
+
+
+def c_setup_opengl_viewport(draw_dict: Dict[str, Any]) -> None:
+    """
+    Set up OpenGL viewport and projection matrix.
 
     Args:
-        bone_list: List of bone objects (Python objects with get_data_object()).
         draw_dict: Drawing parameters:
             - hydra_x_min: int
             - hydra_y_min: int

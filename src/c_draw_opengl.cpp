@@ -633,6 +633,8 @@ void c_init_glad() {
 PYBIND11_MODULE(c_draw_opengl, m) {
     m.def("c_init_glad", &c_init_glad, "Initialize GLAD");  
     m.def("c_init_opengl_settings", &c_init_opengl_settings, "Initialize OpenGL Settings");
+    m.def("c_setup_opengl_viewport", &c_setup_opengl_viewport, "Setup OpenGL Viewport",
+          pybind11::arg("draw_dict"));
     m.def("c_draw_opengl_bone", &c_draw_opengl_bone, "Draw OpenGL Bone Visualization",
           pybind11::arg("bone_list"),
           pybind11::arg("draw_dict"));
