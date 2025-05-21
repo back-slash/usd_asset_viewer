@@ -179,7 +179,7 @@ def push_style_color(config_section, config_identifier: str):
         imgui_identifier = getattr(imgui.Col_, config_identifier)
         imgui.push_style_color(imgui_identifier, color)
 
-def calc_look_at(source_position: pgf.Vec3d, target_position: pgf.Vec3d, up: pgf.Vec3d, flip_forward:bool = False) -> pgf.Matrix4d:
+def calc_look_at_neg_z(source_position: pgf.Vec3d, target_position: pgf.Vec3d, up: pgf.Vec3d, flip_forward:bool = False) -> pgf.Matrix4d:
     """
     Calculate the look-at matrix.
     """

@@ -69,3 +69,23 @@ def c_draw_opengl_grid(draw_dict: Dict[str, Any]) -> None:
             - "grid_color": List[float] — RGBA color for the grid lines
             - "up_axis": str — Up axis direction, e.g., "Y" or "Z"
     """
+
+def c_draw_opengl_gizmo(draw_dict: Dict[str, Any]) -> None:
+    """
+    Draw a gizmo using OpenGL.
+
+    Args:
+        draw_dict: Dictionary with drawing parameters. Expected keys:
+            - "hydra_x_min": int — Minimum X coordinate of the viewport
+            - "hydra_y_min": int — Minimum Y coordinate of the viewport
+            - "panel_width": int — Width of the viewport/panel
+            - "panel_height": int — Height of the viewport/panel
+            - "fov": float — Field of view (in degrees)
+            - "near_z": float — Near clipping plane distance
+            - "far_z": float — Far clipping plane distance
+            - "camera_matrix": Any — Camera transformation matrix (pxr.GfMatrix4d)
+            - "grid_density": int — Number of grid lines in each direction
+            - "scene_bbox_size": Any — Size of the scene bounding box (pxr.GfVec3d)
+            - "grid_color": List[float] — RGBA color for the grid lines
+            - "up_axis": str — Up axis direction, e.g., "Y" or "Z"
+    """

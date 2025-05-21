@@ -277,7 +277,7 @@ class ViewportPanel(cbase.Panel):
         Calculate the light transform matrix.
         """
         world_up = pgf.Vec3d(0, 1, 0) if self._up_axis == "Y" else pgf.Vec3d(0, 0, 1)
-        light_matrix = cutils.calc_look_at(light_position, target_position, world_up, flip_forward=True)
+        light_matrix = cutils.calc_look_at_neg_z(light_position, target_position, world_up, flip_forward=True)
         return light_matrix
 
     def _create_lighting(self):
@@ -439,7 +439,7 @@ class ViewportPanel(cbase.Panel):
             camera_position = pgf.Vec3d(1000, 1000, 1000)
         current_distance = (self._scene_bbox_center - camera_position).GetLength()
         target_distance = distance / current_distance
-        transform = cutils.calc_look_at(camera_position * target_distance, self._scene_bbox_center, world_up, flip_forward=True)
+        transform = cutils.calc_look_at_neg_z(camera_position * target_distance, self._scene_bbox_center, world_up, flip_forward=True)
         self._camera.GetAttribute("xformOp:transform").Set(transform)
         target_scale = distance / 200
         light_scale = pgf.Vec3d(target_scale, target_scale, target_scale)
@@ -478,66 +478,6 @@ class ViewportPanel(cbase.Panel):
         camera_transform_offset = camera_transform.GetInverse()
         camera_transform_offset_np = np.array(camera_transform_offset).flatten()
         gl.glLoadMatrixf(camera_transform_offset_np)
-
-    def _draw_opengl_gizmo(self) -> None:
-        """
-        Draw a small orientation gizmo.
-        """
-        gl.glPushAttrib(gl.GL_ENABLE_BIT | gl.GL_TRANSFORM_BIT | gl.GL_VIEWPORT_BIT)
-
-        gl.glPushMatrix()
-
-        gizmo_size = 60
-        gl.glViewport(int(self._hydra_x_min) + 10, int(self._hydra_y_min), gizmo_size, gizmo_size)
-
-        gl.glMatrixMode(gl.GL_PROJECTION)
-        gl.glLoadIdentity()
-
-        gl.glMatrixMode(gl.GL_MODELVIEW)
-        camera_transform: pgf.Matrix4d = self._camera.GetAttribute("xformOp:transform").Get()
-        camera_rotation_matrix = pgf.Matrix4d().SetRotate(camera_transform.ExtractRotation()).GetInverse()
-        camera_rotation_matrix_np = np.array([camera_rotation_matrix.GetRow(i) for i in range(4)]) 
-        gl.glLoadMatrixf(camera_rotation_matrix_np.flatten())
-
-        axis_length = 0.5
-        gl.glLineWidth(2.0)
-        gl.glBegin(gl.GL_LINES)
-        gl.glColor3f(1.0, 0.0, 0.0)
-        gl.glVertex3f(0.0, 0.0, 0.0)
-        gl.glVertex3f(axis_length, 0.0, 0.0)
-        gl.glColor3f(0.0, 1.0, 0.0)
-        gl.glVertex3f(0.0, 0.0, 0.0)
-        gl.glVertex3f(0.0, axis_length, 0.0)
-        gl.glColor3f(0.0, 0.0, 1.0)
-        gl.glVertex3f(0.0, 0.0, 0.0)
-        gl.glVertex3f(0.0, 0.0, axis_length)
-        gl.glEnd()
-
-        quad_size_min = axis_length * 0.1
-        quad_size_max = axis_length
-        gl.glBegin(gl.GL_QUADS)
-
-        gl.glColor4f(1, 1, 1, 0.2)
-        gl.glVertex3f(quad_size_min, 0.0, quad_size_min)
-        gl.glVertex3f(quad_size_max, 0.0, quad_size_min)
-        gl.glVertex3f(quad_size_max, 0.0, quad_size_max)
-        gl.glVertex3f(quad_size_min, 0.0, quad_size_max)
-
-        gl.glColor4f(1, 1, 1, 0.2)
-        gl.glVertex3f(quad_size_min, quad_size_min, 0.0)
-        gl.glVertex3f(quad_size_max, quad_size_min, 0.0)
-        gl.glVertex3f(quad_size_max, quad_size_max, 0.0)
-        gl.glVertex3f(quad_size_min, quad_size_max, 0.0)
-
-        gl.glColor4f(1, 1, 1, 0.2)
-        gl.glVertex3f(0.0, quad_size_min, quad_size_min)
-        gl.glVertex3f(0.0, quad_size_max, quad_size_min)
-        gl.glVertex3f(0.0, quad_size_max, quad_size_max)
-        gl.glVertex3f(0.0, quad_size_min, quad_size_max)
-        gl.glEnd()        
-
-        gl.glPopMatrix()
-        gl.glPopAttrib()
     
     def _draw_opengl_lights(self) -> None:
         """
@@ -714,7 +654,7 @@ class ViewportPanel(cbase.Panel):
         if self._user_cfg["show"]["camera"]:
             self._draw_opengl_cameras()
         if self._user_cfg["show"]["gizmo"]:
-            self._draw_opengl_gizmo()
+            cdraw.c_draw_opengl_gizmo(self._create_c_opengl_draw_dict())
 
     def _options_backdrop(self) -> None:
         """

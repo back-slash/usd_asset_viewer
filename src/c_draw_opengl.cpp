@@ -409,6 +409,69 @@ void  c_draw_opengl_grid(pybind11::dict draw_dict) {
     c_check_opengl_error();
 }
 
+
+// Draw a small orientation gizmo.
+void  c_draw_opengl_gizmo(pybind11::dict draw_dict) {
+        glPushMatrix();
+
+        float gizmo_size = 60;
+        int hydra_x_min = draw_dict["hydra_x_min"].cast<int>();
+        int hydra_y_min = draw_dict["hydra_y_min"].cast<int>();
+        glViewport(int(hydra_x_min) + 10, int(hydra_y_min), gizmo_size, gizmo_size);
+
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+
+        glMatrixMode(GL_MODELVIEW);
+        pxr::GfMatrix4d camera_matrix = draw_dict["camera_matrix"].cast<pxr::GfMatrix4d>();
+        pxr::GfMatrix4d camera_rotation_matrix = pxr::GfMatrix4d().SetRotate(camera_matrix.ExtractRotation()).GetInverse();
+        double camera_rotation_matrix_gl[16];
+        convert_matrix_usd_gl(camera_rotation_matrix, camera_rotation_matrix_gl);
+        glLoadMatrixd(camera_rotation_matrix_gl);
+
+        float axis_length = 0.5;
+        glLineWidth(2.0);
+        glBegin(GL_LINES);
+        glColor3f(1.0, 0.0, 0.0);
+        glVertex3f(0.0, 0.0, 0.0);
+        glVertex3f(axis_length, 0.0, 0.0);
+        glColor3f(0.0, 1.0, 0.0);
+        glVertex3f(0.0, 0.0, 0.0);
+        glVertex3f(0.0, axis_length, 0.0);
+        glColor3f(0.0, 0.0, 1.0);
+        glVertex3f(0.0, 0.0, 0.0);
+        glVertex3f(0.0, 0.0, axis_length);
+        glEnd();
+
+        float quad_size_min = axis_length * 0.1;
+        float quad_size_max = axis_length;
+        glBegin(GL_QUADS);
+
+        glColor4f(1, 1, 1, 0.2);
+        glVertex3f(quad_size_min, 0.0, quad_size_min);
+        glVertex3f(quad_size_max, 0.0, quad_size_min);
+        glVertex3f(quad_size_max, 0.0, quad_size_max);
+        glVertex3f(quad_size_min, 0.0, quad_size_max);
+
+        glColor4f(1, 1, 1, 0.2);
+        glVertex3f(quad_size_min, quad_size_min, 0.0);
+        glVertex3f(quad_size_max, quad_size_min, 0.0);
+        glVertex3f(quad_size_max, quad_size_max, 0.0);
+        glVertex3f(quad_size_min, quad_size_max, 0.0);
+
+        glColor4f(1, 1, 1, 0.2);
+        glVertex3f(0.0, quad_size_min, quad_size_min);
+        glVertex3f(0.0, quad_size_max, quad_size_min);
+        glVertex3f(0.0, quad_size_max, quad_size_max);
+        glVertex3f(0.0, quad_size_min, quad_size_max);
+        glEnd();    
+
+        glPopMatrix();
+        c_check_opengl_error();
+}
+
+
+
 // Init GLAD/OpenGL settings
 void c_init_glad() {
     if (!gladLoadGL()) {
@@ -430,6 +493,8 @@ PYBIND11_MODULE(c_draw_opengl, m) {
           pybind11::arg("draw_dict"));
     m.def("c_draw_opengl_bone_xray", &c_draw_opengl_bone_xray, "Draw OpenGL Bone Xray Visualization",
           pybind11::arg("bone_list"),
+          pybind11::arg("draw_dict"));
+    m.def("c_draw_opengl_gizmo", &c_draw_opengl_gizmo, "Draw OpenGL Gizmo",
           pybind11::arg("draw_dict"));
     m.def("c_draw_opengl_grid", &c_draw_opengl_grid, "Draw OpenGL Grid Plane",
           pybind11::arg("draw_dict"));
