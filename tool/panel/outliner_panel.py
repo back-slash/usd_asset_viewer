@@ -79,7 +79,7 @@ class OutlinerPanel(cbase.Panel):
         Draw a test node in the outliner.
         """
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 22 + 10)
-        indent_size_x = 0
+        indent_size_x = 20
         odd_index = self._node_index % 2 == 0
         draw_list = imgui.get_window_draw_list()
         node_name = node.get_name()
@@ -141,10 +141,9 @@ class OutlinerEntryPencil(cbase.NodePencil):
     """
     Pencil class drawing entries in the outliner.
     """
-    _index = 0
-    _indent = 0
-    _opacity = None
+
     def __init__(self, node: cbase.Node, index: int=0, indent: int=0):
+        self._opacity = None
         super().__init__(node)
         self._index = index
         self._indent = indent

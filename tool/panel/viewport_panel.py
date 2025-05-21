@@ -495,7 +495,6 @@ class ViewportPanel(cbase.Panel):
             cdraw.c_draw_opengl_bone_xray(self._scene_manager.get_data_node_list(), self._create_c_opengl_draw_dict())
 
 
-
     def _options_backdrop(self) -> None:
         """
         Draw the options backdrop.

@@ -41,22 +41,6 @@ void convert_matrix_usd_gl(const pxr::GfMatrix4d& usdMatrix, double glMatrix[16]
     glMatrix[15] = usdMatrix[3][3];
 }
 
-void c_draw_text(pybind11::dict draw_dict) {
-
-    std::string text = draw_dict["text"].cast<std::string>();
-    double x = draw_dict["x"].cast<double>();
-    double y = draw_dict["y"].cast<double>();
-    double z = draw_dict["z"].cast<double>();
-
-    glColor3f(1.0f, 1.0f, 1.0f);
-
-    glRasterPos3d(x, y, z);
-
-    for (char c : text) {
-        //glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, c);
-    }
-}
-
 pxr::GfMatrix4d calc_look_at_x(const pxr::GfVec3d source, const pxr::GfVec3d target, const pxr::GfVec3d up) {
     pxr::GfVec3d forward = (target - source).GetNormalized();
     pxr::GfVec3d right = pxr::GfCross(up, forward).GetNormalized();

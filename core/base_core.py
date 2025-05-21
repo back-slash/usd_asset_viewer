@@ -9,6 +9,7 @@ import os
 import ctypes
 import sys
 import pprint as pp
+from venv import create
 
 # ADDONS
 from imgui_bundle import imgui
@@ -35,10 +36,14 @@ class Node:
     """
     Class representing a node.
     """
-    _node_color = (0.5, 0.5, 0.5, 1.0)
-    _node_icon = cstat.Icon.ICON_UNKNOWN
-    _name = None
     def __init__(self, data_object):
+        self._visible = True
+        self._selected = False
+        self._hovered = False
+
+        self._node_color = (0.5, 0.5, 0.5, 1.0)
+        self._node_icon = cstat.Icon.ICON_UNKNOWN
+        self._name = None
         self._data_object: pusd.Prim | dict = data_object
         self._init_scene_manager()
         self._init_node_data()
@@ -76,6 +81,24 @@ class Node:
         """
         return self._scene_manager
 
+    def is_visible(self) -> bool:
+        """
+        Check if the node is visible.
+        """
+        return self._visible
+    
+    def is_selected(self) -> bool:
+        """
+        Check if the node is selected.
+        """
+        return self._selected
+    
+    def is_hovered(self) -> bool:
+        """
+        Check if the node is hovered.
+        """
+        return self._hovered
+
     def get_icon(self) -> cstat.Icon:
         """
         Get the icon of the node.
@@ -99,11 +122,12 @@ class Pathed(Node):
     """
     Class representing a path node.
     """
-    _parent_node = None    
-    _path = None
+
     def __init__(self, data_object):
+        self._parent_node = None    
+        self._path = None        
         super().__init__(data_object)
-        
+
     def _init_node_data(self):
         self._set_name()
         self._data_object: pusd.Prim | pusd.Attribute
@@ -128,10 +152,12 @@ class Primative(Pathed):
     """
     Class representing a primitive node.
     """
-    _attribute_list: list['Attribute'] = []   
-    _child_list: list['Pathed'] = []
+
     def __init__(self, data_object: pusd.Prim):
+        self._attribute_list: list['Attribute'] = []   
+        self._child_list: list['Pathed'] = []
         super().__init__(data_object)
+
 
     def _init_node_data(self):
         super()._init_node_data()
@@ -195,11 +221,12 @@ class Attribute(Pathed):
     """
     Class representing an attribute of a node.
     """
-    _connection_path_list: list['Attribute'] = []
-    _connected = False
+
     def __init__(self, data_object):
+        self._connection_path_list: list['Attribute'] = []
         super().__init__(data_object)
         self._data_object: pusd.Attribute
+        self._connected = False
 
     def _init_node_data(self):
         super()._init_node_data()
@@ -213,7 +240,7 @@ class Attribute(Pathed):
         for path in connection_paths:
             if path.IsPropertyPath():
                 pass
-                #self._add_connection(path)
+                self._add_connection(path)
         if self._connection_path_list:
             self._connected = True
 
@@ -251,9 +278,10 @@ class Mesh(Primative):
     """
     Class representing a mesh node.
     """
-    _display_color = None
+
     def __init__(self, data_object):
-        super().__init__(data_object)
+        self._display_color = None  
+        super().__init__(data_object)      
         self._data_object: pgeo.Mesh
 
     def _init_node_data(self):
@@ -315,6 +343,7 @@ class Skeleton(Primative):
         self._data_object = pskl.Skeleton(self._data_object)
         self._node_color = (0.6, 0.4, 0.8, 1.0)
         self._node_icon = cstat.Icon.ICON_SKELETON
+        self._check_animation()
         self._init_skeleton_bones()
     
 
@@ -325,18 +354,19 @@ class Skeleton(Primative):
         self._bone_dict: dict[Bone, Any] = {}
         self._data_object: pskl.Skeleton
         bone_attribute = self._data_object.GetJointsAttr()
-        bone_transform_list = self._data_object.GetBindTransformsAttr().Get()
+        bone_matrix_list = self._data_object.GetBindTransformsAttr().Get()
         bone_path_list = bone_attribute.Get(self._scene_manager.get_current_time())
         for index, path in enumerate(bone_path_list):
             sdf_path = psdf.Path(path)
             path_split = str(path).split("/")
-            transform: pgf.Matrix4d = bone_transform_list[index]
+            bone_matrix: pgf.Matrix4d = bone_matrix_list[index]
             bone_entry_dict = {
                 "index": index,
                 "owner": self._data_object,
                 "path": sdf_path,
                 "name": path_split[-1],
-                "matrix": transform,
+                "matrix": bone_matrix,
+                "anim_matrix": bone_matrix,
             }
             bone_object = self._scene_manager.init_data_object(bone_entry_dict)
             self._bone_dict[bone_object] = bone_entry_dict
@@ -358,6 +388,34 @@ class Skeleton(Primative):
                 return bone
         return None
 
+    def _check_animation(self):
+        """
+        Check if the skeleton has an animation.
+        """
+        for child in self._child_list:
+            if isinstance(child, Animation):
+                self._animation = child.get_data_object()
+                return
+        self._animation = False
+
+    def update_animation(self):
+        """
+        Update animation.
+        """
+        if self._animation:
+            for index, bone in enumerate(self._bone_dict):
+                self._scene_manager.get_current_time()
+                translation_list = self._animation.GetPrim().GetAttribute("translations").Get(self._scene_manager.get_current_time())
+                rotation_list = self._animation.GetPrim().GetAttribute("rotations").Get(self._scene_manager.get_current_time())
+                scale_list = self._animation.GetPrim().GetAttribute("scales").Get(self._scene_manager.get_current_time())
+                matrix = pgf.Matrix4d().SetTranslate(pgf.Vec3d(translation_list[index])).SetRotateOnly(rotation_list[index])
+                anim_matrix = self._bone_dict[bone]["matrix"] * matrix
+                self._bone_dict[bone]["anim_matrix"] = anim_matrix
+
+
+
+
+
 class Animation(Primative):
     """
     Class representing a skeleton node.
@@ -370,6 +428,15 @@ class Animation(Primative):
         self._data_object = pskl.Animation(self._data_object)
         self._node_color = (0.2, 0.3, 0.7, 1.0)
         self._node_icon = cstat.Icon.ICON_ANIMATION
+        self._init_animation_data()
+
+    def _init_animation_data(self):
+        """
+        Load the animation data of the node.
+        """
+        self._data_object: pskl.Animation
+        animation_visibility = False
+        
 
 
 
@@ -471,11 +538,12 @@ class NodePencil:
     """
     Class representing an draw pencil.
     """
-    _node_name = None
-    _node_icon = None
-    _node_color = None
-    _node_display_color = None
+
     def __init__(self, node: Node):
+        self._node_name = None
+        self._node_icon = None
+        self._node_color = None
+        self._node_display_color = None        
         self._node = node
         self._init_node_data()
 
@@ -519,10 +587,11 @@ class Frame:
     """
     Class representing the tool frame.
     """
-    _config = None
-    _render_context_manager = None
-    _display_size = None
+
     def __init__(self):
+        self._config = None
+        self._render_context_manager = None
+        self._display_size = None        
         self._init_config()
         self._init_render_context_manager()
         self._init_default_font()
@@ -802,12 +871,10 @@ class SceneManager:
     """
     Class for managing scene nodes.
     """
-    _instance = None
-    _usd_path = None
-    _root = None
+    _current_time = 0
     _start_time = 0
     _end_time = 1
-    _current_time = 0
+    _instance = None
     def __new__(cls, usd_path: str=None):
         if cls._instance is None:
             cls._initialized = False
@@ -816,6 +883,7 @@ class SceneManager:
     
     def __init__(self, usd_path: str=None):
         if usd_path and not self._initialized:
+            self._root = None
             self._usd_path = usd_path
             self._path_node_list: list[Pathed] = []
             self._data_node_list: list[Data] = []
@@ -1103,7 +1171,6 @@ class RenderContextManager:
             imgui.backends.glfw_shutdown()
             imgui.backends.opengl3_shutdown()
             imgui.destroy_context(context)
-            imgui.destroy_platform_windows()
 
 
     def render(self, draw_data, context):

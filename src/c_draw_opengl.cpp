@@ -43,7 +43,7 @@ void c_draw_opengl_bone_xray(pybind11::list bone_list, pybind11::dict draw_dict)
     std::vector<float> line_color = { 0.66f, 1.0f, 0.66f, 0.5f };
     for (auto bone : bone_list) {
         pybind11::dict data_dict = bone.attr("get_data_object")();
-        pxr::GfMatrix4d bone_matrix = data_dict["matrix"].cast<pxr::GfMatrix4d>();
+        pxr::GfMatrix4d bone_matrix = data_dict["anim_matrix"].cast<pxr::GfMatrix4d>();
         pxr::GfVec3d root_vert = bone_matrix.ExtractTranslation();
 
         glLineWidth(line_width);
@@ -105,7 +105,7 @@ void c_draw_opengl_bone_xray(pybind11::list bone_list, pybind11::dict draw_dict)
         }
         for (auto child : bone_children) {
             pybind11::dict child_data_dict = child.attr("get_data_object")();
-            pxr::GfMatrix4d child_matrix = child_data_dict["matrix"].cast<pxr::GfMatrix4d>();
+            pxr::GfMatrix4d child_matrix = child_data_dict["anim_matrix"].cast<pxr::GfMatrix4d>();
             pxr::GfVec3d child_root_vert = child_matrix.ExtractTranslation();
             double bone_length = (child_root_vert - root_vert).GetLength();
             if (bone_length < 0.1) {
@@ -177,11 +177,9 @@ void c_draw_opengl_bone(pybind11::list bone_list, pybind11::dict draw_dict) {
 
     for (auto bone : bone_list) {
         pybind11::dict data_dict = bone.attr("get_data_object")();
-        pxr::GfMatrix4d bone_matrix = data_dict["matrix"].cast<pxr::GfMatrix4d>();
+        pxr::GfMatrix4d bone_matrix = data_dict["anim_matrix"].cast<pxr::GfMatrix4d>();
         pxr::GfVec3d root_vert = bone_matrix.ExtractTranslation();
         pybind11::list bone_children = bone.attr("get_child_nodes")();
-
-
 
         if (bone_children.size() == 0) {
 
@@ -227,8 +225,8 @@ void c_draw_opengl_bone(pybind11::list bone_list, pybind11::dict draw_dict) {
             glColor4f(face_color[0], face_color[1], face_color[2], face_color[3]);
             
             glVertex3d(end_bone_start_vert[0], end_bone_start_vert[1], end_bone_start_vert[2]);
-            glVertex3d(end_bone_vert_2[0], end_bone_vert_2[1], end_bone_vert_2[2]);
-            glVertex3d(end_bone_vert_1[0], end_bone_vert_1[1], end_bone_vert_1[2]);            
+            glVertex3d(end_bone_vert_1[0], end_bone_vert_1[1], end_bone_vert_1[2]);             
+            glVertex3d(end_bone_vert_2[0], end_bone_vert_2[1], end_bone_vert_2[2]);          
             
             glVertex3d(end_bone_start_vert[0], end_bone_start_vert[1], end_bone_start_vert[2]);
             glVertex3d(end_bone_vert_2[0], end_bone_vert_2[1], end_bone_vert_2[2]);
@@ -248,7 +246,7 @@ void c_draw_opengl_bone(pybind11::list bone_list, pybind11::dict draw_dict) {
 
             glVertex3d(end_bone_end_vert[0], end_bone_end_vert[1], end_bone_end_vert[2]);
             glVertex3d(end_bone_vert_2[0], end_bone_vert_2[1], end_bone_vert_2[2]);
-            glVertex3d(end_bone_vert_2[0], end_bone_vert_2[1], end_bone_vert_2[2]);
+            glVertex3d(end_bone_vert_3[0], end_bone_vert_3[1], end_bone_vert_3[2]);
 
             glVertex3d(end_bone_end_vert[0], end_bone_end_vert[1], end_bone_end_vert[2]);
             glVertex3d(end_bone_vert_3[0], end_bone_vert_3[1], end_bone_vert_3[2]);
@@ -263,7 +261,7 @@ void c_draw_opengl_bone(pybind11::list bone_list, pybind11::dict draw_dict) {
         }
         for (auto child : bone_children) {
             pybind11::dict child_data_dict = child.attr("get_data_object")();
-            pxr::GfMatrix4d child_matrix = child_data_dict["matrix"].cast<pxr::GfMatrix4d>();
+            pxr::GfMatrix4d child_matrix = child_data_dict["anim_matrix"].cast<pxr::GfMatrix4d>();
             pxr::GfVec3d child_root_vert = child_matrix.ExtractTranslation();
             double bone_length = (child_root_vert - root_vert).GetLength();
             if (bone_length < 0.1) {

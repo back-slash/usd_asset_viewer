@@ -10,6 +10,7 @@ from typing import Any
 # ADDONS
 from imgui_bundle import imgui
 from pxr import Usd as pusd
+from pxr import UsdSkel as pskl
 
 # PROJECT
 import core.static_core as cstat
@@ -61,8 +62,11 @@ class TrackbarPanel(cbase.Panel):
         changed, value = imgui.slider_int("##trackbar", int(self._scene_manager.get_current_time()), int(self._start_time), int(self._end_time))
         if changed:
             self._scene_manager.set_current_time(value)
+            for node in self._scene_manager.get_path_node_list():
+                if isinstance(node, cbase.Skeleton):
+                    node.update_animation()
         imgui.pop_item_width()
-        imgui.pop_style_color(3)
+        imgui.pop_style_color(5)
         imgui.pop_style_var(1)
 
     def draw(self) -> None:

@@ -54,6 +54,28 @@ def c_draw_opengl_bone_xray(bone_list: List[Any], draw_dict: Dict[str, Any]) -> 
             - up_axis: str
     """
 
+def c_draw_opengl_bone(bone_list: List[Any], draw_dict: Dict[str, Any]) -> None:
+    """
+    Draw bones using OpenGL.
+
+    Args:
+        bone_list: List of bone objects (Python objects with get_data_object()).
+        draw_dict: Drawing parameters:
+            - hydra_x_min: int
+            - hydra_y_min: int
+            - panel_width: int
+            - panel_height: int
+            - fov: float
+            - near_z: float
+            - far_z: float
+            - camera_matrix: pxr.GfMatrix4d
+            - up_matrix: pxr.GfMatrix4d
+            - grid_density: int
+            - scene_bbox_size: pxr.GfVec3d
+            - grid_color: List[float]
+            - up_axis: str
+    """
+
 def c_draw_opengl_grid(draw_dict: Dict[str, Any]) -> None:
     """
     Draw a grid using OpenGL.
@@ -67,10 +89,10 @@ def c_draw_opengl_grid(draw_dict: Dict[str, Any]) -> None:
             - fov: float
             - near_z: float
             - far_z: float
-            - camera_matrix: pxr.GfMatrix4d
-            - up_matrix: pxr.GfMatrix4d
+            - camera_matrix: pxr.Gf.Matrix4d
+            - up_matrix: pxr.Gf.Matrix4d
             - grid_density: int
-            - scene_bbox_size: pxr.GfVec3d
+            - scene_bbox_size: pxr.Gf.Vec3d
             - grid_color: List[float]
             - up_axis: str
     """
@@ -88,8 +110,8 @@ def c_draw_opengl_gizmo(draw_dict: Dict[str, Any]) -> None:
             - fov: float
             - near_z: float
             - far_z: float
-            - camera_matrix: pxr.GfMatrix4d
-            - up_matrix: pxr.GfMatrix4d
+            - camera_matrix: pxr.Gf.Matrix4d
+            - up_matrix: pxr.Gf.Matrix4d
             - grid_density: int
             - scene_bbox_size: pxr.GfVec3d
             - grid_color: List[float]
@@ -109,10 +131,10 @@ def c_draw_opengl_light(draw_dict: Dict[str, Any], light_dict: Dict[str, Any]) -
             - fov: float
             - near_z: float
             - far_z: float
-            - camera_matrix: pxr.GfMatrix4d
-            - up_matrix: pxr.GfMatrix4d
+            - camera_matrix: pxr.Gf.Matrix4d
+            - up_matrix: pxr.Gf.Matrix4d
             - grid_density: int
-            - scene_bbox_size: pxr.GfVec3d
+            - scene_bbox_size: pxr.Gf.Vec3d
             - grid_color: List[float]
             - up_axis: str
         light_dict: Dictionary mapping light names to light parameter dicts.
@@ -135,10 +157,10 @@ def c_draw_opengl_camera(draw_dict: Dict[str, Any], camera_dict: Dict[str, Any])
             - fov: float
             - near_z: float
             - far_z: float
-            - camera_matrix: pxr.GfMatrix4d
-            - up_matrix: pxr.GfMatrix4d
+            - camera_matrix: pxr.Gf.Matrix4d
+            - up_matrix: pxr.Gf.Matrix4d
             - grid_density: int
-            - scene_bbox_size: pxr.GfVec3d
+            - scene_bbox_size: pxr.Gf.Vec3d
             - grid_color: List[float]
             - up_axis: str
         camera_dict: Dictionary mapping camera names to camera parameter dicts.
