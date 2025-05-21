@@ -6,7 +6,7 @@ build_dir = "build"
 cmake_cache = os.path.join(build_dir, "CMakeCache.txt")
 
 if not os.path.isfile(cmake_cache):
-    print(f"CMake files not found. Generating CMake files in {build_dir}...")
+    print(f"Generating CMake files in {build_dir}...")
     if not os.path.isdir(build_dir):
         os.makedirs(build_dir)
     subprocess.check_call(["cmake", "-S", ".", "-B", build_dir])
@@ -14,7 +14,7 @@ if not os.path.isfile(cmake_cache):
 print(f"Running CMake build in {build_dir}...")
 subprocess.check_call(["cmake", "--build", build_dir, "--config", "Release"])
 
-print("Running loader.py in the virtual environment...")
+print("Running in virtual env...")
 venv_activate = os.path.join(os.path.dirname(__file__), "../.venv/bin/activate")
 
 if os.path.isfile(venv_activate):
