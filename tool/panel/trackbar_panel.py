@@ -36,16 +36,16 @@ class TrackbarPanel(cbase.Panel):
         self._is_playing = None
         self._start_time, self._end_time = self._scene_manager.get_time_range()
 
-    def play(self) -> None:
+    def play(self, loop=True) -> None:
         """
         Play the animation.
         """
-        print(self._is_playing)
         if self._is_playing == None:
             self._scene_manager.enable_animation()
             self._is_playing = True
-            self._thread = threading.Thread(target=self._time_play, daemon=True)
-            self._thread.start()
+            if loop:
+                self._thread = threading.Thread(target=self._time_play, daemon=True)
+                self._thread.start()
         else:
             self._is_playing = True
 
@@ -107,6 +107,8 @@ class TrackbarPanel(cbase.Panel):
         imgui.set_cursor_pos((imgui.get_cursor_pos_x() + 10, imgui.get_cursor_pos_y() + 10))
         changed, value = imgui.slider_int("##trackbar", int(self._scene_manager.get_current_time()), int(self._start_time), int(self._end_time))
         if changed:
+            if not self._is_playing:
+                self.play(loop=False)
             self._scene_manager.set_current_time(value)
             self._scene_manager.update_animation()
         imgui.pop_item_width()
