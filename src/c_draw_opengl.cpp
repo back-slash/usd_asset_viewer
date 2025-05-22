@@ -3,10 +3,7 @@
 // TODO:
 // 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Define
-#define NOMINMAX
-#define PYBIND11_DETAILED_ERROR_MESSAGES
-
+#pragma once
 // C++
 #include <iostream>
 #include <vector>
@@ -28,7 +25,7 @@
 #include <glad/glad.h>
 
 // Project
-#include "c_draw_utils.cpp"
+#include "c_utils.cpp"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Draws bones for overlay visualization
@@ -39,7 +36,7 @@ void c_draw_opengl_bone_xray(pybind11::list bone_list, pybind11::dict draw_dict)
     );
     glDisable(GL_DEPTH_TEST);
     
-    float line_width = 0.5f;
+    float line_width = 1.0f;
     std::vector<float> line_color = { 0.66f, 1.0f, 0.66f, 0.5f };
     for (auto bone : bone_list) {
         pybind11::dict data_dict = bone.attr("get_data_object")();
@@ -359,33 +356,33 @@ void  c_draw_opengl_grid(pybind11::dict draw_dict) {
     std::string up_axis = draw_dict["up_axis"].cast<std::string>();
     glLineWidth(0.75f);
     glColor4f(
-        static_cast<GLfloat>(grid_color[0]), 
-        static_cast<GLfloat>(grid_color[1]),
-        static_cast<GLfloat>(grid_color[2]), 
-        static_cast<GLfloat>(grid_color[3])
+        static_cast<float>(grid_color[0]), 
+        static_cast<float>(grid_color[1]),
+        static_cast<float>(grid_color[2]), 
+        static_cast<float>(grid_color[3])
     );
     glBegin(GL_LINES);      
     for (int index = -grid_density; index <= grid_density; ++index) {
         glColor4f(
-            static_cast<GLfloat>(grid_color[0]), 
-            static_cast<GLfloat>(grid_color[1]),
-            static_cast<GLfloat>(grid_color[2]), 
-            static_cast<GLfloat>(grid_color[3])
+            static_cast<float>(grid_color[0]), 
+            static_cast<float>(grid_color[1]),
+            static_cast<float>(grid_color[2]), 
+            static_cast<float>(grid_color[3])
         );
         if (index == 0) {
             if (up_axis == "Y") {
-                glColor4f(0, 0, 1, 1);
+                glColor4f(0.0f, 0.0f, 1.0f, 1.0f);
             } else {
-                glColor4f(0, 1, 0, 1);
+                glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
             }
         }
         if (up_axis == "Y") {
-            glVertex3f(index * step, 0.0f, -grid_size);
-            glVertex3f(index * step, 0.0f, grid_size);
+            glVertex3d(index * step, 0.0f, -grid_size);
+            glVertex3d(index * step, 0.0f, grid_size);
 
         } else {
-            glVertex3f(index * step, -grid_size, 0.0f);
-            glVertex3f(index * step, grid_size, 0.0f);
+            glVertex3d(index * step, -grid_size, 0.0f);
+            glVertex3d(index * step, grid_size, 0.0f);
         }
         glColor4f(
             static_cast<GLfloat>(grid_color[0]), 
@@ -394,14 +391,14 @@ void  c_draw_opengl_grid(pybind11::dict draw_dict) {
             static_cast<GLfloat>(grid_color[3])
         );
         if (index == 0) {
-            glColor4f(1, 0, 0, 1);
+            glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
         }
         if (up_axis == "Y") {
-            glVertex3f(-grid_size, 0.0f, index * step);
-            glVertex3f(grid_size, 0.0f, index * step);
+            glVertex3d(-grid_size, 0.0f, index * step);
+            glVertex3d(grid_size, 0.0f, index * step);
         } else {
-            glVertex3f(-grid_size, index * step, 0.0f);
-            glVertex3f(grid_size, index * step, 0.0f);            
+            glVertex3d(-grid_size, index * step, 0.0f);
+            glVertex3d(grid_size, index * step, 0.0f);            
         }
 
     }
@@ -430,18 +427,18 @@ void  c_draw_opengl_gizmo(pybind11::dict draw_dict) {
     convert_matrix_usd_gl(camera_rotation_matrix, camera_rotation_matrix_gl);
     glLoadMatrixd(camera_rotation_matrix_gl);
 
-    float axis_length = 0.5;
+    double axis_length = 0.5;
     glLineWidth(2.0);
     glBegin(GL_LINES);
-    glColor3f(1.0, 0.0, 0.0);
-    glVertex3f(0.0, 0.0, 0.0);
-    glVertex3f(axis_length, 0.0, 0.0);
-    glColor3f(0.0, 1.0, 0.0);
-    glVertex3f(0.0, 0.0, 0.0);
-    glVertex3f(0.0, axis_length, 0.0);
-    glColor3f(0.0, 0.0, 1.0);
-    glVertex3f(0.0, 0.0, 0.0);
-    glVertex3f(0.0, 0.0, axis_length);
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glVertex3d(0.0, 0.0, 0.0);
+    glVertex3d(axis_length, 0.0, 0.0);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glVertex3d(0.0, 0.0, 0.0);
+    glVertex3d(0.0, axis_length, 0.0);
+    glColor3f(0.0f, 0.0f, 1.0f);
+    glVertex3d(0.0, 0.0, 0.0);
+    glVertex3d(0.0, 0.0, axis_length);
     glEnd();
 
     float quad_size_min = axis_length * 0.1;
@@ -449,22 +446,22 @@ void  c_draw_opengl_gizmo(pybind11::dict draw_dict) {
     glBegin(GL_QUADS);
 
     glColor4f(1, 1, 1, 0.2);
-    glVertex3f(quad_size_min, 0.0, quad_size_min);
-    glVertex3f(quad_size_max, 0.0, quad_size_min);
-    glVertex3f(quad_size_max, 0.0, quad_size_max);
-    glVertex3f(quad_size_min, 0.0, quad_size_max);
+    glVertex3d(quad_size_min, 0.0, quad_size_min);
+    glVertex3d(quad_size_max, 0.0, quad_size_min);
+    glVertex3d(quad_size_max, 0.0, quad_size_max);
+    glVertex3d(quad_size_min, 0.0, quad_size_max);
 
     glColor4f(1, 1, 1, 0.2);
-    glVertex3f(quad_size_min, quad_size_min, 0.0);
-    glVertex3f(quad_size_max, quad_size_min, 0.0);
-    glVertex3f(quad_size_max, quad_size_max, 0.0);
-    glVertex3f(quad_size_min, quad_size_max, 0.0);
+    glVertex3d(quad_size_min, quad_size_min, 0.0);
+    glVertex3d(quad_size_max, quad_size_min, 0.0);
+    glVertex3d(quad_size_max, quad_size_max, 0.0);
+    glVertex3d(quad_size_min, quad_size_max, 0.0);
 
     glColor4f(1, 1, 1, 0.2);
-    glVertex3f(0.0, quad_size_min, quad_size_min);
-    glVertex3f(0.0, quad_size_max, quad_size_min);
-    glVertex3f(0.0, quad_size_max, quad_size_max);
-    glVertex3f(0.0, quad_size_min, quad_size_max);
+    glVertex3d(0.0, quad_size_min, quad_size_min);
+    glVertex3d(0.0, quad_size_max, quad_size_min);
+    glVertex3d(0.0, quad_size_max, quad_size_max);
+    glVertex3d(0.0, quad_size_min, quad_size_max);
     glEnd();    
 
     glPopMatrix();
@@ -565,8 +562,8 @@ void c_draw_opengl_camera(pybind11::dict draw_dict, pybind11::dict camera_dict) 
         pxr::GfVec3d direction_vertex_1 = camera_matrix.ExtractTranslation();
         pxr::GfVec3d direction_vertex_2 = camera_matrix.Transform(direction_vector * widget_size);
         glColor3f(camera_color[0], camera_color[1], camera_color[2]);
-        glVertex3f(direction_vertex_1[0], direction_vertex_1[1], direction_vertex_1[2]);
-        glVertex3f(direction_vertex_2[0], direction_vertex_2[1], direction_vertex_2[2]);
+        glVertex3d(direction_vertex_1[0], direction_vertex_1[1], direction_vertex_1[2]);
+        glVertex3d(direction_vertex_2[0], direction_vertex_2[1], direction_vertex_2[2]);
         glEnd();
         glBegin(GL_LINE_LOOP);
         glColor3f(camera_color[0], camera_color[1], camera_color[2]);
@@ -577,7 +574,7 @@ void c_draw_opengl_camera(pybind11::dict draw_dict, pybind11::dict camera_dict) 
             float x = radius * cosf(theta);
             float y = radius * sinf(theta);
             pxr::GfVec3d transformed_vertex = camera_matrix.Transform(pxr::GfVec3d(x, y, 0.0));
-            glVertex3f(transformed_vertex[0], transformed_vertex[1], transformed_vertex[2]);
+            glVertex3d(transformed_vertex[0], transformed_vertex[1], transformed_vertex[2]);
         }
         glEnd();
         glBegin(GL_LINE_LOOP);
@@ -587,7 +584,7 @@ void c_draw_opengl_camera(pybind11::dict draw_dict, pybind11::dict camera_dict) 
             float x = radius * cosf(theta);
             float y = radius * sinf(theta);
             pxr::GfVec3d transformed_vertex = camera_matrix.Transform(pxr::GfVec3d(x, y, widget_size));
-            glVertex3f(transformed_vertex[0], transformed_vertex[1], transformed_vertex[2]);
+            glVertex3d(transformed_vertex[0], transformed_vertex[1], transformed_vertex[2]);
         }
         glEnd();
         glBegin(GL_LINES);
@@ -600,14 +597,14 @@ void c_draw_opengl_camera(pybind11::dict draw_dict, pybind11::dict camera_dict) 
         pxr::GfVec3d camera_edge_vert_6 = camera_matrix.Transform(pxr::GfVec3d(-radius, 0.0, widget_size));
         pxr::GfVec3d camera_edge_vert_7 = camera_matrix.Transform(pxr::GfVec3d(0.0, -radius, 0.0));
         pxr::GfVec3d camera_edge_vert_8 = camera_matrix.Transform(pxr::GfVec3d(0.0, -radius, widget_size));
-        glVertex3f(camera_edge_vert_1[0], camera_edge_vert_1[1], camera_edge_vert_1[2]);
-        glVertex3f(camera_edge_vert_2[0], camera_edge_vert_2[1], camera_edge_vert_2[2]);
-        glVertex3f(camera_edge_vert_3[0], camera_edge_vert_3[1], camera_edge_vert_3[2]);
-        glVertex3f(camera_edge_vert_4[0], camera_edge_vert_4[1], camera_edge_vert_4[2]);
-        glVertex3f(camera_edge_vert_5[0], camera_edge_vert_5[1], camera_edge_vert_5[2]);
-        glVertex3f(camera_edge_vert_6[0], camera_edge_vert_6[1], camera_edge_vert_6[2]);
-        glVertex3f(camera_edge_vert_7[0], camera_edge_vert_7[1], camera_edge_vert_7[2]);
-        glVertex3f(camera_edge_vert_8[0], camera_edge_vert_8[1], camera_edge_vert_8[2]);
+        glVertex3d(camera_edge_vert_1[0], camera_edge_vert_1[1], camera_edge_vert_1[2]);
+        glVertex3d(camera_edge_vert_2[0], camera_edge_vert_2[1], camera_edge_vert_2[2]);
+        glVertex3d(camera_edge_vert_3[0], camera_edge_vert_3[1], camera_edge_vert_3[2]);
+        glVertex3d(camera_edge_vert_4[0], camera_edge_vert_4[1], camera_edge_vert_4[2]);
+        glVertex3d(camera_edge_vert_5[0], camera_edge_vert_5[1], camera_edge_vert_5[2]);
+        glVertex3d(camera_edge_vert_6[0], camera_edge_vert_6[1], camera_edge_vert_6[2]);
+        glVertex3d(camera_edge_vert_7[0], camera_edge_vert_7[1], camera_edge_vert_7[2]);
+        glVertex3d(camera_edge_vert_8[0], camera_edge_vert_8[1], camera_edge_vert_8[2]);
         glEnd();
     }
     glPopMatrix();
@@ -627,28 +624,4 @@ void c_init_glad() {
     }
 }
 
-
-PYBIND11_MODULE(c_draw_opengl, m) {
-    m.def("c_init_glad", &c_init_glad, "Initialize GLAD");  
-    m.def("c_init_opengl_settings", &c_init_opengl_settings, "Initialize OpenGL Settings");
-    m.def("c_setup_opengl_viewport", &c_setup_opengl_viewport, "Setup OpenGL Viewport",
-          pybind11::arg("draw_dict"));
-    m.def("c_draw_opengl_bone", &c_draw_opengl_bone, "Draw OpenGL Bone Visualization",
-          pybind11::arg("bone_list"),
-          pybind11::arg("draw_dict"));
-    m.def("c_draw_opengl_bone_xray", &c_draw_opengl_bone_xray, "Draw OpenGL Bone Xray Visualization",
-          pybind11::arg("bone_list"),
-          pybind11::arg("draw_dict"));
-    m.def("c_draw_opengl_gizmo", &c_draw_opengl_gizmo, "Draw OpenGL Gizmo",
-          pybind11::arg("draw_dict"));
-    m.def("c_draw_opengl_grid", &c_draw_opengl_grid, "Draw OpenGL Grid Plane",
-          pybind11::arg("draw_dict"));
-    m.def("c_draw_opengl_light", &c_draw_opengl_light, "Draw OpenGL Light",
-          pybind11::arg("draw_dict"),
-          pybind11::arg("light_dict"));
-    m.def("c_draw_opengl_camera", &c_draw_opengl_camera, "Draw OpenGL Camera",
-          pybind11::arg("draw_dict"),
-          pybind11::arg("camera_dict"));
-
-}
 

@@ -23,4 +23,10 @@ if os.path.isfile(venv_activate):
 else:
     python_executable = sys.executable
 
-subprocess.check_call([python_executable, "loader.py"])
+import tool.base_tool as tbase
+
+def load():
+    """Load the UI."""
+    ui = tbase.USDAssetViewer()
+
+load()

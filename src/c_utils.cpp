@@ -17,10 +17,17 @@
 #include <pxr/base/gf/matrix4d.h>
 #include <pxr/base/gf/rotation.h>
 #include <pxr/base/gf/vec3d.h>
+#include <pxr/usd/usd/stageCache.h>
+#include <pxr/usd/usd/stage.h>
 
 // OpenGL
 #include <glad/glad.h>
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void c_clear_scene_cache() {
+    pxr::UsdStageRefPtr stage = pxr::UsdStage::Open("file.usda");
+}
+
 
 void convert_matrix_usd_gl(const pxr::GfMatrix4d& usdMatrix, double glMatrix[16]) {
     glMatrix[0]  = usdMatrix[0][0];

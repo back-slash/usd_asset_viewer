@@ -5,6 +5,8 @@
 default_usd = "example_sphere.usdc"
 default_font = "arial.ttf"
 
+[scene]
+up_axis = "Z"
 
 [glfw]
 title = "USD Asset Viewer"
@@ -12,6 +14,7 @@ window_size = [1280, 720]
 gl_color = [0.1, 0.1, 0.1, 1.0]
 vsync = true
 msaa = 4
+
 
 [config]
 docking = false
@@ -156,7 +159,6 @@ window_rounding = 0.0
 
 
 [viewport]
-up_axis = "Z"
 default_draw_style = "full"
 grid_color = [0.25, 0.25, 0.25, 1.0]
 clipping_range = [1.0, 1000000.0]

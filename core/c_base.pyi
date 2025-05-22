@@ -1,5 +1,12 @@
 from typing import Any, Dict, List
 
+
+
+def c_clear_scene_cache() -> None:
+    """
+    Clear the USD scene cache.
+    """
+
 def c_init_glad() -> None:
     """
     Initialize GLAD (OpenGL function loader).
@@ -9,7 +16,6 @@ def c_init_opengl_settings() -> None:
     """
     Initialize OpenGL settings.
     """
-
 
 def c_setup_opengl_viewport(draw_dict: Dict[str, Any]) -> None:
     """
@@ -169,4 +175,5 @@ def c_draw_opengl_camera(draw_dict: Dict[str, Any], camera_dict: Dict[str, Any])
                 - prim: UsdPrim
                 - visibility: bool
     """
+
 

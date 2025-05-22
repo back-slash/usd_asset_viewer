@@ -39,6 +39,7 @@ class Icon(Enum):
     ICON_BONE = "icon_bone"
     ICON_LOCATOR = "icon_locator"
     ICON_SKELETON = "icon_skeleton"
+    ICON_SKELETON_ROOT = "icon_skeleton"
     ICON_ANIMATION = "icon_animation"
     ICON_UNKNOWN = "icon_unknown"
     ICON_VIEWPORT_WIREFRAME = "icon_viewport_wireframe"

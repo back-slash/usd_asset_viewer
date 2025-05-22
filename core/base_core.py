@@ -9,6 +9,7 @@ import os
 import ctypes
 import sys
 import pprint as pp
+import math
 
 # USD
 
@@ -23,12 +24,14 @@ import pxr.UsdShade as pshd
 import pxr.UsdLux as plux
 import pxr.UsdSkel as pskl
 import pxr.UsdUtils as putils
+import pxr.UsdImagingGL as pimg
 import glfw
 import OpenGL.GL as gl
 
 # PROJECT
 import core.static_core as cstat
 import core.utils_core as cutils
+import core.c_base as c_base
 
 #####################################################################################################################################
 
@@ -41,7 +44,7 @@ class Node:
         self._visible = True
         self._selected = False
         self._hovered = False
-
+        self._active = True
         self._node_color = (0.5, 0.5, 0.5, 1.0)
         self._node_icon = cstat.Icon.ICON_UNKNOWN
         self._name = None
@@ -75,7 +78,7 @@ class Node:
         Get the data object of the node.
         """
         return self._data_object
-
+    
     def get_scene_manager(self) -> 'SceneManager':
         """
         Get the scene manager.
@@ -126,7 +129,8 @@ class Pathed(Node):
 
     def __init__(self, data_object):
         self._parent_node = None    
-        self._path = None        
+        self._path = None
+        self._prim_object = None        
         super().__init__(data_object)
 
     def _init_node_data(self):
@@ -135,6 +139,7 @@ class Pathed(Node):
         self._path = self._data_object.GetPath()
         parent_path = self._path.GetParentPath()
         self._parent_node = self._scene_manager.get_stage().GetPrimAtPath(parent_path)
+        self._prim_object = self._scene_manager.get_stage().GetPrimAtPath(self._path)
 
     def get_path(self) -> psdf.Path:
         """
@@ -148,6 +153,11 @@ class Pathed(Node):
         """
         return self._parent_node
 
+    def get_prim(self) -> pusd.Prim:
+        """
+        Get the prim of the node.
+        """
+        return self._prim_object
 
 class Primative(Pathed):
     """
@@ -337,8 +347,9 @@ class Skeleton(Primative):
     Class representing a skeleton node.
     """
     def __init__(self, data_object):
+        self._is_animating = False
         super().__init__(data_object)
-        
+          
     def _init_node_data(self):
         super()._init_node_data()
         self._data_object = pskl.Skeleton(self._data_object)
@@ -346,7 +357,6 @@ class Skeleton(Primative):
         self._node_icon = cstat.Icon.ICON_SKELETON
         self._check_animation()
         self._init_skeleton_bones()
-    
 
     def _init_skeleton_bones(self):
         """
@@ -398,16 +408,34 @@ class Skeleton(Primative):
                 self._animation = child.get_data_object()
                 return
         self._animation = False
+        self._is_animating = False
+
+    def enable_animation(self):
+        """
+        Enable animation.
+        """
+        if self._animation:
+            self._is_animating = True
+
+    def disable_animation(self):
+        """
+        Disable animation.
+        """
+        if self._animation:
+            self._is_animating = False
 
     def update_animation(self):
         """
         Update animation.
         """
-        if self._animation:
+        if self._animation and self._is_animating:
             for index, bone in enumerate(self._bone_dict):
                 self._scene_manager.get_current_time()
                 parent_bone_path = bone.get_relative_path().GetParentPath()
-                parent_bone_matrix = pgf.Matrix4d()
+                if parent_bone_path == psdf.Path("."):
+                    parent_bone_matrix = pgeo.Xformable(self._data_object.GetPrim()).ComputeLocalToWorldTransform(self._scene_manager.get_current_time())
+                else:
+                    parent_bone_matrix = pgf.Matrix4d()
                 for parent_bone in self._bone_dict:
                     if parent_bone.get_relative_path() == parent_bone_path:
                         parent_bone_matrix = self._bone_dict[parent_bone]["anim_matrix"]
@@ -417,10 +445,56 @@ class Skeleton(Primative):
                 matrix = pgf.Matrix4d().SetScale(pgf.Vec3d(scale_list[index])).SetTranslate(pgf.Vec3d(translation_list[index])).SetRotateOnly(rotation_list[index])
                 anim_matrix = matrix * parent_bone_matrix
                 self._bone_dict[bone]["anim_matrix"] = anim_matrix
+        else:
+            for index, bone in enumerate(self._bone_dict):
+                self._bone_dict[bone]["anim_matrix"] = self._bone_dict[bone]["matrix"]
 
+class SkeletonRoot(Primative):
+    """
+    Class representing a skeleton root node.
+    """
+    def __init__(self, data_object):
+        super().__init__(data_object)
+        self._init_zero_root()
+        self.zero_root()
 
+    def _init_node_data(self):
+        super()._init_node_data()
+        self._data_object = pskl.Root(self._data_object)
+        self._node_color = (0.6, 0.4, 0.8, 1.0)
+        self._node_icon = cstat.Icon.ICON_SKELETON_ROOT
 
+    def _init_zero_root(self):
+        """
+        Initialize the zero of the skeleton root.
+        """
+        skel_root_prim = self._data_object.GetPrim()
+        xformable = pgeo.Xformable(skel_root_prim)
+        self._zero_transform_op = xformable.AddTransformOp()
+        self._zero_transform_op.Set(pgf.Matrix4d())
 
+    def zero_root(self):
+        """
+        zero the skeleton root.
+        """
+        if self._zero_transform_op:
+            for time in range(int(self._scene_manager.get_time_range()[1])):
+                current_translate = self._data_object.GetPrim().GetAttribute("xformOp:translate").Get(time)
+                current_rotate = self._data_object.GetPrim().GetAttribute("xformOp:rotateXYZ").Get(time)
+                current_scale = self._data_object.GetPrim().GetAttribute("xformOp:scale").Get(time)
+                rotation = pgf.Rotation(pgf.Vec3d(1, 0, 0), current_rotate[0])
+                rotation = rotation * pgf.Rotation(pgf.Vec3d(0, 1, 0), current_rotate[1])
+                rotation = rotation * pgf.Rotation(pgf.Vec3d(0, 0, 1), current_rotate[2])
+                current_matrix = pgf.Matrix4d().SetScale(pgf.Vec3d(current_scale)).SetTranslateOnly(pgf.Vec3d(current_translate)).SetRotateOnly(rotation)
+                self._zero_transform_op.Set(current_matrix.GetInverse(), time)
+        
+    def remove_root_zero(self):
+        """
+        Remove the zero on the skeleton root.
+        """
+        if self._zero_transform_op:
+            for time in range(self._scene_manager.get_time_range()[1]):
+                self._zero_transform_op.Set(pgf.Matrix4d().SetIdentity(), time)
 
 class Animation(Primative):
     """
@@ -434,18 +508,7 @@ class Animation(Primative):
         self._data_object = pskl.Animation(self._data_object)
         self._node_color = (0.2, 0.3, 0.7, 1.0)
         self._node_icon = cstat.Icon.ICON_ANIMATION
-        self._init_animation_data()
-
-    def _init_animation_data(self):
-        """
-        Load the animation data of the node.
-        """
-        self._data_object: pskl.Animation
-        animation_visibility = False
         
-
-
-
 
 class Material(Primative):
     """
@@ -889,28 +952,63 @@ class SceneManager:
         return cls._instance
     
     def __init__(self, usd_path: str=None):
+        self._init_config()
         if usd_path and not self._initialized:
+            self._stage = None
             self._root = None
+            self._animation = False
             self._usd_path = usd_path
-            self._path_node_list: list[Pathed] = []
-            self._data_node_list: list[Data] = []
             self._init_usd_scene()
-            self._init_time_manager()
-            self._initialized = True
+            self._initialized = True      
         elif usd_path:
             self.set_usd_file(usd_path)
-            self._init_time_manager()
-                
-    def _init_usd_scene(self):
+
+    def _init_config(self):
+        """
+        Initialize the configuration file.
+        """
+        self._cfg = cutils.get_core_config()
+        self._up_axis = self._cfg['scene']['up_axis']
+
+    def _init_usd_scene(self, force_path: str=None):
         """
         Initialize USD scene.
         """
-        print(f"Loading USD file: {self._usd_path}")
+        print(f"Loading USD file: {self._usd_path}")        
+        self._path_node_list: list[Pathed] = []
+        self._data_node_list: list[Data] = []
+        if self._stage:
+            pass
         self._stage: pusd.Stage = pusd.Stage.Open(self._usd_path)
         self._root = self._stage.GetPseudoRoot()
+        self._hydra = self._init_hydra()
+        self._init_time_manager()
         internal_root = self._init_internal_node(self._root)
         self._add_path_node(internal_root)
-  
+        self._calc_up_axis()
+        self._scene_bbox_center, self._scene_bbox_size = self.create_scene_bounding_box()
+        self.init_scene_default_objects()
+        if not self._animation:
+            self._init_scene_animation()
+
+    def _init_time_manager(self):
+        """
+        Initialize the time manager.
+        """
+        self._fps = self._stage.GetTimeCodesPerSecond()
+        self._current_time = self._stage.GetStartTimeCode()
+        self._start_time = self._stage.GetStartTimeCode()
+        self._end_time = self._stage.GetEndTimeCode()
+
+    def _init_scene_animation(self):
+        """
+        Initialize the scene animation.
+        """
+        self.disable_animation()
+        for path_node in self.get_path_node_list_by_type(Skeleton):
+            path_node: Skeleton
+            path_node.update_animation()
+    
     def _init_internal_node(self, input_object: pusd.Prim | pusd.Attribute) -> Node | None:
         """
         Get appropriate node type and init.
@@ -930,7 +1028,7 @@ class SceneManager:
             "LightPortal": Light,
             "Camera": Camera,
             "Skeleton": Skeleton,
-            "SkelRoot": XForm,
+            "SkelRoot": SkeletonRoot,
             "SkelAnimation": Animation,
             "Material": Material,
             "BasisCurves": Curve,
@@ -950,7 +1048,6 @@ class SceneManager:
             "matrix4d": Attribute,
         }
 
-        
         if isinstance(input_object, pusd.Attribute):
             return Attribute(input_object)
         input_object_type = str(input_object.GetTypeName())
@@ -971,37 +1068,6 @@ class SceneManager:
         else:
             return None
 
-    def _init_time_manager(self):
-        """
-        Initialize the time manager.
-        """
-        self._fps = self._stage.GetTimeCodesPerSecond()
-        self._current_time = self._stage.GetStartTimeCode()
-        self._start_time = self._stage.GetStartTimeCode()
-        self._end_time = self._stage.GetEndTimeCode()
-
-    def get_path_node_list(self) -> list[Pathed]:
-        """
-        Get the list of path nodes.
-        """
-        return self._path_node_list
-    
-    def get_path_node_list_by_type(self, node_type) -> list[Pathed]:
-        """
-        Get the list of path nodes by type.
-        """
-        node_list = []
-        for node in self._path_node_list:
-            if isinstance(node, node_type):
-                node_list.append(node)
-        return node_list
-
-    def get_data_node_list(self) -> list[Data]:
-        """
-        Get the list of data nodes.
-        """
-        return self._data_node_list
-
     def _add_path_node(self, node: Pathed):
         """
         Add a node to the scene manager.
@@ -1016,6 +1082,294 @@ class SceneManager:
         if node and node not in self._data_node_list:
             self._data_node_list.append(node)
 
+    def _init_hydra(self):
+        """
+        Initialize the hydra renderer.
+        """
+        return pimg.Engine()
+
+    def _calc_up_axis(self):
+        """
+        Initialize up axis matrix.
+        """
+        if self._up_axis == "Y":
+            self._up_axis_matrix = pgf.Matrix4d().SetRotate(pgf.Rotation(pgf.Vec3d(1, 0, 0), 0))
+        elif self._up_axis == "Z":
+            self._up_axis_matrix = pgf.Matrix4d().SetRotate(pgf.Rotation(pgf.Vec3d(1, 0, 0), -90))
+        else:
+            raise ValueError("Invalid up axis specified")
+
+    def _create_camera(self):
+        """
+        Create a camera with default attributes and a transformation matrix.
+        """
+        clipping_range = self._cfg["viewport"]["clipping_range"]
+        focal_length = self._cfg["viewport"]["focal_length"]
+        camera = pgeo.Camera.Define(self._stage, "/OrbitCamera")
+        camera.CreateFocalLengthAttr(focal_length)
+        camera.CreateHorizontalApertureAttr(24.0)
+        camera.CreateVerticalApertureAttr(18.0)
+        camera.CreateHorizontalApertureOffsetAttr(0.0)
+        camera.CreateVerticalApertureOffsetAttr(0.0)
+        camera.CreateClippingRangeAttr(pgf.Vec2f(clipping_range))
+        xform_attr = camera.GetPrim().CreateAttribute("xformOp:transform", psdf.ValueTypeNames.Matrix4d)
+        xform_attr.Set(pgf.Matrix4d().SetIdentity())
+        xform_op_order = camera.GetPrim().GetAttribute("xformOpOrder")
+        if not xform_op_order:
+           xform_op_order = camera.GetPrim().CreateAttribute("xformOpOrder", psdf.ValueTypeNames.TokenArray)
+        xform_op_order.Set(["xformOp:transform"])
+        return camera.GetPrim()
+
+    def _create_lighting(self):
+        """
+        Create default 3-point lighting.
+        """
+        light_xform = pgeo.Xform.Define(self._stage, "/LightNull")
+        light_xform.GetPrim().CreateAttribute("xformOp:transform", psdf.ValueTypeNames.Matrix4d)
+        light_xform.GetPrim().GetAttribute("xformOp:transform").Set(pgf.Matrix4d().SetIdentity())
+        lights_xform_op_order = light_xform.GetPrim().CreateAttribute("xformOpOrder", psdf.ValueTypeNames.TokenArray)
+        lights_xform_op_order.Set(["xformOp:transform"])
+        self._light_xform = light_xform.GetPrim()
+        
+        zero_position = pgf.Vec3d(0.0, 0.0, 0.0)
+        distance = 100
+        key_position = pgf.Vec3d(5.0, 5.0, 5.0).GetNormalized() * distance
+        fill_position = pgf.Vec3d(-5.0, 3.0, 5.0).GetNormalized() * distance
+        back_position = pgf.Vec3d(0.0, 5.0, -5.0).GetNormalized() * distance
+
+        key_transform = self._calc_light_transform(key_position, zero_position)
+        fill_transform = self._calc_light_transform(fill_position, zero_position)
+        back_transform = self._calc_light_transform(back_position, zero_position)
+
+        self._light_key = self._create_light("/LightNull/KeyLight", (1.0, 0.95, 0.9), 15.0, key_transform)
+        self._light_fill = self._create_light("/LightNull/FillLight", (0.9, 0.9, 1.0), 8.0, fill_transform)
+        self._light_back = self._create_light("/LightNull/BackLight", (1.0, 1.0, 1.0), 10.0, back_transform)
+        return self._light_xform
+
+    def _create_light(self, path: str, color: tuple, intensity: float, transform: pgf.Matrix4d) -> pusd.Prim:
+        """
+        Create a light for the scene with a specified intensity.
+        """
+        light = plux.DistantLight.Define(self._stage, path)
+        light.CreateIntensityAttr(intensity)
+        light.CreateColorAttr(pgf.Vec3f(*color))
+        light.CreateAngleAttr(35.0)
+        light.GetPrim().CreateAttribute("xformOp:transform", psdf.ValueTypeNames.Matrix4d)
+        light.GetPrim().GetAttribute("xformOp:transform").Set(transform)
+        light_xform_op_order = light.GetPrim().CreateAttribute("xformOpOrder", psdf.ValueTypeNames.TokenArray)
+        light_xform_op_order.Set(["xformOp:transform"])
+        light.GetPrim().GetAttribute("visibility").Set(pgeo.Tokens.inherited)
+        return light.GetPrim()
+
+    def _calc_light_transform(self, light_position, target_position):
+        """
+        Calculate the light transform matrix.
+        """
+        world_up = pgf.Vec3d(0, 1, 0)
+        light_matrix = cutils.calc_look_at_neg_z(light_position, target_position, world_up, flip_forward=True)
+        return light_matrix
+
+    def get_hydra(self) -> pimg.Engine:
+        """
+        Get the hydra renderer.
+        """
+        return self._hydra
+
+    def create_scene_bounding_box(self):
+        """
+        Create a bounding box for the scene.
+        """
+        prim_inactive_list: list[pusd.Prim] = []
+        for node in self.get_path_node_list():
+            if node.get_prim():
+                if not node.get_prim().IsActive():
+                    node.get_prim().SetActive(True)
+                    prim_inactive_list.append(node.get_data_object().GetPrim())
+        bbox_cache = pgeo.BBoxCache(pusd.TimeCode.Default(), includedPurposes=[pgeo.Tokens.default_], useExtentsHint=True)
+        bbox = bbox_cache.ComputeWorldBound(self._stage.GetPseudoRoot())
+        bbox_min = bbox.GetRange().GetMin()
+        bbox_max = bbox.GetRange().GetMax()
+        bbox_center: pgf.Vec3d = (bbox_min + bbox_max) * 0.5
+        bbox_size: pgf.Vec3d = bbox_max - bbox_min
+        for prim in prim_inactive_list:
+                prim.SetActive(False)   
+        return bbox_center, bbox_size
+
+    def get_camera(self) -> pusd.Prim:
+        """
+        Get the camera of the scene.
+        """
+        return self._camera
+
+    def get_up_axis_matrix(self) -> pgf.Matrix4d:
+        """
+        Get the up axis matrix.
+        """
+        return self._up_axis_matrix
+
+    def get_up_axis(self) -> str:
+        """
+        Get the up axis of the scene.
+        """
+        return self._up_axis
+    
+    def set_up_axis(self, up_axis: str) -> None:
+        """
+        Set the up axis of the scene.
+        """
+        self._up_axis = up_axis
+        self._calc_up_axis()
+        self.calc_frame_scene()
+        self.set_default_light_xform()
+
+    def calc_frame_scene(self) -> None:
+        """
+        Frame the scene in the viewport.
+        """
+        bbox_size_factor = self._scene_bbox_size.GetLength()
+        if bbox_size_factor <= 0:
+            bbox_size_factor = 1.0
+        distance_factor = 2.0
+        distance = bbox_size_factor * distance_factor
+        world_up = pgf.Vec3d(0, 1, 0) if  self._up_axis == "Y" else pgf.Vec3d(0, 0, 1)
+        camera_position = self._camera.GetAttribute("xformOp:transform").Get().ExtractTranslation()
+        if camera_position == pgf.Vec3d(0, 0, 0):
+            camera_position = pgf.Vec3d(1000, 1000, 1000)
+        current_distance = (self._scene_bbox_center - camera_position).GetLength()
+        target_distance = distance / current_distance
+        transform = cutils.calc_look_at_neg_z(camera_position * target_distance, self._scene_bbox_center, world_up, flip_forward=True)
+        self._camera.GetAttribute("xformOp:transform").Set(transform)
+        
+    def set_default_light_xform(self) -> None:
+        """
+        Scale the default light.
+        """
+        bbox_size_factor = self._scene_bbox_size.GetLength()
+        if bbox_size_factor <= 0:
+            bbox_size_factor = 1.0
+        distance_factor = 2.0
+        distance = bbox_size_factor * distance_factor
+        target_scale = distance / 200
+        light_scale = pgf.Vec3d(target_scale, target_scale, target_scale)
+        self._light_xform.GetAttribute("xformOp:transform").Set(pgf.Matrix4d().SetScale(light_scale) * self._up_axis_matrix.GetInverse())
+
+    def get_light_xform(self) -> pusd.Prim:
+        """
+        Get the light transform of the scene.
+        """
+        return self._light_xform
+
+    def disable_scene_lights(self):
+        """
+        Disable all lights in the scene.
+        """
+        self._light_disable_list: list[pusd.Prim] = []
+        prim_list = self._stage.Traverse()
+        for prim in prim_list:
+            if prim.HasAPI(plux.LightAPI) and prim not in [self._light_key, self._light_fill, self._light_back]:
+                if prim.GetAttribute("visibility").Get() != pgeo.Tokens.invisible:
+                    self._light_disable_list.append(prim)
+                    prim.GetAttribute("visibility").Set(pgeo.Tokens.invisible)
+        return False
+
+    def enable_scene_lights(self):
+        """
+        Enable all lights in the scene.
+        """
+        for light in self._light_disable_list:
+            light.GetAttribute("visibility").Set(pgeo.Tokens.inherited)
+        self._light_disable_list = []
+        return True
+
+    def disable_default_lights(self):
+        """
+        Disable all default lights in the scene.
+        """
+        for light in [self._light_key, self._light_fill, self._light_back]:
+            light.GetAttribute("visibility").Set(pgeo.Tokens.invisible)
+        return False
+
+    def enable_default_lights(self):
+        """
+        Enable all default lights in the scene.
+        """
+        for light in [self._light_key, self._light_fill, self._light_back]:
+            light.GetAttribute("visibility").Set(pgeo.Tokens.inherited)
+        return True
+
+    def init_scene_default_objects(self):
+        """
+        Initialize the scene.
+        """
+        self._light_xform = self._create_lighting()
+        self._camera = self._create_camera()
+        self._hydra.SetCameraPath(self._camera.GetPath())
+
+    def get_up_axis_matrix(self) -> str:
+        """
+        Get the up axis matrix.
+        """
+        return self._up_axis_matrix
+
+    def enable_animation(self):
+        """
+        Enable animation.
+        """
+        self._animation = True
+        current_camera_matrix = self._camera.GetAttribute("xformOp:transform").Get()
+        for path_node in self.get_path_node_list_by_type(Skeleton):
+            path_node: Skeleton
+            path_node.get_prim().SetActive(True)
+        self._stage.Reload()
+        self._init_usd_scene()
+        for path_node in self.get_path_node_list_by_type(Skeleton):
+            path_node: Skeleton
+            path_node.enable_animation()
+        self._camera.GetAttribute("xformOp:transform").Set(current_camera_matrix)
+        self.set_default_light_xform()
+
+    def disable_animation(self):
+        """
+        Disable animation.
+        """
+        self._animation = False
+        for path_node in self.get_path_node_list_by_type(Skeleton):
+            path_node: Skeleton
+            path_node.get_prim().SetActive(False)
+            path_node.disable_animation()
+
+    def get_path_node_list(self) -> list[Pathed]:
+        """
+        Get the list of path nodes.
+        """
+        return self._path_node_list
+    
+    def get_path_node_list_by_type(self, node_type: 'Pathed') -> list[Pathed]:
+        """
+        Get the list of path nodes by type.
+        """
+        node_list = []
+        for node in self._path_node_list:
+            if isinstance(node, node_type):
+                node_list.append(node)
+        return node_list
+
+    def get_data_node_list(self) -> list[Data]:
+        """
+        Get the list of data nodes.
+        """
+        return self._data_node_list
+    
+    def get_data_node_list_by_type(self, node_type: 'Data') -> list[Data]:
+        """
+        Get the list of data nodes by type.
+        """
+        node_list = []
+        for node in self._data_node_list:
+            if isinstance(node, node_type):
+                node_list.append(node)
+        return node_list
+
     def init_path_node(self, data_object: pusd.Prim) -> Pathed:
         """
         Initialize a path node and add it to the scene manager.
@@ -1025,7 +1379,7 @@ class SceneManager:
                 return path_node
         path_node = self._init_internal_node(data_object)
         if not path_node:
-            #print(f"Unknown path object type: {data_object.GetTypeName()}")
+            print(f"Unknown path object type: {data_object.GetTypeName()}")
             return None
         self._add_path_node(path_node)
         return path_node
@@ -1054,10 +1408,14 @@ class SceneManager:
         """
         Set the USD file for the scene manager.
         """
-        self._usd_path = usd_path
-        self._path_node_list = []
-        self._data_node_list = []        
+        self._usd_path = usd_path     
         self._init_usd_scene()
+
+    def set_viewport(self, viewport: 'Panel'):
+        """
+        Set the renderer for the scene manager.
+        """
+        self._viewport = viewport
 
     def get_root(self) -> pusd.Prim:
         """
@@ -1129,8 +1487,6 @@ class SceneManager:
             skeleton.update_animation()
 
 #####################################################################################################################################
-
-
 
 class RenderContextManager:
     """
@@ -1244,7 +1600,7 @@ class RenderContextManager:
         gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
         font_atlas.set_tex_id(self._font_texture)
 
-
+#####################################################################################################################################
 
 class GLFWOpenGLWindow:
     """
@@ -1328,3 +1684,7 @@ class GLFWOpenGLWindow:
         glfw.destroy_window(self._window)
         glfw.terminate()
         sys.exit()      
+
+#####################################################################################################################################
+
+

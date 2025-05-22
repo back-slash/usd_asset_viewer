@@ -33,22 +33,37 @@ class TrackbarPanel(cbase.Panel):
         """
         Initialize time.
         """
-        self._is_playing = False
+        self._is_playing = None
         self._start_time, self._end_time = self._scene_manager.get_time_range()
 
     def play(self) -> None:
         """
         Play the animation.
         """
-        self._thread = threading.Thread(target=self._time_play, daemon=True)
-        self._thread.start()
+        print(self._is_playing)
+        if self._is_playing == None:
+            self._scene_manager.enable_animation()
+            self._is_playing = True
+            self._thread = threading.Thread(target=self._time_play, daemon=True)
+            self._thread.start()
+        else:
+            self._is_playing = True
+
+    def pause(self) -> None:
+        """
+        Pause the animation.
+        """
+        if self._thread:
+            self._is_playing = False
     
     def stop(self) -> None:
         """
         Stop the animation.
         """
+        self._scene_manager.disable_animation()
         if self._thread:
             self._thread.join()
+        self._is_playing = None
 
     def _time_play(self) -> None:
         """
@@ -124,11 +139,10 @@ class TrackbarPanel(cbase.Panel):
         if self._is_playing: playpause_icon_id = pause_icon_id
         else: playpause_icon_id = play_icon_id
         if imgui.image_button("##playpause", playpause_icon_id, (20,20)):
-            self._is_playing = not self._is_playing
-            if self._is_playing:
+            if not self._is_playing:
                 self.play()
             else:
-                self.stop()
+                self.pause()
         imgui.same_line()
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() - 2)
         stop_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, cstat.Icon.ICON_TRACKBAR_STOP, (20,20))
