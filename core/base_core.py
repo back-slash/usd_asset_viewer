@@ -414,7 +414,7 @@ class Skeleton(Primative):
                 translation_list = self._animation.GetPrim().GetAttribute("translations").Get(self._scene_manager.get_current_time())
                 rotation_list = self._animation.GetPrim().GetAttribute("rotations").Get(self._scene_manager.get_current_time())
                 scale_list = self._animation.GetPrim().GetAttribute("scales").Get(self._scene_manager.get_current_time())
-                matrix = pgf.Matrix4d().SetTranslate(pgf.Vec3d(translation_list[index])).SetRotateOnly(rotation_list[index])
+                matrix = pgf.Matrix4d().SetScale(pgf.Vec3d(scale_list[index])).SetTranslate(pgf.Vec3d(translation_list[index])).SetRotateOnly(rotation_list[index])
                 anim_matrix = matrix * parent_bone_matrix
                 self._bone_dict[bone]["anim_matrix"] = anim_matrix
 
