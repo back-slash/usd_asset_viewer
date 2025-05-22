@@ -49,6 +49,12 @@ class Icon(Enum):
     ICON_VIEWPORT_LIGHT = "icon_viewport_light"
     ICON_VIEWPORT_CAMERA = "icon_viewport_camera"
     ICON_VIEWPORT_SETTINGS = "icon_viewport_settings"
+    ICON_TRACKBAR_PLAY = "icon_trackbar_play"
+    ICON_TRACKBAR_STOP = "icon_trackbar_stop"
+    ICON_TRACKBAR_PAUSE = "icon_trackbar_pause"
+    ICON_TRACKBAR_START = "icon_trackbar_start"
+    ICON_TRACKBAR_END = "icon_trackbar_end"
+    ICON_TRACKBAR_SETTINGS = "icon_trackbar_settings"
 
 
 

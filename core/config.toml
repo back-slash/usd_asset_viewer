@@ -116,7 +116,7 @@ text = [0.65, 0.65, 0.65, 1.0]
 
 
 [trackbar.style_var]
-item_spacing = [5, 5]
+item_spacing = [5, 10]
 window_padding = [0, 0]
 window_border_size = 0.0
 window_rounding = 0.0

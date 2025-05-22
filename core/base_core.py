@@ -877,6 +877,7 @@ class SceneManager:
     """
     Class for managing scene nodes.
     """
+    _fps = 30
     _current_time = 0
     _start_time = 0
     _end_time = 1
@@ -898,7 +899,8 @@ class SceneManager:
             self._initialized = True
         elif usd_path:
             self.set_usd_file(usd_path)
-    
+            self._init_time_manager()
+                
     def _init_usd_scene(self):
         """
         Initialize USD scene.
@@ -973,6 +975,7 @@ class SceneManager:
         """
         Initialize the time manager.
         """
+        self._fps = self._stage.GetTimeCodesPerSecond()
         self._current_time = self._stage.GetStartTimeCode()
         self._start_time = self._stage.GetStartTimeCode()
         self._end_time = self._stage.GetEndTimeCode()
@@ -1012,7 +1015,6 @@ class SceneManager:
         """
         if node and node not in self._data_node_list:
             self._data_node_list.append(node)
-
 
     def init_path_node(self, data_object: pusd.Prim) -> Pathed:
         """
@@ -1062,6 +1064,12 @@ class SceneManager:
         Get the root of the stage.
         """
         return self._root
+    
+    def get_fps(self) -> int:
+        """
+        Get the frames per second.
+        """
+        return self._fps
 
     def get_current_time(self) -> float:
         """
@@ -1109,6 +1117,16 @@ class SceneManager:
             elif node.get_name() == input:
                 return node
 
+    def update_animation(self, skeleton: Skeleton = None) -> None:
+        """
+        Update the animation.
+        """
+        if not skeleton:
+            for node in self._path_node_list:
+                if isinstance(node, Skeleton):
+                    node.update_animation()
+        else:
+            skeleton.update_animation()
 
 #####################################################################################################################################
 
