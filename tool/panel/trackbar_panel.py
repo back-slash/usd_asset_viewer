@@ -106,9 +106,9 @@ class TrackbarPanel(cbase.Panel):
         imgui.push_style_var(imgui.StyleVar_.frame_rounding, 2.0)
         imgui.push_style_var(imgui.StyleVar_.frame_border_size, 1.0)
 
-        imgui.push_style_color(imgui.Col_.button, imgui.get_color_u32((0.25, 0.25, 0.25, 1)))
+        imgui.push_style_color(imgui.Col_.button, imgui.get_color_u32((0.3, 0.3, 0.3, 1)))
         imgui.push_style_color(imgui.Col_.button_active, imgui.get_color_u32((0.15, 0.15, 0.15, 1)))
-        imgui.push_style_color(imgui.Col_.button_hovered, imgui.get_color_u32((0.3, 0.3, 0.3, 1)))
+        imgui.push_style_color(imgui.Col_.button_hovered, imgui.get_color_u32((0.4, 0.4, 0.4, 1)))
 
         start_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, cstat.Icon.ICON_TRACKBAR_START, (20,20))
         imgui.same_line()
@@ -123,7 +123,7 @@ class TrackbarPanel(cbase.Panel):
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() - 2)
         if self._is_playing: playpause_icon_id = pause_icon_id
         else: playpause_icon_id = play_icon_id
-        if imgui.image_button("##play", playpause_icon_id, (20,20)):
+        if imgui.image_button("##playpause", playpause_icon_id, (20,20)):
             self._is_playing = not self._is_playing
             if self._is_playing:
                 self.play()

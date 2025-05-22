@@ -32,6 +32,7 @@ class FileHelper:
     """
     Class for file input/output operations.
     """
+    _image_id_dict: Dict[str, int] = {}
     @classmethod
     def read(cls, file_type: cstat.Filetype, *args) -> Any:
         """
@@ -66,23 +67,27 @@ class FileHelper:
         """
         Read data from an image file.
         """
-        if os.path.exists(file_path):
-            image = Image.open(file_path).convert("RGBA")
-            image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
-            image = image.resize(size, Image.Resampling.LANCZOS)
-            image_data = image.tobytes("raw", "RGBA", 0, -1)
-            width, height = image.size
-            gl.glEnable(gl.GL_TEXTURE_2D)
-            texture_id = gl.glGenTextures(1)
-            gl.glBindTexture(gl.GL_TEXTURE_2D, texture_id)
-            gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, width, height, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, image_data)
-            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
-            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
-            gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-            image.close()
-            return texture_id
+        if file_path not in cls._image_id_dict:
+            if os.path.exists(file_path):
+                image = Image.open(file_path).convert("RGBA")
+                image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+                image = image.resize(size, Image.Resampling.LANCZOS)
+                image_data = image.tobytes("raw", "RGBA", 0, -1)
+                width, height = image.size
+                gl.glEnable(gl.GL_TEXTURE_2D)
+                texture_id = gl.glGenTextures(1)
+                gl.glBindTexture(gl.GL_TEXTURE_2D, texture_id)
+                gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, width, height, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, image_data)
+                gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+                gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+                gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
+                gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
+                gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+                image.close()
+                cls._image_id_dict[file_path] = texture_id
+                return texture_id
+        else:
+            return cls._image_id_dict[file_path]
 
     @classmethod
     def _read_icon(cls, icon: cstat.Icon, size: tuple[int, int]) -> int:

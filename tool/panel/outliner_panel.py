@@ -102,9 +102,7 @@ class OutlinerPanel(cbase.Panel):
         internal_icon = node.get_icon()
         draw_list.add_rect_filled(icon_bg_min, icon_bg_max, imgui.get_color_u32(internal_color), rounding=2.0)
         draw_list.add_rect(icon_bg_min, icon_bg_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=2.0)
-        if internal_icon not in self._internal_test_icon_dict:
-            self._internal_test_icon_dict[internal_icon] = cutils.FileHelper.read(cstat.Filetype.ICON, internal_icon, (20, 20))
-        internal_icon_id = self._internal_test_icon_dict[internal_icon]
+        internal_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, internal_icon, (20, 20))
         icon_min = (icon_bg_min[0], icon_bg_min[1])
         icon_max = (icon_min[0] + 20, icon_min[1] + 20)
         draw_list.add_image(internal_icon_id, icon_min, icon_max, col=imgui.get_color_u32((0, 0, 0, 1)))
