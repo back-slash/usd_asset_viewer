@@ -9,7 +9,8 @@ import os
 import ctypes
 import sys
 import pprint as pp
-from venv import create
+
+# USD
 
 # ADDONS
 from imgui_bundle import imgui
@@ -405,11 +406,16 @@ class Skeleton(Primative):
         if self._animation:
             for index, bone in enumerate(self._bone_dict):
                 self._scene_manager.get_current_time()
+                parent_bone_path = bone.get_relative_path().GetParentPath()
+                parent_bone_matrix = pgf.Matrix4d()
+                for parent_bone in self._bone_dict:
+                    if parent_bone.get_relative_path() == parent_bone_path:
+                        parent_bone_matrix = self._bone_dict[parent_bone]["anim_matrix"]
                 translation_list = self._animation.GetPrim().GetAttribute("translations").Get(self._scene_manager.get_current_time())
                 rotation_list = self._animation.GetPrim().GetAttribute("rotations").Get(self._scene_manager.get_current_time())
                 scale_list = self._animation.GetPrim().GetAttribute("scales").Get(self._scene_manager.get_current_time())
                 matrix = pgf.Matrix4d().SetTranslate(pgf.Vec3d(translation_list[index])).SetRotateOnly(rotation_list[index])
-                anim_matrix = self._bone_dict[bone]["matrix"] * matrix
+                anim_matrix = matrix * parent_bone_matrix
                 self._bone_dict[bone]["anim_matrix"] = anim_matrix
 
 
