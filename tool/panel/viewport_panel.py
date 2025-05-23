@@ -89,14 +89,12 @@ class ViewportPanel(cbase.Panel):
         self._hydra = pimg.Engine()
         render_plugins = self._hydra.GetRendererPlugins()
         if render_plugins:
-            glfw.set_scroll_callback(self._window, self._mouse_scroll_callback)
+            #glfw.set_scroll_callback(self._window, self._mouse_scroll_callback)
             self._hydra.SetRendererPlugin(render_plugins[0])
             self._scene_bbox_center, self._scene_bbox_size = self._sm.create_scene_bounding_box()
             self._hydra.SetCameraPath(self._sm.get_camera().GetPath())
             cdraw.c_init_glad()
             self._sm.calc_light_xform_default()
-            self._sm.disable_scene_lights()
-            self._sm.enable_default_lights()
             self._calc_frame_scene()
         else:
             raise RuntimeError("No renderer plugins available")
@@ -118,10 +116,9 @@ class ViewportPanel(cbase.Panel):
         """
         self._hydra_rend_params.frame = self._sm.get_current_time()
 
-    #CONVERT TO IMGUI
-    def _process_glfw_events(self):
+    def _process_imgui_input_events(self):
         """
-        Process GLFW events.
+        Process ImGui input events.
         """
         self._orbit = False
         self._zoom = False
@@ -131,40 +128,54 @@ class ViewportPanel(cbase.Panel):
         self._incremental_zoom_out = False
         self._frame_scene = False
 
-        self._key_f = glfw.get_key(self._window, glfw.KEY_F)
-        self._key_esc = glfw.get_key(self._window, glfw.KEY_ESCAPE)
-        self._key_alt = glfw.get_key(self._window, glfw.KEY_LEFT_ALT) or glfw.get_key(self._window, glfw.KEY_RIGHT_ALT)
-        self._key_shift = glfw.get_key(self._window, glfw.KEY_LEFT_SHIFT) or glfw.get_key(self._window, glfw.KEY_RIGHT_SHIFT)
+        io = imgui.get_io()
+        self._key_f = imgui.is_key_pressed(imgui.Key.f)
+        self._key_esc = imgui.is_key_pressed(imgui.Key.escape)
+        self._key_alt = imgui.is_key_pressed(imgui.Key.left_alt) or imgui.is_key_pressed(imgui.Key.right_alt)
+        self._key_shift = imgui.is_key_pressed(imgui.Key.left_shift) or imgui.is_key_pressed(imgui.Key.right_shift)
         
-        self._key_mouse_position = glfw.get_cursor_pos(self._window)
-        self._key_mouse_left = glfw.get_mouse_button(self._window, glfw.MOUSE_BUTTON_LEFT)
-        self._key_mouse_right = glfw.get_mouse_button(self._window, glfw.MOUSE_BUTTON_RIGHT)
-        self._key_mouse_middle = glfw.get_mouse_button(self._window, glfw.MOUSE_BUTTON_MIDDLE)
+        self._key_mouse_position = imgui.get_mouse_pos()
+        self._key_mouse_left = io.mouse_down[0]
+        self._key_mouse_right = io.mouse_down[1]
+        self._key_mouse_middle = io.mouse_down[2]
 
-        if self._key_alt == glfw.PRESS and self._key_mouse_left == glfw.PRESS:
+        scene_hover = imgui.is_mouse_hovering_rect(self._panel_position, (self._panel_position[0] + self._panel_width, self._panel_position[1] + self._panel_height), clip=False)
+        mouse_wheel = io.mouse_wheel
+
+        if scene_hover:
+            if mouse_wheel > 0 :
+                self._key_scroll_up = True
+            elif mouse_wheel < 0:
+                self._key_scroll_down = True
+            else:
+                self._key_scroll_up = False
+                self._key_scroll_down = False
+        else:
+            self._key_scroll_up = False
+            self._key_scroll_down = False
+
+        if self._key_alt and self._key_mouse_left:
             self._orbit = True
-        elif self._key_alt == glfw.PRESS and self._key_mouse_right == glfw.PRESS:
+        elif self._key_alt and self._key_mouse_right:
             self._zoom = True
-        elif self._key_alt == glfw.PRESS and self._key_mouse_middle == glfw.PRESS:
+        elif self._key_alt and self._key_mouse_middle:
             self._pan = True
-        elif self._key_shift == glfw.PRESS and self._key_mouse_right == glfw.PRESS:
+        elif self._key_shift and self._key_mouse_right:
             self._light_rotate = True
         elif self._key_scroll_up:
             self._incremental_zoom_in = True
         elif self._key_scroll_down:
             self._incremental_zoom_out = True
-        elif self._key_f == glfw.PRESS:
+        elif self._key_f:
             self._frame_scene = True
-        self._key_scroll_up = False
-        self._key_scroll_down = False
 
     def _update_viewport_input(self):
         """
         Update the viewport input.
         """
-        cursor_pos = glfw.get_cursor_pos(self._window)
+        cursor_pos = self._key_mouse_position
         if self._orbit or self._zoom or self._pan or self._light_rotate:
-            cursor_pos = glfw.get_cursor_pos(self._window)
+            cursor_pos = self._key_mouse_position
             delta_x = cursor_pos[0] - self._prev_cursor_pos[0]
             delta_y = cursor_pos[1] - self._prev_cursor_pos[1]
             if self._orbit:
@@ -539,7 +550,7 @@ class ViewportPanel(cbase.Panel):
         """
         Draw the outliner panel.
         """ 
-        self._process_glfw_events()
+        self._process_imgui_input_events()
         if self._stage:
             self._hydra_render_loop()
         imgui.set_next_window_size((self._panel_width, self._panel_height))

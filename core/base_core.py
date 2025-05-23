@@ -983,6 +983,8 @@ class SceneManager:
         self._calc_up_axis()
         self._scene_bbox_center, self._scene_bbox_size = self.create_scene_bounding_box()
         self.init_scene_default_objects()
+        self.enable_default_lights()
+        self.disable_scene_lights()
         if not self._animation:
             self.disable_animation()
 
