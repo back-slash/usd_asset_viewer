@@ -56,13 +56,13 @@
 
 ## Installation
 # USD
-- Clone OpenUSD [https://github.com/PixarAnimationStudios/OpenUSD]
+- Clone OpenUSD https://github.com/PixarAnimationStudios/OpenUSD
 - Install using provided build script. Include `--usd-imaging` and `--ptex`
 - Set OpenUSD path in `CMakeLists.txt`
 # GLAD
-Go to [https://glad.dav1d.de/] to download GLAD. Set path in `CMakeLists.txt`
+Go to https://glad.dav1d.de/ to download GLAD. Set path in `CMakeLists.txt`
 # PYBIND
-Go to [https://github.com/pybind/pybind11] and clone. Set path in `CMakeLists.txt`
+Go to https://github.com/pybind/pybind11 and clone. Set path in `CMakeLists.txt`
 
 
 ## Usage

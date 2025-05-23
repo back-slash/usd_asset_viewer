@@ -284,8 +284,6 @@ class TrackbarPanel(cbase.Panel):
                 imgui.push_id(index)
                 changed, value = imgui.selectable(mode, False)
                 if changed:
-                    print(f"Selected: {mode}")
-                    print(f"Index: {index}")
                     self._motion_mode = motion_list[index]
                     if self._animation:
                         if motion_list[index] == "In Place":
