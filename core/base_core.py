@@ -1337,6 +1337,7 @@ class SceneManager:
             path_node: Skeleton
             path_node.get_prim().SetActive(False)
             path_node.disable_animation()
+            path_node.update_animation()
 
     def get_path_node_list(self) -> list[Pathed]:
         """

@@ -43,9 +43,8 @@ class TrackbarPanel(cbase.Panel):
         if self._is_playing == None:
             self._scene_manager.enable_animation()
             self._is_playing = True
-            if loop:
-                self._thread = threading.Thread(target=self._time_play, daemon=True)
-                self._thread.start()
+            self._thread = threading.Thread(target=self._time_play_loop, daemon=True)
+            self._thread.start()
         else:
             self._is_playing = True
 
@@ -60,17 +59,25 @@ class TrackbarPanel(cbase.Panel):
         """
         Stop the animation.
         """
-        self._scene_manager.disable_animation()
         if self._thread:
-            self._thread.join()
+            self._thread.join(0.001)
         self._is_playing = None
+        self._scene_manager.disable_animation()
 
-    def _time_play(self) -> None:
+    def _time_play_loop(self) -> None:
         """
-        Play the animation.
+        Play looper.
         """
-        while self._is_playing:
-            time.sleep(1.0 / self._scene_manager.get_fps())
+        start_time = time.time()
+        while True:
+            #time.sleep(1.0 / self._scene_manager.get_fps())
+            self._iterate_frame()
+
+    def _iterate_frame(self) -> None:
+        """
+        Iterate the frame.
+        """
+        if self._is_playing:
             current_time = self._scene_manager.get_current_time()
             if current_time >= self._end_time:
                 self._scene_manager.set_current_time(self._start_time)
@@ -103,11 +110,24 @@ class TrackbarPanel(cbase.Panel):
         trackbar_bg_max = imgui.get_content_region_avail() + window_pos - imgui.ImVec2(track_bg_width, 5)
         self._draw_list.add_rect_filled(trackbar_bg_min, trackbar_bg_max, imgui.get_color_u32((0.3, 0.3, 0.3, 1)), rounding=2.0, flags=0)
         self._draw_list.add_rect(trackbar_bg_min, trackbar_bg_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=2.0, flags=0)
-        imgui.push_item_width((trackbar_bg_max - trackbar_bg_min)[0] - 10)
+        trackbar_inner_width = (trackbar_bg_max - trackbar_bg_min)[0] - 10
+        trackbar_height = (trackbar_bg_max - trackbar_bg_min)[1]
+        self._time_range = self._end_time - self._start_time
+        frame_width = trackbar_inner_width / (self._time_range + 2)
         imgui.set_cursor_pos((imgui.get_cursor_pos_x() + 10, imgui.get_cursor_pos_y() + 10))
+        cursor_pos_x = imgui.get_cursor_pos_x()
+        for index in range(1, int(self._time_range) + 2):
+            line_color = imgui.get_color_u32((0.1, 0.1, 0.1, 1))
+            if index == int(self._scene_manager.get_current_time()):
+                line_color = imgui.get_color_u32((0.75, 0.25, 0.25, 1))
+            frame_pos = (index * frame_width, trackbar_height / 3)
+            frame_line_start = imgui.ImVec2(cursor_pos_x, trackbar_bg_min[1]) + (frame_pos[0], 0)
+            frame_line_end = imgui.ImVec2(cursor_pos_x, trackbar_bg_min[1]) + frame_pos
+            self._draw_list.add_line(frame_line_start, frame_line_end, line_color, thickness=1.0)
+        imgui.push_item_width(trackbar_inner_width)
         changed, value = imgui.slider_int("##trackbar", int(self._scene_manager.get_current_time()), int(self._start_time), int(self._end_time))
         if changed:
-            if not self._is_playing:
+            if self._is_playing:
                 self.play(loop=False)
             self._scene_manager.set_current_time(value)
             self._scene_manager.update_animation()
@@ -140,7 +160,7 @@ class TrackbarPanel(cbase.Panel):
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() - 2)
         if self._is_playing: playpause_icon_id = pause_icon_id
         else: playpause_icon_id = play_icon_id
-        if imgui.image_button("##playpause", playpause_icon_id, (20,20)):
+        if imgui.image_button("##playpause", playpause_icon_id, (20,20), tint_col=(1, 1, 1, 1)):
             if not self._is_playing:
                 self.play()
             else:
@@ -149,16 +169,16 @@ class TrackbarPanel(cbase.Panel):
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() - 2)
         stop_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, cstat.Icon.ICON_TRACKBAR_STOP, (20,20))
         if imgui.image_button("##stop", stop_icon_id, (20,20)):
-            self._is_playing = False
-            self.stop()
             self._scene_manager.set_current_time(self._start_time)
             self._scene_manager.update_animation()
+            self.stop()
         end_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, cstat.Icon.ICON_TRACKBAR_END, (20,20))
         imgui.same_line()
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() - 2)
         if imgui.image_button("##end", end_icon_id, (20,20)):
             self._scene_manager.set_current_time(self._end_time)
             self._scene_manager.update_animation()
+        ##enable_animation_id = cutils.FileHelper.read(cstat.Filetype.ICON, cstat.Icon.ICON_TRACKBAR_ENABLE_ANIMATION, (20,20))
         
         imgui.pop_style_color(3)
         imgui.pop_style_var(3)
