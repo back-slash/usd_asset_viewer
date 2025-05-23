@@ -15,31 +15,28 @@
 - Hydra viewport
     - Default camera
     - Default lighting
-    - Up axis selection
     - View modes:
         - Wireframe
         - Shaded with wireframe
         - Full shading
-    - Camera selection
-    - Disable scene or default lighting
     - OGL visualization for non-geometry objects:
         - Camera
         - XForm
         - Lights
-        - Bone
-- Outliner panel
+        - Bone (Solid and XRay)
+- Outliner panel:
     - Standard view
     - Skeleton view
     - Material view
-- Details panel
+- Details panel:
     - Input / Output
-- Trackbar panel
-    - Animation playback
-    - Scrubbing
+- Trackbar panel:
+    - Animation Modes:
+        - In Place
+        - Root Motion
 #### Future
 - Animation blending
-    - Node based
-    - Nodes
+    - Node Editor:
         - Add
         - Subtract
         - Mask
