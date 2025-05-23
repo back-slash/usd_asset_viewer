@@ -28,7 +28,7 @@ class TrackbarPanel(cbase.Panel):
         super().__init__("trackbar", frame)
         self._init_time()
         self._animation = False
-        self._motion_mode = "Animation"
+        self._motion_mode = "In Place"
 
     def _init_time(self) -> None:
         """
@@ -142,8 +142,8 @@ class TrackbarPanel(cbase.Panel):
                 line_color = imgui.get_color_u32((0.75, 0.25, 0.25, 1))
                 line_width = 3.0
             frame_pos = imgui.ImVec2(cursor_pos_x + frame_width + window_pos[0], trackbar_bg_min[1])
-            frame_line_start = frame_pos
-            frame_line_end = frame_pos + imgui.ImVec2(0, trackbar_height * 0.333)
+            frame_line_start = imgui.ImVec2(int(frame_pos[0]), int(frame_pos[1]))
+            frame_line_end = frame_line_start + imgui.ImVec2(0, trackbar_height * 0.333)
             imgui.set_cursor_pos_x(frame_pos[0])
             self._draw_list.add_line(frame_line_start, frame_line_end, line_color, thickness=line_width)
         imgui.set_cursor_pos(original_cursor_pos)
@@ -270,7 +270,7 @@ class TrackbarPanel(cbase.Panel):
             imgui.push_style_color(imgui.Col_.frame_bg_hovered, imgui.get_color_u32((0.2, 0.2, 0.2, 1)))
 
         if self._animation:
-            motion_list = ["Animation", "Animation + Root"]
+            motion_list = ["In Place", "Root Motion"]
             current_index = motion_list.index(self._motion_mode)
         else:
             motion_list = [""]
@@ -289,11 +289,11 @@ class TrackbarPanel(cbase.Panel):
                     print(f"Index: {index}")
                     self._motion_mode = motion_list[index]
                     if self._animation:
-                        if motion_list[index] == "Animation":
+                        if motion_list[index] == "In Place":
                             self._sm.zero_skeletal_root()
                             self._sm.enable_skeletal_animation()
                             self._sm.update_skeletal_animation()
-                        elif motion_list[index] == "Animation + Root":
+                        elif motion_list[index] == "Root Motion":
                             self._sm.remove_skeletal_root_zero()
                             self._sm.update_skeletal_animation()
                             self._sm.enable_skeletal_animation()

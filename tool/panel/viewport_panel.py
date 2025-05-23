@@ -207,7 +207,7 @@ class ViewportPanel(cbase.Panel):
         Calculate the user rotation of the lights.
         """
         rot_axis = self._sm.get_up_vector()
-        rot_y_matrix = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x * 0.5))
+        rot_y_matrix = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x * 2.5))
         light_transform = self._sm.get_light_xform().GetAttribute("xformOp:transform").Get()
         light_transform = light_transform * rot_y_matrix
         self._sm.get_light_xform().GetAttribute("xformOp:transform").Set(light_transform)
@@ -216,7 +216,7 @@ class ViewportPanel(cbase.Panel):
         """
         Calculate the orbit transformation for the viewport.
         """
-        pivot_point = self._scene_bbox_center
+        pivot_point = self._sm.create_scene_bounding_box()[0]
         camera_xform: pgf.Matrix4d = self._sm.get_camera().GetAttribute("xformOp:transform").Get()        
         camera_position = camera_xform.ExtractTranslation()
         x_rotation_axis = camera_xform.TransformDir(pgf.Vec3d(1, 0, 0))
@@ -234,7 +234,7 @@ class ViewportPanel(cbase.Panel):
         """
         Calculate the zoom transformation for the viewport.
         """
-        transform_factor = self._scene_bbox_size.GetLength() / 1000.0
+        transform_factor = self._scene_bbox_size.GetLength() / 250
         transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0, 0, -delta_x * transform_factor))
         camera_xform = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
         transform = transform * camera_xform
@@ -255,17 +255,20 @@ class ViewportPanel(cbase.Panel):
         """
         Calculate the pan transformation for the viewport.
         """
-        transform_factor = self._scene_bbox_size.GetLength() / 1000.0
+        transform_factor = self._scene_bbox_size.GetLength() / 500
         transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(-delta_x * transform_factor, delta_y * transform_factor, 0))
         camera_xform = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
         transform = transform * camera_xform
         self._sm.get_camera().GetAttribute("xformOp:transform").Set(transform)
 
-    def _calc_frame_scene(self) -> None:
+    def _calc_frame_scene(self, reset=False) -> None:
         """
         Frame the scene in the viewport.
         """
-        bbox_size_factor = self._scene_bbox_size.GetLength()
+        if reset:
+            self._sm.get_camera().GetAttribute("xformOp:transform").Set(pgf.Matrix4d())
+        bbox_center, bbox_size = self._sm.create_scene_bounding_box()
+        bbox_size_factor = bbox_size.GetLength()
         if bbox_size_factor <= 0:
             bbox_size_factor = 1.0
         distance_factor = 2.0
@@ -274,9 +277,9 @@ class ViewportPanel(cbase.Panel):
         camera_position = self._sm.get_camera().GetAttribute("xformOp:transform").Get().ExtractTranslation()
         if camera_position == pgf.Vec3d(0, 0, 0):
             camera_position = pgf.Vec3d(1000, 1000, 1000)
-        current_distance = (self._scene_bbox_center - camera_position).GetLength()
+        current_distance = (bbox_center - camera_position).GetLength()
         target_distance = distance / current_distance
-        transform = cutils.calc_look_at_neg_z(camera_position * target_distance, self._scene_bbox_center, world_up, flip_forward=True)
+        transform = cutils.calc_look_at_neg_z(camera_position * target_distance, bbox_center, world_up, flip_forward=True)
         self._sm.get_camera().GetAttribute("xformOp:transform").Set(transform)
 
     def _create_c_opengl_draw_dict(self) -> dict:
@@ -369,7 +372,7 @@ class ViewportPanel(cbase.Panel):
                     selected, clicked = imgui.checkbox(f"  {axis}  ", self._sm.get_up_axis() == axis)
                     if selected:
                         self._sm.set_up_axis(axis)
-                        self._calc_frame_scene()
+                        self._calc_frame_scene(reset=True)
                         self._sm.calc_light_xform_default()
             imgui.end_combo()
         imgui.same_line()

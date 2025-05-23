@@ -1223,7 +1223,7 @@ class SceneManager:
                 if not node.get_prim().IsActive():
                     node.get_prim().SetActive(True)
                     prim_inactive_list.append(node.get_data_object().GetPrim())
-        bbox_cache = pgeo.BBoxCache(pusd.TimeCode.Default(), includedPurposes=[pgeo.Tokens.default_], useExtentsHint=True)
+        bbox_cache = pgeo.BBoxCache(self._current_time, includedPurposes=[pgeo.Tokens.default_], useExtentsHint=True)
         bbox = bbox_cache.ComputeWorldBound(self._stage.GetPseudoRoot())
         bbox_min = bbox.GetRange().GetMin()
         bbox_max = bbox.GetRange().GetMax()
