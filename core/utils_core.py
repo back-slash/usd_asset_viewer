@@ -96,7 +96,7 @@ class FileHelper:
         """
         icon_base_path = get_icon_path()
         icon_path = os.path.join(icon_base_path, icon.value + ".png")
-        return cls._read_img(icon_path, size)
+        return cls._read_img(icon_path, (int(size[0]), int(size[1])))
 
 
 def convert_dict_string(data: Dict[str, Any]) -> Dict[str, str]:

@@ -58,8 +58,8 @@ class OutlinerPanel(cbase.Panel):
 
     def _draw_standard_tab(self) -> None:
         if self._stage:
-            root = self._scene_manager.get_root()
-            internal_root = self._scene_manager.get_path_node(root)
+            root = self._sm.get_root()
+            internal_root = self._sm.get_path_node(root)
             if internal_root:
                 self._node_index = 0
                 self._recursive_node_draw(internal_root, 0)

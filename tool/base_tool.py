@@ -28,7 +28,7 @@ class USDAssetViewer(cbase.Frame):
     """
     USD Asset Viewer class for displaying USD assets.
     """
-    _scene_manager = None
+    _sm = None
     def __init__(self):
         super().__init__()
         self._cfg = cutils.get_core_config()
@@ -49,7 +49,7 @@ class USDAssetViewer(cbase.Frame):
         """
         if usd_path is None:
             usd_path = os.path.join(cutils.get_usd_default_path(), self._cfg['settings']['default_usd'])
-        self._scene_manager = cbase.SceneManager(usd_path)
+        self._sm = cbase.SceneManager(usd_path)
         self._viewport.update_usd()
         self._outliner_panel.update_usd()
         self._details_panel.update_usd()
@@ -67,11 +67,11 @@ class USDAssetViewer(cbase.Frame):
         imgui.begin_menu_bar()
         if imgui.begin_menu("File", True):
             if imgui.begin_menu("Open USD", True):
-                usd_file_list = [file for file in os.listdir(cutils.get_usd_default_path())]
-                for usd_file in usd_file_list:
-                    if imgui.menu_item_simple(usd_file, "", False, True):
-                        usd_path = os.path.join(cutils.get_usd_default_path(), usd_file)
-                        self._init_usd_stage(usd_path)
+                for file in os.listdir(cutils.get_usd_default_path()):
+                    if file.endswith(".usda") or file.endswith(".usdc"):
+                        if imgui.menu_item_simple(file, "", False, True):
+                            usd_path = os.path.join(cutils.get_usd_default_path(), file)
+                            self._init_usd_stage(usd_path)
                 imgui.end_menu()
             if imgui.menu_item_simple("Exit", "", False, True):
                 self._shutdown()

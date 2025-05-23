@@ -47,7 +47,8 @@ class ViewportPanel(cbase.Panel):
         self._key_scroll_down = False
         self._current_draw_style = None
         self._default_light = True
-        self._scene_light = False    
+        self._scene_light = False
+        self._hydra = None    
         super().__init__("viewport", frame)
         self._window = frame.get_window()
         self._init_viewport_draw_styles()
@@ -85,18 +86,18 @@ class ViewportPanel(cbase.Panel):
         """
         Initialize Hydra renderer.
         """
-        self._hydra = self._scene_manager.get_hydra()
-        self._scene_manager.set_viewport(self)
+        self._hydra = pimg.Engine()
         render_plugins = self._hydra.GetRendererPlugins()
         if render_plugins:
             glfw.set_scroll_callback(self._window, self._mouse_scroll_callback)
             self._hydra.SetRendererPlugin(render_plugins[0])
-            self._scene_bbox_center, self._scene_bbox_size = self._scene_manager.create_scene_bounding_box()
+            self._scene_bbox_center, self._scene_bbox_size = self._sm.create_scene_bounding_box()
+            self._hydra.SetCameraPath(self._sm.get_camera().GetPath())
             cdraw.c_init_glad()
-            self._scene_manager.set_default_light_xform()
-            self._scene_manager.disable_scene_lights()
-            self._scene_manager.enable_default_lights()
-            self._scene_manager.calc_frame_scene()
+            self._sm.calc_light_xform_default()
+            self._sm.disable_scene_lights()
+            self._sm.enable_default_lights()
+            self._calc_frame_scene()
         else:
             raise RuntimeError("No renderer plugins available")
 
@@ -112,8 +113,10 @@ class ViewportPanel(cbase.Panel):
         self._hydra_rend_params.enableSampleAlphaToCoverage = True
 
     def _update_hydra_time(self):
-        self._hydra_rend_params.frame = self._scene_manager.get_current_time()
-
+        """
+        Update the time for the Hydra renderer.
+        """
+        self._hydra_rend_params.frame = self._sm.get_current_time()
 
     #CONVERT TO IMGUI
     def _process_glfw_events(self):
@@ -155,57 +158,9 @@ class ViewportPanel(cbase.Panel):
         self._key_scroll_up = False
         self._key_scroll_down = False
 
-    def _create_camera_info_dict(self):
-        """
-        Create a list of lights in the scene.
-        """
-        if not self._stage:
-            return []
-        camera_dict: dict = {}
-        prim_list = self._stage.Traverse()
-        for prim in prim_list:
-            if prim.IsA(pgeo.Camera):
-                if prim.GetAttribute("visibility").Get() != pgeo.Tokens.invisible:
-                    xformable = pgeo.Xformable(prim)
-                    world_transform = xformable.ComputeLocalToWorldTransform(pusd.TimeCode.Default())
-                    world_transform_orthonormalized = pgf.Matrix4d(world_transform).GetOrthonormalized()
-                    world_rotation = world_transform_orthonormalized.ExtractRotation()
-                    world_translate = world_transform.ExtractTranslation()
-                    world_transform = pgf.Matrix4d().SetTranslateOnly(world_translate).SetRotateOnly(world_rotation)
-                    camera_dict[str(prim.GetName())] = {
-                        "prim": prim,
-                        "matrix": world_transform,
-                        "visibility": True if prim.GetAttribute("visibility").Get() == pgeo.Tokens.inherited else False,
-                    }
-        return camera_dict
-
-    def _create_light_info_dict(self):
-        """
-        Create a list of lights in the scene.
-        """
-        if not self._stage:
-            return {}
-        light_dict: dict = {}
-        prim_list = self._stage.Traverse()
-        for prim in prim_list:
-            if prim.HasAPI(plux.LightAPI):
-                xformable = pgeo.Xformable(prim)
-                world_transform = xformable.ComputeLocalToWorldTransform(pusd.TimeCode.Default())
-                world_transform_orthonormalized = pgf.Matrix4d(world_transform).GetOrthonormalized()
-                world_rotation = world_transform_orthonormalized.ExtractRotation()
-                world_translate = world_transform.ExtractTranslation()
-                world_transform = pgf.Matrix4d().SetTranslateOnly(world_translate).SetRotateOnly(world_rotation)
-                light_dict[str(prim.GetName())] = {
-                    "prim": prim,
-                    "matrix": world_transform,
-                    "color": prim.GetAttribute("inputs:color").Get(),
-                    "visibility": True if prim.GetAttribute("visibility").Get() == pgeo.Tokens.inherited else False,
-                }
-        return light_dict
-
     def _update_viewport_input(self):
         """
-        Update the viewport scene.
+        Update the viewport input.
         """
         cursor_pos = glfw.get_cursor_pos(self._window)
         if self._orbit or self._zoom or self._pan or self._light_rotate:
@@ -225,36 +180,36 @@ class ViewportPanel(cbase.Panel):
         if self._incremental_zoom_out:
             self._calc_incremental_zoom(out=True)
         if self._frame_scene:
-            self._scene_manager.calc_frame_scene()
+            self._calc_frame_scene()
         self._prev_cursor_pos = cursor_pos
-
-    def _calc_lighting_rotate(self, delta_x:float, delta_y:float) -> None:
-        """
-        Calculate the user rotation of the lights.
-        """
-        rot_axis = pgf.Vec3d(0, 1, 0) if self._scene_manager.get_up_axis() == "Y" else pgf.Vec3d(0, 0, 1)
-        rot_y_matrix = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x * 0.5))
-        light_transform = self._scene_manager.get_light_xform().GetAttribute("xformOp:transform").Get()
-        light_transform = light_transform * rot_y_matrix
-        self._scene_manager.get_light_xform().GetAttribute("xformOp:transform").Set(light_transform)
 
     def _calc_fov(self):
         """
         Calculate the field of view for the camera.
         """
-        camera = pgeo.Camera(self._scene_manager.get_camera())
+        camera = pgeo.Camera(self._sm.get_camera())
         fov = 2 * math.atan(camera.GetVerticalApertureAttr().Get() / (2 * camera.GetFocalLengthAttr().Get()))
         return math.degrees(fov)
+
+    def _calc_lighting_rotate(self, delta_x:float, delta_y:float) -> None:
+        """
+        Calculate the user rotation of the lights.
+        """
+        rot_axis = self._sm.get_up_vector()
+        rot_y_matrix = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x * 0.5))
+        light_transform = self._sm.get_light_xform().GetAttribute("xformOp:transform").Get()
+        light_transform = light_transform * rot_y_matrix
+        self._sm.get_light_xform().GetAttribute("xformOp:transform").Set(light_transform)
 
     def _calc_viewport_orbit(self, delta_x: float, delta_y: float) -> None:
         """
         Calculate the orbit transformation for the viewport.
         """
         pivot_point = self._scene_bbox_center
-        camera_xform: pgf.Matrix4d = self._scene_manager.get_camera().GetAttribute("xformOp:transform").Get()        
+        camera_xform: pgf.Matrix4d = self._sm.get_camera().GetAttribute("xformOp:transform").Get()        
         camera_position = camera_xform.ExtractTranslation()
         x_rotation_axis = camera_xform.TransformDir(pgf.Vec3d(1, 0, 0))
-        rot_axis = pgf.Vec3d(0, 1, 0) if self._scene_manager.get_up_axis() == "Y" else pgf.Vec3d(0, 0, 1)
+        rot_axis = self._sm.get_up_vector()
         rot_matrix_y = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x * 0.1))
         rot_matrix_x = pgf.Matrix4d().SetRotate(pgf.Rotation(x_rotation_axis, -delta_y * 0.1))
         world_rotation: pgf.Matrix4d = (rot_matrix_x * rot_matrix_y)
@@ -262,7 +217,7 @@ class ViewportPanel(cbase.Panel):
         new_position = world_rotation.Transform(relative_pos) + pivot_point
         new_transform: pgf.Matrix4d =  camera_xform * world_rotation
         new_transform.SetTranslateOnly(new_position)
-        self._scene_manager.get_camera().GetAttribute("xformOp:transform").Set(new_transform)
+        self._sm.get_camera().GetAttribute("xformOp:transform").Set(new_transform)
 
     def _calc_viewport_zoom(self, delta_x: float, delta_y: float) -> None:
         """
@@ -270,9 +225,9 @@ class ViewportPanel(cbase.Panel):
         """
         transform_factor = self._scene_bbox_size.GetLength() / 1000.0
         transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0, 0, -delta_x * transform_factor))
-        camera_xform = self._scene_manager.get_camera().GetAttribute("xformOp:transform").Get()
+        camera_xform = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
         transform = transform * camera_xform
-        self._scene_manager.get_camera().GetAttribute("xformOp:transform").Set(transform)
+        self._sm.get_camera().GetAttribute("xformOp:transform").Set(transform)
 
     def _calc_incremental_zoom(self, out=True) -> None:
         """
@@ -281,9 +236,9 @@ class ViewportPanel(cbase.Panel):
         factor = self._scene_bbox_size.GetLength() / 10.0
         zoom_factor = factor if out else -factor
         transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0, 0, zoom_factor))
-        camera_xform = self._scene_manager.get_camera().GetAttribute("xformOp:transform").Get()
+        camera_xform = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
         transform = transform * camera_xform
-        self._scene_manager.get_camera().GetAttribute("xformOp:transform").Set(transform)
+        self._sm.get_camera().GetAttribute("xformOp:transform").Set(transform)
 
     def _calc_viewport_pan(self, delta_x: float, delta_y: float) -> None:
         """
@@ -291,18 +246,36 @@ class ViewportPanel(cbase.Panel):
         """
         transform_factor = self._scene_bbox_size.GetLength() / 1000.0
         transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(-delta_x * transform_factor, delta_y * transform_factor, 0))
-        camera_xform = self._scene_manager.get_camera().GetAttribute("xformOp:transform").Get()
+        camera_xform = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
         transform = transform * camera_xform
-        self._scene_manager.get_camera().GetAttribute("xformOp:transform").Set(transform)
+        self._sm.get_camera().GetAttribute("xformOp:transform").Set(transform)
+
+    def _calc_frame_scene(self) -> None:
+        """
+        Frame the scene in the viewport.
+        """
+        bbox_size_factor = self._scene_bbox_size.GetLength()
+        if bbox_size_factor <= 0:
+            bbox_size_factor = 1.0
+        distance_factor = 2.0
+        distance = bbox_size_factor * distance_factor
+        world_up = self._sm.get_up_vector()
+        camera_position = self._sm.get_camera().GetAttribute("xformOp:transform").Get().ExtractTranslation()
+        if camera_position == pgf.Vec3d(0, 0, 0):
+            camera_position = pgf.Vec3d(1000, 1000, 1000)
+        current_distance = (self._scene_bbox_center - camera_position).GetLength()
+        target_distance = distance / current_distance
+        transform = cutils.calc_look_at_neg_z(camera_position * target_distance, self._scene_bbox_center, world_up, flip_forward=True)
+        self._sm.get_camera().GetAttribute("xformOp:transform").Set(transform)
 
     def _create_c_opengl_draw_dict(self) -> dict:
         """
         Create a dictionary for OpenGL drawing.
         """
-        camera_matrix = self._scene_manager.get_camera().GetAttribute("xformOp:transform").Get()
+        camera_matrix = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
         draw_dict = {}
         draw_dict["camera_matrix"] = camera_matrix
-        draw_dict["up_matrix"] = self._scene_manager.get_up_axis_matrix()
+        draw_dict["up_matrix"] = self._sm.get_up_axis_matrix()
         draw_dict["panel_width"] = self._panel_width
         draw_dict["panel_height"] = self._panel_height
         draw_dict["hydra_x_min"] = self._hydra_x_min
@@ -313,38 +286,35 @@ class ViewportPanel(cbase.Panel):
         draw_dict["scene_bbox_size"] = self._scene_bbox_size
         draw_dict["grid_density"] = self._cfg["viewport"]["grid_density"]
         draw_dict["grid_color"] = self._cfg["viewport"]["grid_color"]
-        draw_dict["up_axis"] = self._scene_manager.get_up_axis()
+        draw_dict["up_axis"] = self._sm.get_up_axis()
         return draw_dict 
             
     def _hydra_render_loop(self) -> None:
         """
         Render loop for the Hydra renderer.
         """
-        try:
-            gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-            display_size = glfw.get_window_size(self._window)
-            self._hydra_x_min = int(self._panel_position[0])
-            self._hydra_y_min = int(display_size[1] - self._panel_position[1] - self._panel_height)
-            self._hydra.SetRenderViewport((self._hydra_x_min, self._hydra_y_min, self._panel_width, self._panel_height))
-            self._hydra.SetRenderBufferSize(pgf.Vec2i(int(self._panel_width), int(self._panel_height))) 
-            self._update_hydra_time()
-            self._update_viewport_input()
-            if self._user_cfg["show"]["mesh"]:
-                self._hydra.Render(self._stage.GetPseudoRoot(), self._hydra_rend_params)
-            if self._user_cfg["show"]["grid"]:
-                cdraw.c_draw_opengl_grid(self._create_c_opengl_draw_dict())
-            if self._user_cfg["show"]["gizmo"]:
-                cdraw.c_draw_opengl_gizmo(self._create_c_opengl_draw_dict())    
-            if self._user_cfg["show"]["lights"]:
-                cdraw.c_draw_opengl_light(self._create_c_opengl_draw_dict(), self._create_light_info_dict())  
-            if self._user_cfg["show"]["camera"]:
-                cdraw.c_draw_opengl_camera(self._create_c_opengl_draw_dict(), self._create_camera_info_dict())                      
-            if self._user_cfg["show"]["bones"]:
-                cdraw.c_draw_opengl_bone(self._scene_manager.get_data_node_list_by_type(cbase.Bone), self._create_c_opengl_draw_dict())
-            if self._user_cfg["show"]["xray"]:
-                cdraw.c_draw_opengl_bone_xray(self._scene_manager.get_data_node_list_by_type(cbase.Bone), self._create_c_opengl_draw_dict())
-        except Exception as e:
-            print(e)
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+        display_size = glfw.get_window_size(self._window)
+        self._hydra_x_min = int(self._panel_position[0])
+        self._hydra_y_min = int(display_size[1] - self._panel_position[1] - self._panel_height)
+        self._hydra.SetRenderViewport((self._hydra_x_min, self._hydra_y_min, self._panel_width, self._panel_height))
+        self._hydra.SetRenderBufferSize(pgf.Vec2i(int(self._panel_width), int(self._panel_height))) 
+        self._update_hydra_time()
+        self._update_viewport_input()
+        if self._user_cfg["show"]["mesh"]:
+            self._hydra.Render(self._sm.get_root(), self._hydra_rend_params)
+        if self._user_cfg["show"]["grid"]:
+            cdraw.c_draw_opengl_grid(self._create_c_opengl_draw_dict())
+        if self._user_cfg["show"]["gizmo"]:
+            cdraw.c_draw_opengl_gizmo(self._create_c_opengl_draw_dict())    
+        if self._user_cfg["show"]["lights"]:
+            cdraw.c_draw_opengl_light(self._create_c_opengl_draw_dict(), self._sm.get_light_dict())  
+        if self._user_cfg["show"]["camera"]:
+            cdraw.c_draw_opengl_camera(self._create_c_opengl_draw_dict(), self._sm.get_camera_dict())                      
+        if self._user_cfg["show"]["bones"]:
+            cdraw.c_draw_opengl_bone(self._sm.get_data_node_list_by_type(cbase.Bone), self._create_c_opengl_draw_dict())
+        if self._user_cfg["show"]["xray"]:
+            cdraw.c_draw_opengl_bone_xray(self._sm.get_data_node_list_by_type(cbase.Bone), self._create_c_opengl_draw_dict())
 
     def _options_backdrop(self) -> None:
         """
@@ -385,12 +355,14 @@ class ViewportPanel(cbase.Panel):
         if imgui.begin_combo("##up_axis", "", imgui.ComboFlags_.height_largest):    
             if self._stage:      
                 for axis in ["Y", "Z"]:
-                    selected, clicked = imgui.checkbox(f"  {axis}  ", self._scene_manager.get_up_axis() == axis)
+                    selected, clicked = imgui.checkbox(f"  {axis}  ", self._sm.get_up_axis() == axis)
                     if selected:
-                        self._scene_manager.set_up_axis(axis)
+                        self._sm.set_up_axis(axis)
+                        self._calc_frame_scene()
+                        self._sm.calc_light_xform_default()
             imgui.end_combo()
         imgui.same_line()
-        icon = cstat.Icon.ICON_VIEWPORT_AXIS_Y if self._scene_manager.get_up_axis() == "Y" else cstat.Icon.ICON_VIEWPORT_AXIS_Z
+        icon = cstat.Icon.ICON_VIEWPORT_AXIS_Y if self._sm.get_up_axis() == "Y" else cstat.Icon.ICON_VIEWPORT_AXIS_Z
         axis_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, icon, (15, 15))
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 2)
         imgui.image(axis_icon_id, (15, 15))
@@ -423,12 +395,12 @@ class ViewportPanel(cbase.Panel):
             if self._stage:       
                 selected, clicked = imgui.checkbox("Default", self._default_light)
                 if selected:
-                    self._default_light = self._scene_manager.enable_default_lights()
-                    self._scene_light = self._scene_manager.disable_scene_lights()
+                    self._default_light = self._sm.enable_default_lights()
+                    self._scene_light = self._sm.disable_scene_lights()
                 selected, clicked = imgui.checkbox("Scene", self._scene_light)
                 if selected:
-                    self._scene_light = self._scene_manager.enable_scene_lights()
-                    self._default_light = self._scene_manager.disable_default_lights()
+                    self._scene_light = self._sm.enable_scene_lights()
+                    self._default_light = self._sm.disable_default_lights()
             imgui.end_combo()
         imgui.same_line()
         icon = cstat.Icon.ICON_VIEWPORT_LIGHT
@@ -559,7 +531,6 @@ class ViewportPanel(cbase.Panel):
             icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, getattr(cstat.Icon, icon), icon_size)
             imgui.image(icon_id, icon_size)
             imgui.new_line()
-
         imgui.pop_style_var(4)
         imgui.pop_style_color(4)
         imgui.pop_font()

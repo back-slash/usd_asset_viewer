@@ -56,6 +56,7 @@ class Icon(Enum):
     ICON_TRACKBAR_START = "icon_trackbar_start"
     ICON_TRACKBAR_END = "icon_trackbar_end"
     ICON_TRACKBAR_SETTINGS = "icon_trackbar_settings"
+    ICON_TRACKBAR_ANIMATION = "icon_trackbar_animation"
 
 
 
