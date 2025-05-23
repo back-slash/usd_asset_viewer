@@ -252,14 +252,15 @@ class TrackbarPanel(cbase.Panel):
         imgui.push_style_var(imgui.StyleVar_.frame_rounding, 2.0)
         imgui.push_style_var(imgui.StyleVar_.frame_border_size, 1.0)
         imgui.push_style_var(imgui.StyleVar_.item_spacing, (5, 5))
+        imgui.push_style_var(imgui.StyleVar_.window_padding, (5, 5))
 
         if self._animation:
             imgui.push_style_color(imgui.Col_.button, imgui.get_color_u32((0.3, 0.3, 0.3, 1)))
             imgui.push_style_color(imgui.Col_.button_active, imgui.get_color_u32((0.15, 0.15, 0.15, 1)))
             imgui.push_style_color(imgui.Col_.button_hovered, imgui.get_color_u32((0.4, 0.4, 0.4, 1)))
-            imgui.push_style_color(imgui.Col_.frame_bg, imgui.get_color_u32((0.3, 0.3, 0.3, 1)))
+            imgui.push_style_color(imgui.Col_.frame_bg, imgui.get_color_u32((0.2, 0.2, 0.2, 1)))
             imgui.push_style_color(imgui.Col_.frame_bg_active, imgui.get_color_u32((0.2, 0.2, 0.2, 1)))
-            imgui.push_style_color(imgui.Col_.frame_bg_hovered, imgui.get_color_u32((0.4, 0.4, 0.4, 1)))
+            imgui.push_style_color(imgui.Col_.frame_bg_hovered, imgui.get_color_u32((0.2, 0.2, 0.2, 1)))
         else:
             imgui.push_style_color(imgui.Col_.button, imgui.get_color_u32((0.2, 0.2, 0.2, 1)))
             imgui.push_style_color(imgui.Col_.button_active, imgui.get_color_u32((0.2, 0.2, 0.2, 1)))
@@ -272,26 +273,34 @@ class TrackbarPanel(cbase.Panel):
             motion_list = ["Animation", "Animation + Root"]
             current_index = motion_list.index(self._motion_mode)
         else:
-            motion_list = ["None"]
+            motion_list = [""]
             current_index = 0
         imgui.same_line()
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 8)
         region_avail = imgui.get_content_region_avail()
-        imgui.push_item_width(region_avail[0] - 5)
-        changed, selected_index = imgui.combo("##root_motion", current_index, motion_list)
+        imgui.push_item_width(region_avail[0] - 5)  
+        imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + 2)
+        if imgui.begin_combo("##root_motion", motion_list[current_index]):
+            for index, mode in enumerate(motion_list):
+                imgui.push_id(index)
+                changed, value = imgui.selectable(mode, False)
+                if changed:
+                    print(f"Selected: {mode}")
+                    print(f"Index: {index}")
+                    self._motion_mode = motion_list[index]
+                    if self._animation:
+                        if motion_list[index] == "Animation":
+                            self._sm.zero_skeletal_root()
+                            self._sm.enable_skeletal_animation()
+                            self._sm.update_skeletal_animation()
+                        elif motion_list[index] == "Animation + Root":
+                            self._sm.remove_skeletal_root_zero()
+                            self._sm.update_skeletal_animation()
+                            self._sm.enable_skeletal_animation()
+                    imgui.set_item_default_focus()
+                imgui.pop_id()
+            imgui.end_combo()
         imgui.pop_item_width()
-        if changed:
-            self._motion_mode = motion_list[selected_index]
-            if self._animation:
-                if motion_list[selected_index] == "Animation":
-                    self._sm.zero_skeletal_root()
-                    self._sm.enable_skeletal_animation()
-                    self._sm.update_skeletal_animation()
-                elif motion_list[selected_index] == "Animation + Root":
-                    self._sm.remove_skeletal_root_zero()
-                    self._sm.update_skeletal_animation()
-                    self._sm.enable_skeletal_animation()
-
         imgui.pop_style_color(6)
         imgui.pop_style_var(4)
 
