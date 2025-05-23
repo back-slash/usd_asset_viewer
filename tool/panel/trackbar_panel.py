@@ -28,6 +28,7 @@ class TrackbarPanel(cbase.Panel):
         super().__init__("trackbar", frame)
         self._init_time()
         self._animation = False
+        self._motion_mode = "Animation"
 
     def _init_time(self) -> None:
         """
@@ -41,21 +42,22 @@ class TrackbarPanel(cbase.Panel):
         Initialize animation.
         """
         if self._sm.get_stage():
-            self._animation = True
-            self._sm.enable_animation()
-            self._thread = threading.Thread(target=self._iterate_frame, daemon=True)
-            self._thread.start()
+            self._scene_skeletal_animation = self._sm.check_animation()
+            if self._scene_skeletal_animation:
+                self._animation = True
+                self._sm.enable_animation()
+                self._thread = threading.Thread(target=self._iterate_frame, daemon=True)
+                self._thread.start()
 
     def _terminate_animation(self) -> None:
         """
         Terminate animation.
         """
         if self._thread:
+            self._animation = False
             self._thread.join()
-            self._thread = None
             self._is_playing = None
             self._sm.disable_animation()
-            self._animation = False
 
     def _play(self) -> None:
         """
@@ -242,6 +244,57 @@ class TrackbarPanel(cbase.Panel):
         imgui.pop_style_color(3)
         imgui.pop_style_var(3)
 
+    def _draw_motion_mode(self) -> None:
+        """
+        Draw the root motion combo box.
+        """
+        imgui.push_style_var(imgui.StyleVar_.frame_padding, (5, 5))
+        imgui.push_style_var(imgui.StyleVar_.frame_rounding, 2.0)
+        imgui.push_style_var(imgui.StyleVar_.frame_border_size, 1.0)
+        imgui.push_style_var(imgui.StyleVar_.item_spacing, (5, 5))
+
+        if self._animation:
+            imgui.push_style_color(imgui.Col_.button, imgui.get_color_u32((0.3, 0.3, 0.3, 1)))
+            imgui.push_style_color(imgui.Col_.button_active, imgui.get_color_u32((0.15, 0.15, 0.15, 1)))
+            imgui.push_style_color(imgui.Col_.button_hovered, imgui.get_color_u32((0.4, 0.4, 0.4, 1)))
+            imgui.push_style_color(imgui.Col_.frame_bg, imgui.get_color_u32((0.3, 0.3, 0.3, 1)))
+            imgui.push_style_color(imgui.Col_.frame_bg_active, imgui.get_color_u32((0.2, 0.2, 0.2, 1)))
+            imgui.push_style_color(imgui.Col_.frame_bg_hovered, imgui.get_color_u32((0.4, 0.4, 0.4, 1)))
+        else:
+            imgui.push_style_color(imgui.Col_.button, imgui.get_color_u32((0.2, 0.2, 0.2, 1)))
+            imgui.push_style_color(imgui.Col_.button_active, imgui.get_color_u32((0.2, 0.2, 0.2, 1)))
+            imgui.push_style_color(imgui.Col_.button_hovered, imgui.get_color_u32((0.2, 0.2, 0.2, 1)))            
+            imgui.push_style_color(imgui.Col_.frame_bg, imgui.get_color_u32((0.2, 0.2, 0.2, 1)))
+            imgui.push_style_color(imgui.Col_.frame_bg_active, imgui.get_color_u32((0.2, 0.2, 0.2, 1)))
+            imgui.push_style_color(imgui.Col_.frame_bg_hovered, imgui.get_color_u32((0.2, 0.2, 0.2, 1)))
+
+        if self._animation:
+            motion_list = ["Animation", "Animation + Root"]
+            current_index = motion_list.index(self._motion_mode)
+        else:
+            motion_list = ["None"]
+            current_index = 0
+        imgui.same_line()
+        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 8)
+        region_avail = imgui.get_content_region_avail()
+        imgui.push_item_width(region_avail[0] - 5)
+        changed, selected_index = imgui.combo("##root_motion", current_index, motion_list)
+        imgui.pop_item_width()
+        if changed:
+            self._motion_mode = motion_list[selected_index]
+            if self._animation:
+                if motion_list[selected_index] == "Animation":
+                    self._sm.zero_skeletal_root()
+                    self._sm.enable_skeletal_animation()
+                    self._sm.update_skeletal_animation()
+                elif motion_list[selected_index] == "Animation + Root":
+                    self._sm.remove_skeletal_root_zero()
+                    self._sm.update_skeletal_animation()
+                    self._sm.enable_skeletal_animation()
+
+        imgui.pop_style_color(6)
+        imgui.pop_style_var(4)
+
     def draw(self) -> None:
         """
         Draw the outliner panel.
@@ -253,6 +306,7 @@ class TrackbarPanel(cbase.Panel):
         self._draw_animation_button()
         self._draw_trackbar()
         self._draw_control_buttons()
+        self._draw_motion_mode()
         self._draw_horizonal_line()
 
     def update_usd(self):

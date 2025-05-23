@@ -354,7 +354,7 @@ class Skeleton(Primative):
         self._data_object = pskl.Skeleton(self._data_object)
         self._node_color = (0.6, 0.4, 0.8, 1.0)
         self._node_icon = cstat.Icon.ICON_SKELETON
-        self._check_animation()
+        self.check_animation()
         self._init_skeleton_bones()
 
     def _init_skeleton_bones(self):
@@ -398,14 +398,14 @@ class Skeleton(Primative):
                 return bone
         return None
 
-    def _check_animation(self):
+    def check_animation(self):
         """
         Check if the skeleton has an animation.
         """
         for child in self._child_list:
             if isinstance(child, Animation):
                 self._animation = child.get_data_object()
-                return
+                return True
         self._animation = False
         self._is_animating = False
 
@@ -477,7 +477,7 @@ class SkeletonRoot(Primative):
         zero the skeleton root.
         """
         if self._zero_transform_op:
-            for time in range(int(self._sm.get_time_range()[1])):
+            for time in range(self._sm.get_time_range()[1]):
                 current_translate = self._data_object.GetPrim().GetAttribute("xformOp:translate").Get(time)
                 current_rotate = self._data_object.GetPrim().GetAttribute("xformOp:rotateXYZ").Get(time)
                 current_scale = self._data_object.GetPrim().GetAttribute("xformOp:scale").Get(time)
@@ -1340,11 +1340,14 @@ class SceneManager:
         Disable animation.
         """
         self._animation = False
+        print("asjkdhaskjd")
         for path_node in self.get_path_node_list_by_type(Skeleton):
             path_node: Skeleton
-            path_node.get_prim().SetActive(False)
-            path_node.disable_animation()
-            path_node.update_animation()
+            if path_node.check_animation():
+                path_node.get_prim().SetActive(False)
+                path_node.disable_animation()
+                path_node.update_animation()
+        print("asjkdhaskjd")
 
     def get_path_node_list(self) -> list[Pathed]:
         """
@@ -1424,7 +1427,23 @@ class SceneManager:
         Get the root of the stage.
         """
         return self._root
-    
+
+    def zero_skeletal_root(self) -> None:
+        """
+        Zero the skeletal root motion of the scene.
+        """
+        for path_node in self.get_path_node_list():
+            if isinstance(path_node, SkeletonRoot):
+                path_node.zero_root()
+
+    def remove_skeletal_root_zero(self) -> None:
+        """
+        Remove the skeletal root motion of the scene.
+        """
+        for path_node in self.get_path_node_list():
+            if isinstance(path_node, SkeletonRoot):
+                path_node.remove_root_zero()
+
     def get_fps(self) -> int:
         """
         Get the frames per second.
@@ -1448,7 +1467,7 @@ class SceneManager:
         """
         Get the start and end time.
         """
-        return self._start_time, self._end_time
+        return int(self._start_time), int(self._end_time)
     
     def get_path_node(self, input: psdf.Path | pusd.Prim | pusd.Attribute) -> Pathed:
         """
@@ -1476,6 +1495,34 @@ class SceneManager:
                 return node
             elif node.get_name() == input:
                 return node
+
+    def check_animation(self) -> bool:
+        """
+        Check if the animation is present in the scene.
+        """
+        skeleton_list = self.get_path_node_list_by_type(Skeleton)
+        for skeleton in skeleton_list:
+            skeleton: Skeleton
+            if skeleton.check_animation():
+                return True
+
+    def disable_skeletal_animation(self) -> None:
+        """
+        Disable the skeletal animation.
+        """
+        for node in self._path_node_list:
+            if isinstance(node, Skeleton):
+                node.disable_animation()
+                node.update_animation()
+
+    def enable_skeletal_animation(self) -> None:
+        """
+        Enable the skeletal animation.
+        """
+        for node in self._path_node_list:
+            if isinstance(node, Skeleton):
+                node.enable_animation()
+                node.update_animation()
 
     def update_skeletal_animation(self, skeleton: Skeleton = None) -> None:
         """
