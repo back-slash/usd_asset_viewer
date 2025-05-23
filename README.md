@@ -44,7 +44,6 @@
     - Visualize the scene as nodes
 
 
-
 ## Dependencies
 #### Python
 - OpenUSD
@@ -55,7 +54,19 @@
 - glad
 - pybind11
 
+## Installation
+# USD
+- Clone OpenUSD [https://github.com/PixarAnimationStudios/OpenUSD]
+- Install using provided build script. Include `--usd-imaging` and `--ptex`
+- Set OpenUSD path in `CMakeLists.txt`
+# GLAD
+Go to [https://glad.dav1d.de/] to download GLAD. Set path in `CMakeLists.txt`
+# PYBIND
+Go to [https://github.com/pybind/pybind11] and clone. Set path in `CMakeLists.txt`
+
+
 ## Usage
+- Once all dependencies and installed, and paths set in `CMakeLists.txt`, run `build_run.py`
 - File > Open USD > *.usd
 
 

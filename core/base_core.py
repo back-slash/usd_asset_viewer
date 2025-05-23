@@ -1342,14 +1342,12 @@ class SceneManager:
         Disable animation.
         """
         self._animation = False
-        print("asjkdhaskjd")
         for path_node in self.get_path_node_list_by_type(Skeleton):
             path_node: Skeleton
             if path_node.check_animation():
                 path_node.get_prim().SetActive(False)
                 path_node.disable_animation()
                 path_node.update_animation()
-        print("asjkdhaskjd")
 
     def get_path_node_list(self) -> list[Pathed]:
         """

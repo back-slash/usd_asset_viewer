@@ -252,7 +252,6 @@ class TrackbarPanel(cbase.Panel):
         imgui.push_style_var(imgui.StyleVar_.frame_rounding, 2.0)
         imgui.push_style_var(imgui.StyleVar_.frame_border_size, 1.0)
         imgui.push_style_var(imgui.StyleVar_.item_spacing, (5, 5))
-        imgui.push_style_var(imgui.StyleVar_.window_padding, (5, 5))
 
         if self._animation:
             imgui.push_style_color(imgui.Col_.button, imgui.get_color_u32((0.3, 0.3, 0.3, 1)))
