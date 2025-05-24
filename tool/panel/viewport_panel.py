@@ -9,6 +9,7 @@ from typing import Any
 import math
 import sys
 import pprint as pp
+import threading
 
 # ADDONS
 from imgui_bundle import imgui
@@ -50,8 +51,8 @@ class ViewportPanel(cbase.Panel):
         self._scene_light = False
         self._hydra = None    
         super().__init__("viewport", frame)
-        self._init_hydra()
         self._window = frame.get_window()
+        self._init_hydra()
         self._init_viewport_draw_styles()
         self._update_hydra_render_params()
 
@@ -107,6 +108,7 @@ class ViewportPanel(cbase.Panel):
         draw_style_dict = self._cfg["viewport"]["draw_style"]
         selected_draw_style_dict = draw_style_dict[self._current_draw_style]
         self._hydra_rend_params = pimg.RenderParams()
+        self._hydra_rend_params.cullStyle = pimg.CullStyle.CULL_STYLE_BACK
         self._hydra_rend_params.drawMode = getattr(pimg.DrawMode, selected_draw_style_dict["draw_mode"])
         self._hydra_rend_params.enableLighting = selected_draw_style_dict["enable_lighting"]
         self._hydra_rend_params.enableSampleAlphaToCoverage = True
@@ -117,6 +119,23 @@ class ViewportPanel(cbase.Panel):
         """
         self._hydra_rend_params.frame = self._sm.get_current_time()
 
+    def _calc_smooth_delta(self, mouse_position: tuple) -> tuple:
+        """
+        Interpolate the mouse position to smooth the delta.
+        """
+        if not hasattr(self, "_prev_cursor_position"):
+            self._prev_cursor_position = mouse_position
+        delta_x = mouse_position[0] - self._prev_cursor_position[0]
+        delta_y = mouse_position[1] - self._prev_cursor_position[1]
+        if not hasattr(self, "_smoothed_delta"):
+            self._smoothed_delta = (0.0, 0.0)
+        alpha = 0.333
+        raw_delta = (delta_x, delta_y)
+        smoothed_x = (1 - alpha) * self._smoothed_delta[0] + alpha * raw_delta[0]
+        smoothed_y = (1 - alpha) * self._smoothed_delta[1] + alpha * raw_delta[1]
+        self._smoothed_delta = (smoothed_x, smoothed_y)
+        return (smoothed_x, smoothed_y)
+    
     def _process_imgui_input_events(self):
         """
         Process ImGui input events.
@@ -135,7 +154,8 @@ class ViewportPanel(cbase.Panel):
         self._key_alt = imgui.is_key_pressed(imgui.Key.left_alt) or imgui.is_key_pressed(imgui.Key.right_alt)
         self._key_shift = imgui.is_key_pressed(imgui.Key.left_shift) or imgui.is_key_pressed(imgui.Key.right_shift)
         
-        self._key_mouse_position = imgui.get_mouse_pos()
+        self._key_mouse_position = glfw.get_cursor_pos(self._window)
+        self._key_mouse_position_delta = self._calc_smooth_delta(self._key_mouse_position)
         self._key_mouse_left = io.mouse_down[0]
         self._key_mouse_right = io.mouse_down[1]
         self._key_mouse_middle = io.mouse_down[2]
@@ -174,11 +194,8 @@ class ViewportPanel(cbase.Panel):
         """
         Update the viewport input.
         """
-        cursor_pos = self._key_mouse_position
         if self._orbit or self._zoom or self._pan or self._light_rotate:
-            cursor_pos = self._key_mouse_position
-            delta_x = cursor_pos[0] - self._prev_cursor_pos[0]
-            delta_y = cursor_pos[1] - self._prev_cursor_pos[1]
+            delta_x, delta_y = self._key_mouse_position_delta
             if self._orbit:
                 self._calc_viewport_orbit(delta_x, delta_y)
             elif self._zoom:
@@ -187,13 +204,14 @@ class ViewportPanel(cbase.Panel):
                 self._calc_viewport_pan(delta_x, delta_y)
             elif self._light_rotate:
                 self._calc_lighting_rotate(delta_x, delta_y)
+        else:
+            del(self._smoothed_delta)
         if self._incremental_zoom_in:
             self._calc_incremental_zoom(out=False)
         if self._incremental_zoom_out:
             self._calc_incremental_zoom(out=True)
         if self._frame_scene:
-            self.calc_frame_scene()
-        self._prev_cursor_pos = cursor_pos
+            self.calc_frame_scene()      
 
     def _calc_fov(self):
         """
@@ -208,7 +226,7 @@ class ViewportPanel(cbase.Panel):
         Calculate the user rotation of the lights.
         """
         rot_axis = self._sm.get_up_vector()
-        rot_y_matrix = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x * 0.75))
+        rot_y_matrix = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x))
         light_transform = self._sm.get_light_xform().GetAttribute("xformOp:transform").Get()
         light_transform = light_transform * rot_y_matrix
         self._sm.get_light_xform().GetAttribute("xformOp:transform").Set(light_transform)
@@ -222,8 +240,8 @@ class ViewportPanel(cbase.Panel):
         camera_position = camera_xform.ExtractTranslation()
         x_rotation_axis = camera_xform.TransformDir(pgf.Vec3d(1, 0, 0))
         rot_axis = self._sm.get_up_vector()
-        rot_matrix_y = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x * 0.4))
-        rot_matrix_x = pgf.Matrix4d().SetRotate(pgf.Rotation(x_rotation_axis, -delta_y * 0.4))
+        rot_matrix_y = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x))
+        rot_matrix_x = pgf.Matrix4d().SetRotate(pgf.Rotation(x_rotation_axis, -delta_y))
         world_rotation: pgf.Matrix4d = (rot_matrix_x * rot_matrix_y)
         relative_pos: pgf.Vec3d = camera_position - pivot_point
         new_position = world_rotation.Transform(relative_pos) + pivot_point
@@ -235,7 +253,7 @@ class ViewportPanel(cbase.Panel):
         """
         Calculate the zoom transformation for the viewport.
         """
-        transform_factor = self._scene_bbox_size.GetLength() / 250
+        transform_factor = self._scene_bbox_size.GetLength() / 100
         transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0, 0, -delta_x * transform_factor))
         camera_xform = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
         transform = transform * camera_xform
@@ -256,7 +274,7 @@ class ViewportPanel(cbase.Panel):
         """
         Calculate the pan transformation for the viewport.
         """
-        transform_factor = self._scene_bbox_size.GetLength() / 500
+        transform_factor = self._scene_bbox_size.GetLength() / 150
         transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(-delta_x * transform_factor, delta_y * transform_factor, 0))
         camera_xform = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
         transform = transform * camera_xform
@@ -519,7 +537,6 @@ class ViewportPanel(cbase.Panel):
             if imgui.radio_button("", current):
                 self._current_draw_style = style_key
                 self._update_hydra_render_params()
-                pimg.DrawMode.DRAW_WIREFRAME_ON_SURFACE
             imgui.pop_id()
             imgui.same_line()
             icon_size = (16, 16)
@@ -554,13 +571,14 @@ class ViewportPanel(cbase.Panel):
     def draw(self) -> None:
         """
         Draw the outliner panel.
-        """ 
+        """
         self._process_imgui_input_events()
-        if self._stage:
-            self._hydra_render_loop()
+        self._prev_cursor_position = self._key_mouse_position  
         imgui.set_next_window_size((self._panel_width, self._panel_height))
         imgui.set_next_window_pos(self._panel_position)
         imgui.begin(self._name, True, self._window_flags)
+        if self._stage:
+            self._hydra_render_loop()
         self._options_backdrop()
         self._draw_user_settings_dropdown()
         self._draw_draw_style_radio()
@@ -577,3 +595,4 @@ class ViewportPanel(cbase.Panel):
     def update_usd(self):
         super().update_usd()
         self._init_hydra()
+

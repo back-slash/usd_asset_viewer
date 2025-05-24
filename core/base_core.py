@@ -10,6 +10,7 @@ import ctypes
 import sys
 import pprint as pp
 import math
+import threading
 
 # USD
 
@@ -1719,29 +1720,27 @@ class GLFWOpenGLWindow:
 
     def _init_frame(self):
         """
-        Initialize the GLFW window with 4x MSAA.
+        Initialize the GLFW window.
         """
         if not glfw.init():
             raise RuntimeError("Failed to initialize GLFW")
         if self._cfg_vsync:
             glfw.swap_interval(1)
         if self._cfg_msaa > 0:
-            glfw.window_hint(glfw.SAMPLES, self._cfg_msaa)
-        
+            glfw.window_hint(glfw.SAMPLES, self._cfg_msaa)      
         self._window = glfw.create_window(self._cfg_width, self._cfg_height, self._cfg_title, None, None)
         if not self._window:
             glfw.terminate()
             raise RuntimeError("Failed to create GLFW window")
         glfw.make_context_current(self._window)
-    
 
     def _render_loop(self):
         """
         Render loop for the GLFW window.
         """
         while not glfw.window_should_close(self._window):
-            self._set_imgui_window_size()
             glfw.poll_events()
+            self._set_imgui_window_size()
             gl.glClearColor(*self._cfg_gl_color)
             gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
             self._render_loop_function()
