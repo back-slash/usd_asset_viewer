@@ -1722,7 +1722,7 @@ class GLFWOpenGLWindow:
         """
         if not glfw.init():
             raise RuntimeError("Failed to initialize GLFW")
-        
+        glfw.swap_interval(1)
         if self._cfg_msaa > 0:
             glfw.window_hint(glfw.SAMPLES, self._cfg_msaa)
         
