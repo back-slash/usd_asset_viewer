@@ -119,7 +119,7 @@ class USDAssetViewer(cbase.Frame):
         fps_text = f"FPS: {self._fps:.1f}"
         ms_text = f"MS: {1000 / self._fps:.1f}"
         draw_list = imgui.get_foreground_draw_list()
-        fps_position = imgui.ImVec2(viewport_position[0] + viewport_size[0] - 60, viewport_position[1] + viewport_size[1] - 30)
+        fps_position = imgui.ImVec2(viewport_position[0] + viewport_size[0] - 55, viewport_position[1] + viewport_size[1] - 30)
         draw_list.add_text(fps_position, stats_color, fps_text)
         ms_position = fps_position + imgui.ImVec2(0, 15)
         draw_list.add_text(ms_position, stats_color, ms_text)
