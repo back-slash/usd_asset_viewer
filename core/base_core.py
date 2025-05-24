@@ -72,7 +72,7 @@ class Node:
         else:
             self._name = self._data_object.GetName()
     
-    def get_data_object(self) -> pusd.Prim:
+    def get_data_object(self) -> pgeo.ModelAPI | plux.LightAPI:
         """
         Get the data object of the node.
         """
@@ -330,6 +330,7 @@ class Light(Primative):
         self.light_color = self._data_object.GetColorAttr().Get()
         self.light_intensity = self._data_object.GetIntensityAttr().Get()
         self.light_visibility = self.get_prim().GetAttribute("visibility").Get()
+
 
 
 class Camera(Primative):
@@ -681,7 +682,6 @@ class Frame:
         Initialize the scene manager.
         """  
         self._sm = SceneManager()
-        print("asdasdas")
 
     def _init_render_context_manager(self):
         """
@@ -995,6 +995,8 @@ class SceneManager:
         self._calc_up_axis()
         self._scene_bbox_center, self._scene_bbox_size = self.create_scene_bounding_box()
         self.init_scene_default_objects()
+        self._camera_dict = self.create_camera_dict()
+        self._light_dict = self.create_light_dict()
         self.enable_default_lights()
         self.disable_scene_lights()
         if not self._animation:
@@ -1177,42 +1179,53 @@ class SceneManager:
         self._light_xform.GetAttribute("xformOp:transform").Set(pgf.Matrix4d().SetScale(light_scale) * self._up_axis_matrix.GetInverse())
 
 
-    def get_camera_dict(self):
+    def create_camera_dict(self):
         """
         Create a list of lights in the scene.
         """
         if not self._stage:
             return []
         camera_dict: dict = {}
-        prim_list = self._stage.Traverse()
-        for prim in prim_list:
-            if prim.IsA(pgeo.Camera):
-                if prim.GetAttribute("visibility").Get() != pgeo.Tokens.invisible:
-                    xformable = pgeo.Xformable(prim)
-                    world_transform = xformable.ComputeLocalToWorldTransform(pusd.TimeCode.Default())
-                    world_transform_orthonormalized = pgf.Matrix4d(world_transform).GetOrthonormalized()
-                    world_rotation = world_transform_orthonormalized.ExtractRotation()
-                    world_translate = world_transform.ExtractTranslation()
-                    world_transform = pgf.Matrix4d().SetTranslateOnly(world_translate).SetRotateOnly(world_rotation)
-                    camera_dict[str(prim.GetName())] = {
-                        "prim": prim,
-                        "matrix": world_transform,
-                        "visibility": True if prim.GetAttribute("visibility").Get() == pgeo.Tokens.inherited else False,
-                    }
+        camera_list: list[pusd.Prim] = []
+        for prim in self._stage.Traverse():
+            if prim.HasAPI(pgeo.Camera):
+                camera_list.append(prim)  
+        for camera_prim in camera_list:
+            camera = self.init_path_node(camera_prim)
+            camera: Camera
+            xformable = pgeo.Xformable(camera.get_prim())
+            world_transform = xformable.ComputeLocalToWorldTransform(pusd.TimeCode.Default())
+            world_transform_orthonormalized = pgf.Matrix4d(world_transform).GetOrthonormalized()
+            world_rotation = world_transform_orthonormalized.ExtractRotation()
+            world_translate = world_transform.ExtractTranslation()
+            world_transform = pgf.Matrix4d().SetTranslateOnly(world_translate).SetRotateOnly(world_rotation)
+            camera_dict[str(camera.get_name())] = {
+                "prim": camera.get_prim(),
+                "matrix": world_transform,
+                "visibility": True if camera_prim.GetAttribute("visibility").Get() == pgeo.Tokens.inherited else False,
+            }
+            del(xformable)
         return camera_dict
 
-    def get_light_dict(self):
+    def get_light_dict(self) -> dict:
+        """
+        Get the light dictionary.
+        """
+        return self._light_dict
+
+    def create_light_dict(self):
         """
         Create a list of lights in the scene.
         """
         if not self._stage:
             return {}
         light_dict: dict = {}
-        prim_list = self._stage.Traverse()
-        for light_prim in prim_list:
-            if not light_prim.HasAPI(plux.LightAPI):
-                continue
-            light = SceneManager().init_path_node(light_prim)
+        light_list: list[pusd.Prim] = []
+        for prim in self._stage.Traverse():
+            if prim.HasAPI(plux.LightAPI):
+                light_list.append(prim)   
+        for light_prim in light_list:
+            light = self.init_path_node(light_prim)
             light: Light
             xformable = pgeo.Xformable(light.get_prim())
             world_transform = xformable.ComputeLocalToWorldTransform(pusd.TimeCode.Default())
@@ -1224,12 +1237,19 @@ class SceneManager:
                 "node": light,
                 "prim": light.get_prim(),
                 "matrix": world_transform,
-                "color": light.get_prim().GetAttribute("inputs:color").Get(),
+                "color": light.get_data_object().GetColorAttr().Get(self._current_time),
                 "visibility": True if light.get_prim().GetAttribute("visibility").Get() == pgeo.Tokens.inherited else False,
-                "intensity": light.get_prim().GetAttribute("inputs:intensity").Get(),
+                "intensity": light.get_data_object().GetIntensityAttr().Get(self._current_time),
             }
+            del(xformable)
         return light_dict
-
+    
+    def get_camera_dict(self) -> dict:
+        """
+        Get the camera dictionary.
+        """
+        return self._camera_dict
+    
     def create_scene_bounding_box(self):
         """
         Create a bounding box for the scene.
@@ -1249,6 +1269,8 @@ class SceneManager:
         for prim in prim_inactive_list:
                 prim.SetActive(False)   
         return bbox_center, bbox_size
+
+
 
     def get_camera(self) -> pusd.Prim:
         """
@@ -1342,7 +1364,7 @@ class SceneManager:
         """
         self._stage.Reload()
         self._init_usd_scene()
-        self.update_skeletal_animation()        
+        self.update_skeletal_animation()      
 
     def enable_animation(self):
         """
@@ -1409,7 +1431,7 @@ class SceneManager:
         Initialize a path node and add it to the scene manager.
         """
         for path_node in self._path_node_list:
-            if path_node.get_data_object() == data_object:
+            if path_node.get_prim() == data_object:
                 return path_node
         path_node = self._init_internal_node(data_object)
         if not path_node:

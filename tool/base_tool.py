@@ -11,7 +11,8 @@ import os
 
 # ADDONS
 from imgui_bundle import imgui
-import glfw
+import time
+
 
 # PROJECT
 import core.static_core as cstat
@@ -22,14 +23,17 @@ import tool.panel.detail_panel as tpd
 import tool.panel.trackbar_panel as tpt
 import tool.panel.viewport_panel as tvp
 #####################################################################################################################################
-      
 
+#####################################################################################################################################
 class USDAssetViewer(cbase.Frame):
     """
     USD Asset Viewer class for displaying USD assets.
     """
     _sm = None
     def __init__(self):
+        self._cache_time = time.time()
+        self._frame_count = 0
+        self._fps = 0
         super().__init__()
         self._usd_path = None
         self._cfg = cutils.get_core_config()
@@ -48,7 +52,6 @@ class USDAssetViewer(cbase.Frame):
         """
         Initialize the USD stage and scene manager.
         """
-        print(self._usd_path)
         if self._usd_path and usd_path == self._usd_path:
             self._sm.reload_scene()
             return
@@ -99,6 +102,28 @@ class USDAssetViewer(cbase.Frame):
         imgui.end()
         return menu_bar_size
 
+    def _draw_stats_overlay(self, viewport_position: imgui.ImVec2Like, viewport_size: imgui.ImVec2Like):
+        """
+        Draw the FPS overlay.
+        """
+        self._frame_count += 1
+        current_time = time.time()
+        elapsed_time = current_time - self._cache_time
+        if elapsed_time > 1.0:
+            self._fps = self._frame_count / elapsed_time
+            self._frame_count = 0
+            self._cache_time = current_time
+        if self._fps == 0:
+            return
+        stats_color = imgui.get_color_u32((0.8, 0.5, 0.0, 1.0))
+        fps_text = f"FPS: {self._fps:.1f}"
+        ms_text = f"MS: {1000 / self._fps:.1f}"
+        draw_list = imgui.get_foreground_draw_list()
+        fps_position = imgui.ImVec2(viewport_position[0] + viewport_size[0] - 60, viewport_position[1] + viewport_size[1] - 30)
+        draw_list.add_text(fps_position, stats_color, fps_text)
+        ms_position = fps_position + imgui.ImVec2(0, 15)
+        draw_list.add_text(ms_position, stats_color, ms_text)
+
     def draw(self):
         """
         Draw the USD Asset Viewer.
@@ -120,4 +145,8 @@ class USDAssetViewer(cbase.Frame):
 
         viewport_size_x = self._display_size[0] - (outliner_rect[2] - outliner_rect[0]) - (details_rect[2] - details_rect[0])
         viewport_rect = self._viewport.update_draw((outliner_rect[2], min_y), (viewport_size_x, panel_size_y))
+        if self._viewport.get_user_cfg()["show"]['FPS']:
+            stats_overlay_position = imgui.ImVec2(viewport_rect[0], viewport_rect[1])
+            stats_overlay_size = imgui.ImVec2(viewport_rect[2] - viewport_rect[0], viewport_rect[3] - viewport_rect[1])
+            self._draw_stats_overlay(stats_overlay_position, stats_overlay_size)
 

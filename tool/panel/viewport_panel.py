@@ -66,6 +66,7 @@ class ViewportPanel(cbase.Panel):
         self._user_cfg["show"]["camera"] = True
         self._user_cfg["show"]["bones"] = True
         self._user_cfg["show"]["xray"] = False
+        self._user_cfg["show"]["FPS"] = True
 
     def _init_viewport_draw_styles(self):
         """
@@ -302,13 +303,14 @@ class ViewportPanel(cbase.Panel):
         if self._user_cfg["show"]["gizmo"]:
             cdraw.c_draw_opengl_gizmo(self._create_c_opengl_draw_dict())    
         if self._user_cfg["show"]["lights"]:
-            cdraw.c_draw_opengl_light(self._create_c_opengl_draw_dict(), self._sm.get_light_dict())  
+            cdraw.c_draw_opengl_light(self._create_c_opengl_draw_dict(), self._sm.create_light_dict())  
         if self._user_cfg["show"]["camera"]:
-            cdraw.c_draw_opengl_camera(self._create_c_opengl_draw_dict(), self._sm.get_camera_dict())                      
+            cdraw.c_draw_opengl_camera(self._create_c_opengl_draw_dict(), self._sm.create_camera_dict())                      
         if self._user_cfg["show"]["bones"]:
             cdraw.c_draw_opengl_bone(self._sm.get_data_node_list_by_type(cbase.Bone), self._create_c_opengl_draw_dict())
         if self._user_cfg["show"]["xray"]:
             cdraw.c_draw_opengl_bone_xray(self._sm.get_data_node_list_by_type(cbase.Bone), self._create_c_opengl_draw_dict())
+
 
     def _options_backdrop(self) -> None:
         """
@@ -566,6 +568,12 @@ class ViewportPanel(cbase.Panel):
         self._draw_up_axis_dropdown()
         self._draw_light_dropdown()
         self._draw_camera_dropdown()
+
+    def get_user_cfg(self) -> dict:
+        """
+        Get the user configuration for the viewport.
+        """
+        return self._user_cfg
 
     def update_usd(self):
         super().update_usd()

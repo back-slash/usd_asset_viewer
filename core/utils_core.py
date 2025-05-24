@@ -251,3 +251,32 @@ def draw_base_tab() -> None:
     bg_rect_min = imgui.ImVec2(window_pos[0], window_pos[1] + cursor_pos[1])
     bg_rect_max = imgui.ImVec2(window_size[0], window_size[1]) + window_pos
     draw_list.add_rect_filled(bg_rect_min, bg_rect_max, imgui.get_color_u32((0.15, 0.15, 0.15, 1)), rounding=0.0, flags=0)
+
+
+def draw_generic_sub_window(name: str, size, content_function=None) -> None:
+    """
+    Draw a generic sub-window with a label and content.
+    """
+    imgui.push_style_var(imgui.StyleVar_.frame_padding, (5, 5))
+    imgui.push_style_var(imgui.StyleVar_.frame_border_size, 1.0)
+    imgui.push_style_var(imgui.StyleVar_.frame_rounding, 2.0)
+    
+    imgui.push_style_color(imgui.Col_.frame_bg, (0.25, 0.25, 0.25, 1))
+
+    imgui.color_button
+    imgui.begin_child(f"##{name}", size, child_flags=imgui.ChildFlags_.auto_resize_y | imgui.ChildFlags_.frame_style)    
+    child_window_rect_min = imgui.get_item_rect_min()
+    text_height = imgui.get_text_line_height()
+    header_min = imgui.ImVec2(child_window_rect_min[0], child_window_rect_min[1])
+    header_max = imgui.ImVec2(header_min[0] + size[0], header_min[1] + text_height + 10)
+    draw_list = imgui.get_window_draw_list()
+    draw_flags = imgui.ImDrawFlags_.round_corners_top_left | imgui.ImDrawFlags_.round_corners_top_right
+    draw_list.add_rect_filled(header_min, header_max, imgui.get_color_u32((0.15, 0.15, 0.15, 1)), rounding=2.0, flags=draw_flags)
+    draw_list.add_rect(header_min, header_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=2.0, thickness=1.0, flags=draw_flags)
+    imgui.text(name)
+    imgui.new_line()
+    if content_function:
+        content_function()
+    imgui.end_child()
+    imgui.pop_style_var(3)
+    imgui.pop_style_color(1)

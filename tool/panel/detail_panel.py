@@ -27,7 +27,6 @@ class DetailPanel(cbase.Panel):
     """
     def __init__(self, frame: cbase.Frame):
         super().__init__("detail", frame)
-        self._light_dict = self._sm.get_light_dict() 
 
     def _draw_vertical_separator(self) -> None:
         """
@@ -53,47 +52,18 @@ class DetailPanel(cbase.Panel):
         """
         imgui.set_cursor_pos_x(10)
         width = imgui.get_content_region_avail()[0] - 10
-        self._draw_generic_sub_window("Light Settings:", (width, 0), self._draw_scene_settings)
-
+        cutils.draw_generic_sub_window("Light Settings:", (width, 0), self._draw_scene_settings)
 
     def _draw_scene_settings(self) -> None:
         """
         Draw the scene settings.
         """
-        for light_name in self._light_dict:
-            light_pencil = LightAdjustmentPencil(self._light_dict[light_name]["node"])
-            light_pencil.update_draw()
-
-
-    def _draw_generic_sub_window(self, name: str, size, content_function=None) -> None:
-        """
-        Draw a generic sub-window with a label and content.
-        """
-        imgui.push_style_var(imgui.StyleVar_.frame_padding, (5, 5))
-        imgui.push_style_var(imgui.StyleVar_.frame_border_size, 1.0)
-        imgui.push_style_var(imgui.StyleVar_.frame_rounding, 2.0)
-        
-        imgui.push_style_color(imgui.Col_.frame_bg, (0.25, 0.25, 0.25, 1))
-
-        imgui.color_button
-        imgui.begin_child(f"##{name}", size, child_flags=imgui.ChildFlags_.auto_resize_y | imgui.ChildFlags_.frame_style)    
-        child_window_rect_min = imgui.get_item_rect_min()
-        text_height = imgui.get_text_line_height()
-        header_min = imgui.ImVec2(child_window_rect_min[0], child_window_rect_min[1])
-        header_max = imgui.ImVec2(header_min[0] + size[0], header_min[1] + text_height + 10)
-        draw_list = imgui.get_window_draw_list()
-        draw_flags = imgui.ImDrawFlags_.round_corners_top_left | imgui.ImDrawFlags_.round_corners_top_right
-        draw_list.add_rect_filled(header_min, header_max, imgui.get_color_u32((0.15, 0.15, 0.15, 1)), rounding=2.0, flags=draw_flags)
-        draw_list.add_rect(header_min, header_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=2.0, thickness=1.0, flags=draw_flags)
-        imgui.text(name)
-        imgui.new_line()
-        if content_function:
-            content_function()
-        imgui.end_child()
-        imgui.pop_style_var(3)
-        imgui.pop_style_color(1)
-        
-    
+        for light_name in self._sm.create_light_dict():
+            light: cbase.Light = self._sm.create_light_dict()[light_name]["node"]
+            if not hasattr(light, "light_adjustment_pencil"):
+                light.light_adjustment_pencil = LightAdjustmentPencil(light)
+            light.light_adjustment_pencil.update_draw()
+         
     def draw(self) -> None:
         """
         Draw the outliner panel.
@@ -110,7 +80,6 @@ class DetailPanel(cbase.Panel):
 
     def update_usd(self):
         super().update_usd()
-        self._light_dict = self._sm.get_light_dict()                
 
 
 class LightAdjustmentPencil(cbase.NodePencil):
@@ -123,6 +92,8 @@ class LightAdjustmentPencil(cbase.NodePencil):
         self._api_object = plux.LightAPI(node.get_prim())
 
     def _internal_draw(self):
+        if not self._node.get_prim().IsValid():
+            return
         imgui.push_style_var(imgui.StyleVar_.frame_padding, (5, 5))
         imgui.push_style_var(imgui.StyleVar_.frame_border_size, 1.0)
         imgui.push_style_var(imgui.StyleVar_.frame_rounding, 2.0)
