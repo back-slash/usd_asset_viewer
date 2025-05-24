@@ -2,7 +2,6 @@
 # USD Asset Viewer | Core | Config
 #####################################################################################################################################
 [settings]
-default_usd = "example_sphere.usdc"
 default_font = "arial.ttf"
 
 [scene]

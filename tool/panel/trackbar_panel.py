@@ -54,6 +54,7 @@ class TrackbarPanel(cbase.Panel):
         Terminate animation.
         """
         if self._thread:
+            self._sm.set_current_time(self._start_time)
             self._animation = False
             self._thread.join()
             self._is_playing = None
@@ -123,7 +124,7 @@ class TrackbarPanel(cbase.Panel):
         imgui.same_line()
         window_pos = imgui.get_window_pos()
         cursor_pos = imgui.get_cursor_pos()
-        trackbar_bg_min = imgui.get_cursor_pos() + window_pos + imgui.ImVec2(5, 0)
+        trackbar_bg_min = imgui.get_cursor_pos() + window_pos + imgui.ImVec2(3, 0)
         trackbar_bg_max = imgui.get_content_region_avail() + window_pos - imgui.ImVec2(detail_panel_width - cursor_pos[0], -1)
         self._draw_list.add_rect_filled(trackbar_bg_min, trackbar_bg_max, imgui.get_color_u32((0.3, 0.3, 0.3, 1)), rounding=2.0, flags=0)
         self._draw_list.add_rect(trackbar_bg_min, trackbar_bg_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=2.0, flags=0)
@@ -148,8 +149,12 @@ class TrackbarPanel(cbase.Panel):
             self._draw_list.add_line(frame_line_start, frame_line_end, line_color, thickness=line_width)
         imgui.set_cursor_pos(original_cursor_pos)
         imgui.push_item_width(trackbar_inner_width)
-        changed, value = imgui.slider_int("##trackbar", int(self._sm.get_current_time()), int(self._start_time), int(self._end_time))
-        if changed:
+        if self._animation:
+            flags = 0
+        else:
+            flags = imgui.SliderFlags_.no_input
+        changed, value = imgui.slider_int("##trackbar", int(self._sm.get_current_time()), int(self._start_time), int(self._end_time), flags=flags)
+        if self._animation and changed:
             self._sm.set_current_time(value)
             self._sm.update_skeletal_animation()
         imgui.pop_item_width()
@@ -175,10 +180,10 @@ class TrackbarPanel(cbase.Panel):
             imgui.push_style_color(imgui.Col_.button_hovered, imgui.get_color_u32((0.6, 0.175, 0.175, 1)))
             tint_color = (0.0, 0.0, 0.0, 1)
 
-        icon_size = (33, 33)
+        icon_size = (31, 31)
         enable_animation_id = cutils.FileHelper.read(cstat.Filetype.ICON, cstat.Icon.ICON_TRACKBAR_ANIMATION, icon_size)
-        imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + 10)
-        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 2) 
+        imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + 3)
+        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 3) 
         if imgui.image_button("##enable_animation", enable_animation_id, icon_size, tint_col=tint_color):
             if not self._animation:
                 self._init_animation()
@@ -209,7 +214,8 @@ class TrackbarPanel(cbase.Panel):
         start_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, cstat.Icon.ICON_TRACKBAR_START, button_size)
         imgui.same_line()
         imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + 10)
-        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 7)
+        cursor_y = imgui.get_cursor_pos_y() + 5
+        imgui.set_cursor_pos_y(cursor_y)
         if imgui.image_button("##start", start_icon_id, button_size):
             if self._animation:
                 self._sm.set_current_time(self._start_time)
@@ -217,7 +223,7 @@ class TrackbarPanel(cbase.Panel):
         play_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, cstat.Icon.ICON_TRACKBAR_PLAY, button_size)
         pause_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, cstat.Icon.ICON_TRACKBAR_PAUSE, button_size)
         imgui.same_line()
-        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 7)
+        imgui.set_cursor_pos_y(cursor_y)
         if self._is_playing: playpause_icon_id = pause_icon_id
         else: playpause_icon_id = play_icon_id
         if imgui.image_button("##playpause", playpause_icon_id, button_size, tint_col=(1, 1, 1, 1)):
@@ -227,7 +233,7 @@ class TrackbarPanel(cbase.Panel):
                 else:
                     self._pause()
         imgui.same_line()
-        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 7)
+        imgui.set_cursor_pos_y(cursor_y)
         stop_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, cstat.Icon.ICON_TRACKBAR_STOP, button_size)
         if imgui.image_button("##stop", stop_icon_id, button_size):
             if self._animation:
@@ -236,7 +242,7 @@ class TrackbarPanel(cbase.Panel):
                 self._sm.update_skeletal_animation()
         end_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, cstat.Icon.ICON_TRACKBAR_END, button_size)
         imgui.same_line()
-        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 7)
+        imgui.set_cursor_pos_y(cursor_y)
         if imgui.image_button("##end", end_icon_id, button_size):
             if self._animation:
                 self._sm.set_current_time(self._end_time)
@@ -252,6 +258,7 @@ class TrackbarPanel(cbase.Panel):
         imgui.push_style_var(imgui.StyleVar_.frame_rounding, 2.0)
         imgui.push_style_var(imgui.StyleVar_.frame_border_size, 1.0)
         imgui.push_style_var(imgui.StyleVar_.item_spacing, (5, 5))
+        imgui.push_style_var(imgui.StyleVar_.window_padding, (5, 5))
 
         if self._animation:
             imgui.push_style_color(imgui.Col_.button, imgui.get_color_u32((0.3, 0.3, 0.3, 1)))
@@ -275,9 +282,9 @@ class TrackbarPanel(cbase.Panel):
             motion_list = [""]
             current_index = 0
         imgui.same_line()
-        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 8)
+        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 6)
         region_avail = imgui.get_content_region_avail()
-        imgui.push_item_width(region_avail[0] - 5)  
+        imgui.push_item_width(region_avail[0] - 7)  
         imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + 2)
         if imgui.begin_combo("##root_motion", motion_list[current_index]):
             for index, mode in enumerate(motion_list):
@@ -299,7 +306,7 @@ class TrackbarPanel(cbase.Panel):
             imgui.end_combo()
         imgui.pop_item_width()
         imgui.pop_style_color(6)
-        imgui.pop_style_var(4)
+        imgui.pop_style_var(5)
 
     def draw(self) -> None:
         """

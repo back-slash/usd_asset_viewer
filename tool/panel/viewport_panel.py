@@ -50,6 +50,7 @@ class ViewportPanel(cbase.Panel):
         self._scene_light = False
         self._hydra = None    
         super().__init__("viewport", frame)
+        self._init_hydra()
         self._window = frame.get_window()
         self._init_viewport_draw_styles()
         self._update_hydra_render_params()
@@ -95,7 +96,7 @@ class ViewportPanel(cbase.Panel):
             self._hydra.SetCameraPath(self._sm.get_camera().GetPath())
             cdraw.c_init_glad()
             self._sm.calc_light_xform_default()
-            self._calc_frame_scene()
+            self.calc_frame_scene()
         else:
             raise RuntimeError("No renderer plugins available")
 
@@ -191,7 +192,7 @@ class ViewportPanel(cbase.Panel):
         if self._incremental_zoom_out:
             self._calc_incremental_zoom(out=True)
         if self._frame_scene:
-            self._calc_frame_scene()
+            self.calc_frame_scene()
         self._prev_cursor_pos = cursor_pos
 
     def _calc_fov(self):
@@ -259,27 +260,6 @@ class ViewportPanel(cbase.Panel):
         transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(-delta_x * transform_factor, delta_y * transform_factor, 0))
         camera_xform = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
         transform = transform * camera_xform
-        self._sm.get_camera().GetAttribute("xformOp:transform").Set(transform)
-
-    def _calc_frame_scene(self, reset=False) -> None:
-        """
-        Frame the scene in the viewport.
-        """
-        if reset:
-            self._sm.get_camera().GetAttribute("xformOp:transform").Set(pgf.Matrix4d())
-        bbox_center, bbox_size = self._sm.create_scene_bounding_box()
-        bbox_size_factor = bbox_size.GetLength()
-        if bbox_size_factor <= 0:
-            bbox_size_factor = 1.0
-        distance_factor = 2.0
-        distance = bbox_size_factor * distance_factor
-        world_up = self._sm.get_up_vector()
-        camera_position = self._sm.get_camera().GetAttribute("xformOp:transform").Get().ExtractTranslation()
-        if camera_position == pgf.Vec3d(0, 0, 0):
-            camera_position = pgf.Vec3d(1000, 1000, 1000)
-        current_distance = (bbox_center - camera_position).GetLength()
-        target_distance = distance / current_distance
-        transform = cutils.calc_look_at_neg_z(camera_position * target_distance, bbox_center, world_up, flip_forward=True)
         self._sm.get_camera().GetAttribute("xformOp:transform").Set(transform)
 
     def _create_c_opengl_draw_dict(self) -> dict:
@@ -372,7 +352,7 @@ class ViewportPanel(cbase.Panel):
                     selected, clicked = imgui.checkbox(f"  {axis}  ", self._sm.get_up_axis() == axis)
                     if selected:
                         self._sm.set_up_axis(axis)
-                        self._calc_frame_scene(reset=True)
+                        self.calc_frame_scene(reset=True)
                         self._sm.calc_light_xform_default()
             imgui.end_combo()
         imgui.same_line()
@@ -549,6 +529,27 @@ class ViewportPanel(cbase.Panel):
         imgui.pop_style_color(4)
         imgui.pop_font()
 
+    def calc_frame_scene(self, reset=False) -> None:
+        """
+        Frame the scene in the viewport.
+        """
+        if reset:
+            self._sm.get_camera().GetAttribute("xformOp:transform").Set(pgf.Matrix4d())
+        bbox_center, bbox_size = self._sm.create_scene_bounding_box()
+        bbox_size_factor = bbox_size.GetLength()
+        if bbox_size_factor <= 0:
+            bbox_size_factor = 1.0
+        distance_factor = 2.0
+        distance = bbox_size_factor * distance_factor
+        world_up = self._sm.get_up_vector()
+        camera_position = self._sm.get_camera().GetAttribute("xformOp:transform").Get().ExtractTranslation()
+        if camera_position == pgf.Vec3d(0, 0, 0):
+            camera_position = pgf.Vec3d(1000, 1000, 1000)
+        current_distance = (bbox_center - camera_position).GetLength()
+        target_distance = distance / current_distance
+        transform = cutils.calc_look_at_neg_z(camera_position * target_distance, bbox_center, world_up, flip_forward=True)
+        self._sm.get_camera().GetAttribute("xformOp:transform").Set(transform)
+
     def draw(self) -> None:
         """
         Draw the outliner panel.
@@ -565,7 +566,7 @@ class ViewportPanel(cbase.Panel):
         self._draw_up_axis_dropdown()
         self._draw_light_dropdown()
         self._draw_camera_dropdown()
-    
+
     def update_usd(self):
         super().update_usd()
         self._init_hydra()

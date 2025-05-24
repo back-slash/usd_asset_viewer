@@ -31,6 +31,7 @@ class USDAssetViewer(cbase.Frame):
     _sm = None
     def __init__(self):
         super().__init__()
+        self._usd_path = None
         self._cfg = cutils.get_core_config()
         self._init_rendering()
 
@@ -47,13 +48,15 @@ class USDAssetViewer(cbase.Frame):
         """
         Initialize the USD stage and scene manager.
         """
-        if usd_path is None:
-            usd_path = os.path.join(cutils.get_usd_default_path(), self._cfg['settings']['default_usd'])
+        if self._usd_path and usd_path == self._usd_path:
+            self._sm.reload_scene()
+            return
         self._sm = cbase.SceneManager(usd_path)
         self._viewport.update_usd()
         self._outliner_panel.update_usd()
         self._details_panel.update_usd()
         self._trackbar_panel.update_usd()
+        self._usd_path = usd_path
 
     def _set_window_flags(self):
         super()._set_window_flags()
@@ -70,8 +73,10 @@ class USDAssetViewer(cbase.Frame):
                 for file in os.listdir(cutils.get_usd_default_path()):
                     if file.endswith(".usda") or file.endswith(".usdc"):
                         if imgui.menu_item_simple(file, "", False, True):
+                            print(f"Opening {file}")
                             usd_path = os.path.join(cutils.get_usd_default_path(), file)
                             self._init_usd_stage(usd_path)
+                            self._viewport.calc_frame_scene()
                 imgui.end_menu()
             if imgui.menu_item_simple("Exit", "", False, True):
                 self._shutdown()

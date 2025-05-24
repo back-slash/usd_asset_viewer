@@ -675,9 +675,9 @@ class Frame:
     def _init_scene_manager(self):
         """
         Initialize the scene manager.
-        """
-        self._default_usd_path = os.path.join(cutils.get_usd_default_path(), self._cfg['settings']['default_usd'])   
+        """  
         self._sm = SceneManager()
+        print("asdasdas")
 
     def _init_render_context_manager(self):
         """
@@ -944,23 +944,23 @@ class SceneManager:
     _start_time = 0
     _end_time = 1
     _instance = None
-    def __new__(cls, usd_path: str=None):
+    def __new__(cls, *args, **kwargs):
         if cls._instance is None:
-            cls._initialized = False
             cls._instance = super().__new__(cls)
         return cls._instance
     
     def __init__(self, usd_path: str=None):
-        self._init_config()
-        if usd_path and not self._initialized:
+        if not hasattr(self, '_initialized'):
             self._root = None
-            self._animation = None
+            self._animation = None            
+            self._initialized = True
+            self._usd_path = usd_path
+            self._init_config()
+            self._init_usd_scene()
+        elif usd_path:
             self._usd_path = usd_path
             self._init_usd_scene()
-            self._initialized = True      
-        elif usd_path:
-            self.set_usd_file(usd_path)
-
+    
     def _init_config(self):
         """
         Initialize the configuration file.
@@ -968,14 +968,19 @@ class SceneManager:
         self._cfg = cutils.get_core_config()
         self._up_axis = self._cfg['scene']['up_axis']
 
-    def _init_usd_scene(self, force_path: str=None):
+    def _init_usd_scene(self):
         """
         Initialize USD scene.
         """
         print(f"Loading USD file: {self._usd_path}")        
         self._path_node_list: list[Pathed] = []
         self._data_node_list: list[Data] = []
-        self._stage: pusd.Stage = pusd.Stage.Open(self._usd_path)
+        if not self._usd_path:
+            self._stage: pusd.Stage = pusd.Stage.CreateInMemory()
+            cube = pgeo.Cube.Define(self._stage, "/Cube")
+            cube.GetSizeAttr().Set(100.0)
+        else:
+            self._stage: pusd.Stage = pusd.Stage.Open(self._usd_path)
         self._root = self._stage.GetPseudoRoot()
         self._init_time_manager()
         internal_root = self._init_internal_node(self._root)
@@ -1319,6 +1324,13 @@ class SceneManager:
         self.calc_light_xform_default()
         self._camera = self._create_camera()
 
+    def reload_scene(self):
+        """
+        Reload the scene.
+        """
+        self._stage.Reload()
+        self._init_usd_scene()
+        self.update_skeletal_animation()        
 
     def enable_animation(self):
         """
@@ -1329,8 +1341,7 @@ class SceneManager:
         for path_node in self.get_path_node_list_by_type(Skeleton):
             path_node: Skeleton
             path_node.get_prim().SetActive(True)
-        self._stage.Reload()
-        self._init_usd_scene()
+        self.reload_scene()
         for path_node in self.get_path_node_list_by_type(Skeleton):
             path_node: Skeleton
             path_node.enable_animation()
@@ -1534,7 +1545,6 @@ class SceneManager:
                     node.update_animation()
         else:
             skeleton.update_animation()
-
 #####################################################################################################################################
 
 class RenderContextManager:
