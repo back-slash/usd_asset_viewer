@@ -323,9 +323,13 @@ class Light(Primative):
 
     def _init_node_data(self):
         super()._init_node_data()
-        self._data_object: plux.BoundableLightBase | plux.NonboundableLightBase
+        self._data_object: plux.LightAPI
+        self._data_object = plux.LightAPI(self._data_object)
         self._node_color = (0.9, 0.9, 0.4, 1.0)
         self._node_icon = cstat.Icon.ICON_LIGHT
+        self.light_color = self._data_object.GetColorAttr().Get()
+        self.light_intensity = self._data_object.GetIntensityAttr().Get()
+        self.light_visibility = self.get_prim().GetAttribute("visibility").Get()
 
 
 class Camera(Primative):
@@ -1205,20 +1209,25 @@ class SceneManager:
             return {}
         light_dict: dict = {}
         prim_list = self._stage.Traverse()
-        for prim in prim_list:
-            if prim.HasAPI(plux.LightAPI):
-                xformable = pgeo.Xformable(prim)
-                world_transform = xformable.ComputeLocalToWorldTransform(pusd.TimeCode.Default())
-                world_transform_orthonormalized = pgf.Matrix4d(world_transform).GetOrthonormalized()
-                world_rotation = world_transform_orthonormalized.ExtractRotation()
-                world_translate = world_transform.ExtractTranslation()
-                world_transform = pgf.Matrix4d().SetTranslateOnly(world_translate).SetRotateOnly(world_rotation)
-                light_dict[str(prim.GetName())] = {
-                    "prim": prim,
-                    "matrix": world_transform,
-                    "color": prim.GetAttribute("inputs:color").Get(),
-                    "visibility": True if prim.GetAttribute("visibility").Get() == pgeo.Tokens.inherited else False,
-                }
+        for light_prim in prim_list:
+            if not light_prim.HasAPI(plux.LightAPI):
+                continue
+            light = SceneManager().init_path_node(light_prim)
+            light: Light
+            xformable = pgeo.Xformable(light.get_prim())
+            world_transform = xformable.ComputeLocalToWorldTransform(pusd.TimeCode.Default())
+            world_transform_orthonormalized = pgf.Matrix4d(world_transform).GetOrthonormalized()
+            world_rotation = world_transform_orthonormalized.ExtractRotation()
+            world_translate = world_transform.ExtractTranslation()
+            world_transform = pgf.Matrix4d().SetTranslateOnly(world_translate).SetRotateOnly(world_rotation)
+            light_dict[light.get_name()] = {
+                "node": light,
+                "prim": light.get_prim(),
+                "matrix": world_transform,
+                "color": light.get_prim().GetAttribute("inputs:color").Get(),
+                "visibility": True if light.get_prim().GetAttribute("visibility").Get() == pgeo.Tokens.inherited else False,
+                "intensity": light.get_prim().GetAttribute("inputs:intensity").Get(),
+            }
         return light_dict
 
     def create_scene_bounding_box(self):
