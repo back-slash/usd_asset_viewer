@@ -1715,6 +1715,7 @@ class GLFWOpenGLWindow:
         self._cfg_title = self._cfg["glfw"]["title"]
         self._cfg_gl_color = self._cfg["glfw"]["gl_color"]
         self._cfg_msaa = self._cfg["glfw"]["msaa"]
+        self._cfg_vsync = self._cfg["glfw"]["vsync"]
 
     def _init_frame(self):
         """
@@ -1722,7 +1723,8 @@ class GLFWOpenGLWindow:
         """
         if not glfw.init():
             raise RuntimeError("Failed to initialize GLFW")
-        glfw.swap_interval(1)
+        if self._cfg_vsync:
+            glfw.swap_interval(1)
         if self._cfg_msaa > 0:
             glfw.window_hint(glfw.SAMPLES, self._cfg_msaa)
         

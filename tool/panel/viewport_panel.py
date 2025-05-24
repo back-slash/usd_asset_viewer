@@ -208,7 +208,7 @@ class ViewportPanel(cbase.Panel):
         Calculate the user rotation of the lights.
         """
         rot_axis = self._sm.get_up_vector()
-        rot_y_matrix = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x * 1.0))
+        rot_y_matrix = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x * 0.75))
         light_transform = self._sm.get_light_xform().GetAttribute("xformOp:transform").Get()
         light_transform = light_transform * rot_y_matrix
         self._sm.get_light_xform().GetAttribute("xformOp:transform").Set(light_transform)
@@ -222,8 +222,8 @@ class ViewportPanel(cbase.Panel):
         camera_position = camera_xform.ExtractTranslation()
         x_rotation_axis = camera_xform.TransformDir(pgf.Vec3d(1, 0, 0))
         rot_axis = self._sm.get_up_vector()
-        rot_matrix_y = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x * 0.5))
-        rot_matrix_x = pgf.Matrix4d().SetRotate(pgf.Rotation(x_rotation_axis, -delta_y * 0.5))
+        rot_matrix_y = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x * 0.4))
+        rot_matrix_x = pgf.Matrix4d().SetRotate(pgf.Rotation(x_rotation_axis, -delta_y * 0.4))
         world_rotation: pgf.Matrix4d = (rot_matrix_x * rot_matrix_y)
         relative_pos: pgf.Vec3d = camera_position - pivot_point
         new_position = world_rotation.Transform(relative_pos) + pivot_point
