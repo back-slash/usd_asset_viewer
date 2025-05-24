@@ -949,7 +949,7 @@ class SceneManager:
             cls._instance = super().__new__(cls)
         return cls._instance
     
-    def __init__(self, usd_path: str=None):
+    def __init__(self, usd_path: str=None, default: bool=False):
         if not hasattr(self, '_initialized'):
             self._root = None
             self._animation = None            
@@ -959,6 +959,9 @@ class SceneManager:
             self._init_usd_scene()
         elif usd_path:
             self._usd_path = usd_path
+            self._init_usd_scene()
+        elif default:
+            self._usd_path = None
             self._init_usd_scene()
     
     def _init_config(self):
