@@ -91,7 +91,6 @@ class ViewportPanel(cbase.Panel):
         self._hydra = pimg.Engine()
         render_plugins = self._hydra.GetRendererPlugins()
         if render_plugins:
-            #glfw.set_scroll_callback(self._window, self._mouse_scroll_callback)
             self._hydra.SetRendererPlugin(render_plugins[0])
             self._scene_bbox_center, self._scene_bbox_size = self._sm.create_scene_bounding_box()
             self._hydra.SetCameraPath(self._sm.get_camera().GetPath())
