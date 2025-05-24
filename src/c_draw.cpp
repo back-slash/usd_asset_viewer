@@ -23,6 +23,8 @@
 #include <pxr/base/gf/vec3d.h>
 #include <pxr/base/tf/token.h>
 #include <pxr/usd/usd/prim.h>
+#include <pxr/usdImaging/usdImagingGL/engine.h>
+
 
 // OpenGL
 #include <glad/glad.h>
@@ -33,6 +35,19 @@
 #undef min
 #undef max
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Initialize Hydra renderer
+void c_init_hydra_renderer() {
+    pxr::UsdImagingGLEngine engine = pxr::UsdImagingGLEngine();
+    pxr::TfTokenVector render_plugins = engine.GetRendererPlugins();
+    if (render_plugins.size() > 0) {
+        pxr::TfToken default_render_plugin = render_plugins[0];
+        engine.SetRendererPlugin(default_render_plugin);
+    } else {
+        std::cerr << "No renderer plugins available." << std::endl;
+    }
+}
+
 
 
 // Draws bones for overlay visualization
