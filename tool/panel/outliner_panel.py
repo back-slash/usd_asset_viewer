@@ -172,13 +172,18 @@ class OutlinerEntryPencil(cbase.NodePencil):
         """
         Draw the background of the node.
         """
-        imgui.set_cursor_pos(self._position)
-        rect_min, rect_max = self._calculate_background_rect()
+        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 22 + 10)
+        indent_size_x = 20
+        odd_index = self._node_index % 2 == 0
         draw_list = imgui.get_window_draw_list()
-        input_color = cstat.LINE_COLOR if self._index % 2 == 0 else cstat.LINE_COLOR_ALTERNATE
-        color = imgui.get_color_u32(input_color)
-        rounding = cstat.LINE_ROUNDING
-        draw_list.add_rect_filled(rect_min, rect_max, color, rounding, flags=0)
+        node_name = self._node.get_name()
+        indent_cursor_pos_x = indent * indent_size_x
+        imgui.set_cursor_pos_x(0)
+        bg_max_x = imgui.get_content_region_avail()[0] - 2
+        bg_rect_min = imgui.ImVec2(imgui.get_cursor_pos_x(), imgui.get_cursor_pos_y())
+        bg_rect_max = imgui.ImVec2(bg_max_x, bg_rect_min[1] + 22)
+        bg_color = (0.1, 0.1, 0.1, 1) if odd_index else (0.12, 0.12, 0.12, 1)
+        draw_list.add_rect_filled(bg_rect_min, bg_rect_max, imgui.get_color_u32(bg_color), rounding=2.0)
 
     def _draw_navigation(self):
         """

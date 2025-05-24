@@ -24,10 +24,6 @@
 #include <glad/glad.h>
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void c_clear_scene_cache() {
-    pxr::UsdStageRefPtr stage = pxr::UsdStage::Open("file.usda");
-}
-
 
 void convert_matrix_usd_gl(const pxr::GfMatrix4d& usdMatrix, double glMatrix[16]) {
     glMatrix[0]  = usdMatrix[0][0];
@@ -108,3 +104,19 @@ void check_gl_error(const char* msg) {
         std::cerr << "OpenGL error (" << msg << "): " << err << std::endl;
     }
 }
+
+// Init GLAD/OpenGL and related settings
+void c_init_glad() {
+    if (!gladLoadGL()) {
+        std::cerr << "Failed to initialize GLAD" << std::endl;
+        return;
+    }
+    else {
+        c_init_opengl_settings();
+        c_check_opengl_error();
+    }
+}
+
+
+
+

@@ -8,6 +8,7 @@ __pycache__/
 usd_asset_viewer.code-workspace
 *.psd
 imgui.ini
+usd_asset_viewer*
 
 # TEST ASSETS
 example_p_*
@@ -17,4 +18,3 @@ textures/
 build/
 *.pyd
 *.so
-

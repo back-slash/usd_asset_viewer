@@ -3,7 +3,10 @@
 // TODO:
 // 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Define
+#define NOMINMAX
 #pragma once
+
 // C++
 #include <iostream>
 #include <vector>
@@ -26,7 +29,11 @@
 
 // Project
 #include "c_utils.cpp"
+
+#undef min
+#undef max
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 // Draws bones for overlay visualization
 void c_draw_opengl_bone_xray(pybind11::list bone_list, pybind11::dict draw_dict) {
@@ -610,18 +617,4 @@ void c_draw_opengl_camera(pybind11::dict draw_dict, pybind11::dict camera_dict) 
     glPopMatrix();
     c_check_opengl_error();
 }
-
-
-// Init GLAD/OpenGL settings
-void c_init_glad() {
-    if (!gladLoadGL()) {
-        std::cerr << "Failed to initialize GLAD" << std::endl;
-        return;
-    }
-    else {
-        c_init_opengl_settings();
-        c_check_opengl_error();
-    }
-}
-
 

@@ -4,7 +4,6 @@
 // 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Define
-#define NOMINMAX
 #define PYBIND11_DETAILED_ERROR_MESSAGES
 
 // C++
@@ -21,6 +20,7 @@
 #include <glad/glad.h>
 
 // Project
+
 #include "c_draw.cpp"
 #include "c_utils.cpp"
 
@@ -48,7 +48,5 @@ PYBIND11_MODULE(c_base, m) {
       m.def("c_draw_opengl_camera", &c_draw_opengl_camera, "Draw OpenGL Camera",
             pybind11::arg("draw_dict"),
             pybind11::arg("camera_dict"));
-      m.def("c_clear_scene_cache", &c_clear_scene_cache, "Clear the USD scene cache");
-
 }
 
