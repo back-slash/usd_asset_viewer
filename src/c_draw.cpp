@@ -28,14 +28,17 @@
 #include <pxr/usdImaging/usdImagingGL/engine.h>
 
 
+
 // OpenGL
 #include <glad/glad.h>
+
+#undef min
+#undef max
 
 // Project
 #include "c_utils.cpp"
 
-#undef min
-#undef max
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 

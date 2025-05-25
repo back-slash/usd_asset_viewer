@@ -151,5 +151,25 @@ public:
 };
 
 
+// UsdPrim
+template <> struct type_caster<pxr::UsdPrim> {
+public:
+    PYBIND11_TYPE_CASTER(pxr::UsdPrim, _("UsdPrim"));
+
+    // C++ -> Python
+    static handle cast(const pxr::UsdPrim &src, return_value_policy policy, handle parent) {
+        pybind11::module usd_module = pybind11::module::import("pxr.Usd");
+        pybind11::object py_prim = usd_module.attr("Prim")(
+            reinterpret_cast<std::uintptr_t>(new pxr::UsdPrim(src))
+        );
+        return py_prim.release();
+    }
+
+    // Python -> C++
+    bool load(handle src, bool convert) {
+        return true;
+    }
+};
+
 
 }}

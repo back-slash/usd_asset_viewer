@@ -4,6 +4,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Define
+#define NOMINMAX
 #define PYBIND11_DETAILED_ERROR_MESSAGES
 
 // C++
@@ -16,16 +17,19 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+// USD
+#include <pxr/usd/usd/primRange.h>
+
 // OpenGL
 #include <glad/glad.h>
 
-// Project
+#undef min
+#undef max
 
+// Project
 #include "c_draw.cpp"
 #include "c_utils.cpp"
 
-// USD
-#include <pxr/usd/usd/primRange.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -67,4 +71,3 @@ PYBIND11_MODULE(c_base, m) {
                 return self->Traverse();
             });
 }
-
