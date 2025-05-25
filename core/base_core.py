@@ -45,6 +45,7 @@ class Node:
         self._selected = False
         self._hovered = False
         self._active = True
+        self._expanded = False
         self._node_color = (0.5, 0.5, 0.5, 1.0)
         self._node_icon = cstat.Icon.ICON_UNKNOWN
         self._name = None
@@ -72,7 +73,31 @@ class Node:
             self._name = name
         else:
             self._name = self._data_object.GetName()
+
+    def set_expanded(self, expanded: bool):
+        """
+        Set the expanded state of the node.
+        """
+        self._expanded = expanded
     
+    def set_visible(self, visible: bool):
+        """
+        Set the visibility of the node.
+        """
+        self._visible = visible
+
+    def set_selected(self, selected: bool):
+        """
+        Set the selected state of the node.
+        """
+        self._selected = selected
+    
+    def set_hovered(self, hovered: bool):
+        """
+        Set the hovered state of the node.
+        """
+        self._hovered = hovered
+
     def get_data_object(self) -> pgeo.ModelAPI | plux.LightAPI:
         """
         Get the data object of the node.
@@ -85,23 +110,35 @@ class Node:
         """
         return self._sm
 
-    def is_visible(self) -> bool:
+    def get_visible(self) -> bool:
         """
         Check if the node is visible.
         """
         return self._visible
     
-    def is_selected(self) -> bool:
+    def get_selected(self) -> bool:
         """
         Check if the node is selected.
         """
         return self._selected
     
-    def is_hovered(self) -> bool:
+    def get_hovered(self) -> bool:
         """
         Check if the node is hovered.
         """
         return self._hovered
+    
+    def get_active(self) -> bool:
+        """
+        Check if the node is active.
+        """
+        return self._active
+    
+    def get_expanded(self) -> bool:
+        """
+        Check if the node is expanded.
+        """
+        return self._expanded
 
     def get_icon(self) -> cstat.Icon:
         """
@@ -614,12 +651,15 @@ class NodePencil:
     """
 
     def __init__(self, node: Node):
+
         self._node_name = None
         self._node_icon = None
         self._node_color = None
         self._node_display_color = None        
         self._node = node
         self._init_node_data()
+        self._init_imgui_draw_lists()
+
 
     def _init_node_data(self):
         """
@@ -631,7 +671,15 @@ class NodePencil:
         if hasattr(self._node, "get_display_color"):
             self._node_display_color = self._node.get_display_color()
 
-    def _internal_draw(self):
+    def _init_imgui_draw_lists(self):
+        """
+        Initialize the ImGui draw lists.
+        """
+        self._draw_list = imgui.get_window_draw_list()
+        self._draw_list_fg = imgui.get_foreground_draw_list()
+        self._draw_list_bg = imgui.get_background_draw_list()
+
+    def _draw(self):
         """
         Draw the node.
         """
@@ -650,7 +698,7 @@ class NodePencil:
         Update and draw the node.
         """
         self._update_transform(position, size)
-        self._internal_draw()
+        self._draw()
 
 
 

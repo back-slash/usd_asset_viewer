@@ -226,7 +226,7 @@ def draw_tab_bar(name, tab_dict: dict[str, Any]) -> None:
         tab_rect = imgui.get_item_rect_max()
         if selected:
             draw_base_tab()
-            if imgui.begin_child("##tab_{name}_{tab_name}", (0, 0)):
+            if imgui.begin_child("##tab_{name}_{tab_name}", (0, 0), window_flags=imgui.WindowFlags_.horizontal_scrollbar):
                 imgui.new_line()
                 tab_dict[tab_name]()
                 imgui.end_child()

@@ -60,6 +60,11 @@ class Icon(Enum):
     ICON_EYE_ENABLED = "icon_eye_enabled"
     ICON_EYE_DISABLED = "icon_eye_disabled"
     ICON_REFRESH = "icon_refresh"
+    ICON_NAV_CLOSED_NOP_NOS = "icon_nav_closed_nop_nos"
+    ICON_NAV_CLOSED_NOS = "icon_nav_closed_nos"
+    ICON_NAV_OPEN_NOP = "icon_nav_open_nop"
+    ICON_NAV_OPEN = "icon_nav_open"
+
 
 
 

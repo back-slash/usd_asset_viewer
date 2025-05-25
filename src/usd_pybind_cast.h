@@ -43,7 +43,6 @@ public:
                 py::sequence row1 = py::reinterpret_borrow<py::sequence>(seq[1]);
                 py::sequence row2 = py::reinterpret_borrow<py::sequence>(seq[2]);
                 py::sequence row3 = py::reinterpret_borrow<py::sequence>(seq[3]);
-                if (row0.size() != 4 || row1.size() != 4 || row2.size() != 4 || row3.size() != 4) return false;
                 value[0][0] = py::float_(row0[0]);
                 value[0][1] = py::float_(row0[1]);
                 value[0][2] = py::float_(row0[2]);
@@ -65,38 +64,6 @@ public:
         }
         return false;
     }
-
-    // C++ -> Python
-    static handle cast(const pxr::GfMatrix4d& src, return_value_policy, handle) {
-        namespace py = pybind11;
-        py::object Matrix4d = py::module_::import("pxr.Gf").attr("Matrix4d");
-        py::list row0 = py::list();
-        row0.append(src[0][0]);
-        row0.append(src[0][1]);
-        row0.append(src[0][2]);
-        row0.append(src[0][3]);
-        py::list row1 = py::list();
-        row1.append(src[1][0]);
-        row1.append(src[1][1]);
-        row1.append(src[1][2]);
-        row1.append(src[1][3]);
-        py::list row2 = py::list();
-        row2.append(src[2][0]);
-        row2.append(src[2][1]);
-        row2.append(src[2][2]);
-        row2.append(src[2][3]);
-        py::list row3 = py::list();
-        row3.append(src[3][0]);
-        row3.append(src[3][1]);
-        row3.append(src[3][2]);
-        row3.append(src[3][3]);
-        py::list rows = py::list();
-        rows.append(row0);
-        rows.append(row1);
-        rows.append(row2);
-        rows.append(row3);
-        return Matrix4d(rows).release();
-    }
 };
 
 // GfVec3d
@@ -114,13 +81,6 @@ public:
             return true;
         }
         return false;
-    }
-
-    // C++ -> Python
-    static handle cast(const pxr::GfVec3d& src, return_value_policy, handle) {
-        namespace py = pybind11;
-        py::object Vec3d = py::module_::import("pxr.Gf").attr("Vec3d");
-        return Vec3d(src[0], src[1], src[2]).release();
     }
 };
 
@@ -140,13 +100,6 @@ public:
             return true;
         }
         return false;
-    }
-
-    // C++ -> Python
-    static handle cast(const pxr::GfVec2i& src, return_value_policy, handle) {
-        namespace py = pybind11;
-        py::object Vec2i = py::module_::import("pxr.Gf").attr("Vec2i");
-        return Vec2i(src[0], src[1]).release();
     }
 };
 

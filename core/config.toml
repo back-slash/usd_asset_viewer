@@ -82,7 +82,7 @@ no_move = true
 no_resize = true
 no_title_bar = true
 no_docking = true
-
+horizontal_scrollbar = true
 
 [outliner.style_color]
 window_bg = [0.1, 0.1, 0.1, 1.0]

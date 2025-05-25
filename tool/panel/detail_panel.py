@@ -91,7 +91,7 @@ class LightAdjustmentPencil(cbase.NodePencil):
         self._node: cbase.Light
         self._api_object = plux.LightAPI(node.get_prim())
 
-    def _internal_draw(self):
+    def _draw(self):
         if not self._node.get_prim().IsValid():
             return
         imgui.push_style_var(imgui.StyleVar_.frame_padding, (5, 5))
