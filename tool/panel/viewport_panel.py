@@ -280,6 +280,22 @@ class ViewportPanel(cbase.Panel):
         transform = transform * camera_xform
         self._sm.get_camera().GetAttribute("xformOp:transform").Set(transform)
 
+    def _create_c_render_dict(self) -> dict:
+        """
+        Create a dictionary for Hydra.
+        """
+        render_dict = {}
+        render_dict["draw_dict"] = self._create_c_opengl_draw_dict()
+        display_size = (int(imgui.get_io().display_size[0]), int(imgui.get_io().display_size[1]))
+        render_dict["display_size"] = pgf.Vec2i(display_size)
+        render_dict["viewport_position"] = pgf.Vec2i(self._panel_position[0], self._panel_position[1])
+        render_dict["viewport_size"] = pgf.Vec2i(self._panel_width, self._panel_height)
+        render_dict["bone_list"] = self._sm.get_data_node_list_by_type(cbase.Bone)
+        render_dict["light_dict"] = self._sm.create_light_dict()
+        render_dict["camera_dict"] = self._sm.create_camera_dict()
+        render_dict["root"] = self._sm.get_stage().GetPseudoRoot()
+        return render_dict 
+
     def _create_c_opengl_draw_dict(self) -> dict:
         """
         Create a dictionary for OpenGL drawing.
@@ -327,6 +343,7 @@ class ViewportPanel(cbase.Panel):
             cdraw.c_draw_opengl_bone(self._sm.get_data_node_list_by_type(cbase.Bone), self._create_c_opengl_draw_dict())
         if self._user_cfg["show"]["xray"]:
             cdraw.c_draw_opengl_bone_xray(self._sm.get_data_node_list_by_type(cbase.Bone), self._create_c_opengl_draw_dict())
+
 
 
     def _options_backdrop(self) -> None:

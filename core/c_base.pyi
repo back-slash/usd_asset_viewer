@@ -2,6 +2,7 @@ from typing import Any, Dict, List
 
 
 
+
 def c_clear_scene_cache() -> None:
     """
     Clear the USD scene cache.
@@ -176,4 +177,7 @@ def c_draw_opengl_camera(draw_dict: Dict[str, Any], camera_dict: Dict[str, Any])
                 - visibility: bool
     """
 
+class HydraRenderer:
+    def c_set_hydra_camera_path(self, camera_path) -> None: ...
+    def c_hydra_render_loop(self, render_dict:dict, user_show_cfg: dict) -> None: ...
 

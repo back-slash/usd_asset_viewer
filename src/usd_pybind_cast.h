@@ -7,6 +7,7 @@
 // C++
 #include <iostream>
 #include <vector>
+#include <string>
 
 // PyBind11
 #include "usd_pybind_cast.h"
@@ -17,6 +18,9 @@
 #include <pxr/base/gf/matrix4d.h>
 #include <pxr/base/gf/rotation.h>
 #include <pxr/base/gf/vec3d.h>
+#include <pxr/usd/sdf/path.h>
+#include <pxr/usd/usd/stage.h>
+#include <pxr/usd/usd/prim.h>
 
 // OpenGL
 #include <glad/glad.h>
@@ -119,5 +123,33 @@ public:
         return Vec3d(src[0], src[1], src[2]).release();
     }
 };
+
+
+// GfVec2i
+template <> struct type_caster<pxr::GfVec2i> {
+public:
+    PYBIND11_TYPE_CASTER(pxr::GfVec2i, _( "GfVec2i" ));
+
+    // Python -> C++
+    bool load(handle src, bool) {
+        namespace py = pybind11;
+        if (py::isinstance<py::sequence>(src)) {
+            py::sequence seq = py::reinterpret_borrow<py::sequence>(src);
+            if (seq.size() != 2) return false;
+            value = pxr::GfVec2i(py::int_(seq[0]), py::int_(seq[1]));
+            return true;
+        }
+        return false;
+    }
+
+    // C++ -> Python
+    static handle cast(const pxr::GfVec2i& src, return_value_policy, handle) {
+        namespace py = pybind11;
+        py::object Vec2i = py::module_::import("pxr.Gf").attr("Vec2i");
+        return Vec2i(src[0], src[1]).release();
+    }
+};
+
+
 
 }}

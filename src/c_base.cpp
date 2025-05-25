@@ -24,6 +24,9 @@
 #include "c_draw.cpp"
 #include "c_utils.cpp"
 
+// USD
+#include <pxr/usd/usd/primRange.h>
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -48,5 +51,20 @@ PYBIND11_MODULE(c_base, m) {
       m.def("c_draw_opengl_camera", &c_draw_opengl_camera, "Draw OpenGL Camera",
             pybind11::arg("draw_dict"),
             pybind11::arg("camera_dict"));
+      pybind11::class_<HydraRenderer>(m, "HydraRenderer")
+            .def(pybind11::init<pybind11::str>(), pybind11::arg("stage_path"))
+            .def("c_set_hydra_camera_path", &HydraRenderer::c_set_hydra_camera_path, 
+                 pybind11::arg("path"))
+            .def("c_hydra_render_loop", &HydraRenderer::c_hydra_render_loop,
+                 pybind11::arg("render_dict"),
+                 pybind11::arg("user_show_cfg"))
+            .def("c_get_usd_stage", &HydraRenderer::c_get_usd_stage);
+      pybind11::class_<pxr::UsdStageRefPtr>(m, "UsdStageRefPtr")
+            .def("GetPsuedoRoot", [](const pxr::UsdStageRefPtr& self) {
+                return self->GetPseudoRoot();
+            })
+            .def("Traverse", [](const pxr::UsdStageRefPtr& self) {
+                return self->Traverse();
+            });
 }
 

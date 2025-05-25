@@ -23,6 +23,8 @@
 #include <pxr/base/gf/vec3d.h>
 #include <pxr/base/tf/token.h>
 #include <pxr/usd/usd/prim.h>
+#include <pxr/usd/usd/stage.h>
+#include <pxr/usd/sdf/path.h>
 #include <pxr/usdImaging/usdImagingGL/engine.h>
 
 
@@ -35,18 +37,6 @@
 #undef min
 #undef max
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Initialize Hydra renderer
-void c_init_hydra_renderer() {
-    pxr::UsdImagingGLEngine engine = pxr::UsdImagingGLEngine();
-    pxr::TfTokenVector render_plugins = engine.GetRendererPlugins();
-    if (render_plugins.size() > 0) {
-        pxr::TfToken default_render_plugin = render_plugins[0];
-        engine.SetRendererPlugin(default_render_plugin);
-    } else {
-        std::cerr << "No renderer plugins available." << std::endl;
-    }
-}
 
 
 
@@ -633,3 +623,84 @@ void c_draw_opengl_camera(pybind11::dict draw_dict, pybind11::dict camera_dict) 
     c_check_opengl_error();
 }
 
+
+// Hydra renderer helper class
+class HydraRenderer {
+    public:
+        // Constructor
+        HydraRenderer(pybind11::str stage_path) {
+            stage_path = stage_path.cast<std::string>();
+            _init_hydra(stage_path);
+        }
+
+        // Set Hydra camera path
+        void c_set_hydra_camera_path(pxr::SdfPath camera_path) {
+            _hydra_engine.SetCameraPath(camera_path);
+        }
+
+        // Get the C++ USD stage pointer
+        pxr::UsdStageRefPtr c_get_usd_stage() {
+            return _usd_stage;
+        }
+
+        // Hydra + OGL render loop
+        void c_hydra_render_loop(pybind11::dict render_dict, pybind11::dict user_show_cfg) {
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            pxr::GfVec2i display_size = render_dict["display_size"].cast<pxr::GfVec2i>();
+            pxr::GfVec2i viewport_position = render_dict["viewport_position"].cast<pxr::GfVec2i>();
+            pxr::GfVec2i viewport_size = render_dict["viewport_size"].cast<pxr::GfVec2i>();
+            pybind11::dict draw_dict = render_dict["draw_dict"].cast<pybind11::dict>();
+            pybind11::list bone_list = render_dict["bone_list"].cast<pybind11::list>();
+            pybind11::dict light_dict = render_dict["light_dict"].cast<pybind11::dict>();
+            pybind11::dict camera_dict = render_dict["camera_dict"].cast<pybind11::dict>();
+            pybind11::print("HYDRA RENDERING");
+            int hydra_x_min = viewport_position[0];
+            draw_dict["hydra_x_min"] = hydra_x_min;
+            int hydra_y_min = display_size[1] - viewport_position[1] - viewport_size[1];
+            draw_dict["hydra_y_min"] = hydra_y_min;
+            int frame_time = render_dict["frame_time"].cast<int>();
+            _hydra_engine.SetRenderViewport(pxr::GfVec4d(hydra_x_min, hydra_y_min, viewport_size[0], viewport_size[1]));
+            _hydra_engine.SetRenderBufferSize(viewport_size);
+            pybind11::print("BEFORE MESH RENDERING");
+            if (user_show_cfg["mesh"].cast<bool>()) {
+                _hydra_engine.Render(_usd_stage->GetPseudoRoot(), _hydra_render_params);
+            }
+            if (user_show_cfg["grid"].cast<bool>()) {
+                c_draw_opengl_grid(draw_dict);
+            }
+            if (user_show_cfg["gizmo"].cast<bool>()) {
+                c_draw_opengl_gizmo(draw_dict);
+            }
+            if (user_show_cfg["lights"].cast<bool>()) {
+                c_draw_opengl_light(draw_dict, light_dict);
+            }
+            if (user_show_cfg["camera"].cast<bool>()) {
+                c_draw_opengl_camera(draw_dict, camera_dict);                     
+            }
+            if (user_show_cfg["bones"].cast<bool>()) {
+                c_draw_opengl_bone(bone_list, draw_dict);
+            }
+            if (user_show_cfg["xray"].cast<bool>()) {
+                c_draw_opengl_bone_xray(bone_list, draw_dict);
+            }
+        }
+
+    private:
+        pxr::UsdImagingGLEngine _hydra_engine;
+        pxr::UsdImagingGLRenderParams _hydra_render_params;
+        pxr::UsdStageRefPtr _usd_stage;
+
+        // Initialize Hydra and GLAD / OpenGL
+        void _init_hydra(std::string stage_path) {
+            pxr::HdDriver driver = pxr::HdDriver();
+            pxr::UsdImagingGLEngine hydra_engine = pxr::UsdImagingGLEngine(driver);
+            pxr::TfTokenVector render_plugins = hydra_engine.GetRendererPlugins();
+            if (!render_plugins.empty()) {
+                pxr::TfToken default_render_plugin = render_plugins[0];
+                hydra_engine.SetRendererPlugin(default_render_plugin);
+                c_init_glad();
+            } else {
+                std::cerr << "No renderer plugins available." << std::endl;
+            }
+        }
+};  

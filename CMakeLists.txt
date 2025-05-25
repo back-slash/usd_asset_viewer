@@ -95,6 +95,7 @@ target_link_libraries(c_base
         usd_vt
         usd_trace
         usd_python
+        usd_usdImagingGL
         glad
 )
 
