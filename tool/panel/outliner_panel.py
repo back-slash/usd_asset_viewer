@@ -208,13 +208,12 @@ class OutlinerEntryPencil(cbase.NodePencil):
             imgui.push_style_color(imgui.Col_.button, (0, 0, 0, 0))
             imgui.push_style_color(imgui.Col_.button_hovered, (0, 0, 0, 0))
             imgui.push_style_color(imgui.Col_.button_active, (0, 0, 0, 0))
-            imgui.push_style_var(imgui.StyleVar_.frame_padding, (0, 0))
-            if not self._node.get_expanded():
-                if imgui.button(f"◀##{self._node.get_data_object()}", size=(22, 22)):
+            imgui.push_style_var(imgui.StyleVar_.frame_padding, (5, 5))
+            icon_arrow = cstat.Icon.ICON_ARROW_DOWN if self._node.get_expanded() else cstat.Icon.ICON_ARROW_LEFT
+            icon_arrow_id = cutils.FileHelper.read(cstat.Filetype.ICON, icon_arrow, (12, 12))
+            if True:
+                if imgui.image_button(f"##{self._node.get_data_object()}", icon_arrow_id, (12, 12), tint_col=(0, 0, 0, 1)):
                     self._node.set_expanded(False)
-            else:
-                if imgui.button(f"▼##{self._node.get_data_object()}", size=(22, 22)):
-                    pass
             imgui.pop_style_color(3)
             imgui.pop_style_var(1)
             if self._node.has_visibility():
@@ -226,7 +225,7 @@ class OutlinerEntryPencil(cbase.NodePencil):
                 imgui.push_style_var(imgui.StyleVar_.frame_padding, (3, 3))
                 visibility_icon = cstat.Icon.ICON_EYE_ENABLED if self._node.get_visible() else cstat.Icon.ICON_EYE_DISABLED
                 visibility_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, visibility_icon, (16, 16))
-                if imgui.image_button(f"##visibility_{self._node.get_data_object()}", visibility_icon_id, image_size=(16, 16), tint_col=(0,0,0,1)):
+                if imgui.image_button(f"##visibility_{self._node.get_data_object()}", visibility_icon_id, (16, 16), tint_col=(0,0,0,1)):
                     self._node.set_visibility(not self._node.get_visible())
                 imgui.pop_style_color(3)
                 imgui.pop_style_var(1)

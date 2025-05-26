@@ -146,6 +146,7 @@ class ViewportPanel(cbase.Panel):
         self._key_esc = imgui.is_key_pressed(imgui.Key.escape)
         self._key_alt = imgui.is_key_pressed(imgui.Key.left_alt) or imgui.is_key_pressed(imgui.Key.right_alt)
         self._key_shift = imgui.is_key_pressed(imgui.Key.left_shift) or imgui.is_key_pressed(imgui.Key.right_shift)
+        self._key_ctrl = imgui.is_key_pressed(imgui.Key.left_ctrl) or imgui.is_key_pressed(imgui.Key.right_ctrl)
         
         self._key_mouse_position = glfw.get_cursor_pos(self._window)
         self._key_mouse_position_delta = self._calc_smooth_delta(self._key_mouse_position)
@@ -205,7 +206,7 @@ class ViewportPanel(cbase.Panel):
             
             mouse_ndc = pgf.Vec2d(
                 (2.0 * local_x / self._panel_width) - 1.0, 
-                1.0 - (2.0 * local_y / self._panel_height))            
+                1.0 - (2.0 * local_y / self._panel_height))
             pixel_size = pgf.Vec2d(1.0 / self._panel_width, 1.0 / self._panel_height)
             pixel_frustum = camera_frustum.ComputeNarrowedFrustum(mouse_ndc, pixel_size)
             intersection = self._hydra.TestIntersection(
@@ -219,6 +220,8 @@ class ViewportPanel(cbase.Panel):
             if intersection_prim:
                 node = self._sm.init_path_node(intersection_prim)
                 if node:
+                    if not self._key_shift or self._key_ctrl:
+                        self._sm.deselect_all()
                     node.set_selected(True)
             else:
                 self._sm.deselect_all()

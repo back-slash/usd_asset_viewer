@@ -64,6 +64,12 @@ class Icon(Enum):
     ICON_NAV_CLOSED_NOS = "icon_nav_closed_nos"
     ICON_NAV_OPEN_NOP = "icon_nav_open_nop"
     ICON_NAV_OPEN = "icon_nav_open"
+    ICON_ARROW_DOWN = "icon_arrow_down"
+    ICON_ARROW_UP = "icon_arrow_up"
+    ICON_ARROW_LEFT = "icon_arrow_left"
+    ICON_ARROW_RIGHT = "icon_arrow_right"
+
+
 
 
 

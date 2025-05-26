@@ -43,18 +43,17 @@ class DetailPanel(cbase.Panel):
         """
         Draw the detail tab.
         """
-        if self._stage:
-            for path_node in self._sm.get_path_node_list():
-                if not issubclass(path_node.__class__, cbase.Primative):
-                    continue
-                path_node: cbase.Primative
-                if path_node.get_selected():
-                    attribute_list = path_node.get_attribute_nodes()
-                    for attribute_node in attribute_list:
-                        imgui.text(attribute_node.get_name())
-                        imgui.same_line()
-                        data_object: pusd.Attribute = attribute_node.get_data_object()
-                        imgui.text(str(data_object.Get(self._sm.get_current_time())))
+        if not self._stage:
+            return
+        for path_node in self._sm.get_path_node_list():
+            if not issubclass(path_node.__class__, cbase.Primative):
+                continue
+            path_node: cbase.Primative
+            if path_node.get_selected():
+                attribute_list = path_node.get_attribute_nodes()
+                for attribute_node in attribute_list:
+                    imgui.text(attribute_node.get_name())
+                    data_object: pusd.Attribute = attribute_node.get_data_object()
 
     def _draw_scene_tab(self) -> None:
         """
