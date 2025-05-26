@@ -85,7 +85,7 @@ class TrackbarPanel(cbase.Panel):
         while self._animation:
             current_time = time.time()
             if hasattr(self, "_last_frame_time"):
-                expected_frame_time = self._last_frame_time + (1.0 / self._sm.get_fps())
+                expected_frame_time = self._last_frame_time + (1.0 / self._sm.get_playback_speed())
             else:
                 expected_frame_time = current_time
             if current_time < expected_frame_time:

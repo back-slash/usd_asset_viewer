@@ -1097,6 +1097,7 @@ class SceneManager:
         Initialize the time manager.
         """
         self._fps = self._stage.GetTimeCodesPerSecond()
+        self._playback_speed = self._fps
         self._current_time = self._stage.GetStartTimeCode()
         self._start_time = self._stage.GetStartTimeCode()
         self._end_time = self._stage.GetEndTimeCode()
@@ -1677,6 +1678,18 @@ class SceneManager:
                 return node
             elif node.get_name() == input:
                 return node
+
+    def set_playback_speed(self, speed: float) -> None:
+        """
+        Set the playback speed of the animation.
+        """
+        self._playback_speed = speed
+
+    def get_playback_speed(self) -> float:
+        """
+        Get the playback speed of the animation.
+        """
+        return self._playback_speed
 
     def check_animation(self) -> bool:
         """

@@ -81,6 +81,16 @@ class DetailPanel(cbase.Panel):
         """
         Draw the playback settings.
         """
+        imgui.text("Playback Speed: ")
+        imgui.same_line()
+        playback_multiplier = self._sm.get_playback_speed() / self._sm.get_fps()
+        remaining_width = imgui.get_content_region_avail()[0]
+        imgui.push_item_width(remaining_width - 5)
+        changed, new_playback_speed = imgui.slider_float("##playback_speed", playback_multiplier, 0.0, 4.0, "%.1f")
+        imgui.pop_item_width()
+        if changed:
+            self._sm.set_playback_speed(new_playback_speed * self._sm.get_fps())
+        
 
 
     def draw(self) -> None:
