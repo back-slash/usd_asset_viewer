@@ -105,6 +105,13 @@ class ViewportPanel(cbase.Panel):
         """
         Update Hydra render parameters.
         """
+        selected_list: list[pusd.Prim] = []
+        path_node_list = self._sm.get_path_node_list()
+        for path_node in path_node_list:
+            if path_node.get_selected():
+                selected_list.append(path_node.get_prim())
+                
+        self._hydra.SetSelected(selected_list)
         draw_style_dict = self._cfg["viewport"]["draw_style"]
         selected_draw_style_dict = draw_style_dict[self._current_draw_style]
         self._hydra_rend_params = pimg.RenderParams()
@@ -112,6 +119,8 @@ class ViewportPanel(cbase.Panel):
         self._hydra_rend_params.drawMode = getattr(pimg.DrawMode, selected_draw_style_dict["draw_mode"])
         self._hydra_rend_params.enableLighting = selected_draw_style_dict["enable_lighting"]
         self._hydra_rend_params.enableSampleAlphaToCoverage = True
+        self._hydra_rend_params.showProxy = True
+        self._hydra_rend_params.highlight = True
 
     def _update_hydra_time(self):
         """
@@ -343,8 +352,6 @@ class ViewportPanel(cbase.Panel):
             cdraw.c_draw_opengl_bone(self._sm.get_data_node_list_by_type(cbase.Bone), self._create_c_opengl_draw_dict())
         if self._user_cfg["show"]["xray"]:
             cdraw.c_draw_opengl_bone_xray(self._sm.get_data_node_list_by_type(cbase.Bone), self._create_c_opengl_draw_dict())
-
-
 
     def _options_backdrop(self) -> None:
         """

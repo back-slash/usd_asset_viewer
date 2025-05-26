@@ -40,7 +40,8 @@ class Node:
     """
     Class representing a node.
     """
-    def __init__(self, data_object):
+    def __init__(self, data_object, parent_node=None):
+        self._parent_node = parent_node
         self._visible = True
         self._selected = False
         self._hovered = False
@@ -80,7 +81,7 @@ class Node:
         """
         self._expanded = expanded
     
-    def set_visible(self, visible: bool):
+    def set_visibility(self, visible: bool):
         """
         Set the visibility of the node.
         """
@@ -98,7 +99,7 @@ class Node:
         """
         self._hovered = hovered
 
-    def get_data_object(self) -> pgeo.ModelAPI | plux.LightAPI:
+    def get_data_object(self) -> pgeo.Mesh | plux.DistantLight:
         """
         Get the data object of the node.
         """
@@ -158,6 +159,11 @@ class Node:
         """
         return self._name
 
+    def get_parent_node(self) -> 'Node':
+        """
+        Get the parent node.
+        """
+        return self._parent_node
 
 class Pathed(Node):
     """
@@ -175,7 +181,7 @@ class Pathed(Node):
         self._data_object: pusd.Prim | pusd.Attribute
         self._path = self._data_object.GetPath()
         parent_path = self._path.GetParentPath()
-        self._parent_node = self._sm.get_stage().GetPrimAtPath(parent_path)
+        self._parent_prim = self._sm.get_stage().GetPrimAtPath(parent_path)
         self._prim_object = self._sm.get_stage().GetPrimAtPath(self._path)
 
     def get_path(self) -> psdf.Path:
@@ -184,28 +190,29 @@ class Pathed(Node):
         """
         return self._path
 
-    def get_parent_node(self) -> 'Node':
-        """
-        Get the parent node.
-        """
-        return self._parent_node
-
     def get_prim(self) -> pusd.Prim:
         """
         Get the prim of the node.
         """
         return self._prim_object
 
+    def get_parent_prim(self) -> pusd.Prim:
+        """
+        Get the parent prim of the node.
+        """
+        return self._parent_prim
+
+
+
 class Primative(Pathed):
     """
-    Class representing a primitive node.
+    Class representing a  node.
     """
 
     def __init__(self, data_object: pusd.Prim):
         self._attribute_list: list['Attribute'] = []   
         self._child_list: list['Pathed'] = []
         super().__init__(data_object)
-
 
     def _init_node_data(self):
         super()._init_node_data()
@@ -250,6 +257,26 @@ class Primative(Pathed):
         """
         return self._child_list   
 
+    def get_attribute_nodes(self) -> list['Attribute']:
+        """
+        Get the attribute nodes.
+        """
+        return self._attribute_list
+
+    def has_visibility(self) -> bool:
+        """
+        Check if the node has visibility.
+        """
+        attribute = self.get_prim().GetAttribute("visibility").Get()
+        if attribute:
+            return True
+
+    def set_visibility(self, visible) -> None:
+        super().set_visibility(visible)
+        token = pgeo.Tokens.visible if visible else pgeo.Tokens.invisible
+        for time in range(self._sm.get_time_range()[0], self._sm.get_time_range()[1]):
+            if self.has_visibility():
+                self.get_prim().GetAttribute("visibility").Set(token, time)
 
 class Root(Primative):
     """
@@ -447,7 +474,7 @@ class Skeleton(Primative):
         """
         for child in self._child_list:
             if isinstance(child, Animation):
-                self._animation = child.get_data_object()
+                self._animation = True
                 return True
         self._animation = False
         self._is_animating = False
@@ -510,8 +537,7 @@ class SkeletonRoot(Primative):
         """
         Initialize the zero of the skeleton root.
         """
-        skel_root_prim = self._data_object.GetPrim()
-        xformable = pgeo.Xformable(skel_root_prim)
+        xformable = pgeo.Xformable(self.get_prim())
         self._zero_transform_op = xformable.AddTransformOp()
         self._zero_transform_op.Set(pgf.Matrix4d())
 
@@ -521,9 +547,9 @@ class SkeletonRoot(Primative):
         """
         if self._zero_transform_op:
             for time in range(self._sm.get_time_range()[1]):
-                current_translate = self._data_object.GetPrim().GetAttribute("xformOp:translate").Get(time)
-                current_rotate = self._data_object.GetPrim().GetAttribute("xformOp:rotateXYZ").Get(time)
-                current_scale = self._data_object.GetPrim().GetAttribute("xformOp:scale").Get(time)
+                current_translate = self.get_prim().GetAttribute("xformOp:translate").Get(time)
+                current_rotate = self.get_prim().GetAttribute("xformOp:rotateXYZ").Get(time)
+                current_scale = self.get_prim().GetAttribute("xformOp:scale").Get(time)
                 rotation = pgf.Rotation(pgf.Vec3d(1, 0, 0), current_rotate[0])
                 rotation = rotation * pgf.Rotation(pgf.Vec3d(0, 1, 0), current_rotate[1])
                 rotation = rotation * pgf.Rotation(pgf.Vec3d(0, 0, 1), current_rotate[2])
