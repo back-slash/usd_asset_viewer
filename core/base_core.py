@@ -281,7 +281,7 @@ class Primative(Pathed):
 
     def set_visibility(self, visible) -> None:
         super().set_visibility(visible)
-        token = pgeo.Tokens.visible if visible else pgeo.Tokens.invisible
+        token = pgeo.Tokens.inherited if visible else pgeo.Tokens.invisible
         for time in range(self._sm.get_time_range()[0], self._sm.get_time_range()[1]):
             if self.has_visibility():
                 self.get_prim().GetAttribute("visibility").Set(token, time)

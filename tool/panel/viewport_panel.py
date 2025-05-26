@@ -24,6 +24,25 @@ import pxr.UsdLux as plux
 import pxr.UsdShade as pshd
 import numpy as np
 
+def compute_perspective_matrix(fov_y_deg, aspect, near, far):
+    """
+    Compute a right-handed perspective projection matrix (OpenGL style).
+    fov_y_deg: vertical field of view in degrees
+    aspect: width / height
+    near, far: near and far clip planes
+    Returns: pgf.Matrix4d
+    """
+    fov_y_rad = np.deg2rad(fov_y_deg)
+    f = 1.0 / np.tan(fov_y_rad / 2.0)
+    nf = 1.0 / (near - far)
+    mat = np.zeros((4, 4))
+    mat[0, 0] = f / aspect
+    mat[1, 1] = f
+    mat[2, 2] = (far + near) * nf
+    mat[2, 3] = (2 * far * near) * nf
+    mat[3, 2] = -1.0
+    return pgf.Matrix4d(mat)
+
 # C++
 import core.c_base as cdraw
 
@@ -75,15 +94,6 @@ class ViewportPanel(cbase.Panel):
         """
         self._draw_style_dict = self._cfg["viewport"]["draw_style"]
         self._current_draw_style = self._cfg["viewport"]["default_draw_style"]
-
-    def _mouse_scroll_callback(self, window, x_offset, y_offset):
-        """
-        Mouse scroll callback for GLFW window.
-        """
-        if y_offset > 0:
-            self._key_scroll_up = True
-        elif y_offset < 0:
-            self._key_scroll_down  = True
 
     def _init_hydra(self):
         """
@@ -192,6 +202,53 @@ class ViewportPanel(cbase.Panel):
         elif self._key_f:
             self._frame_scene = True
 
+    def _calc_viewport_selection(self):
+        """
+        Calculate the selection in the viewport.
+        """
+        scene_hover = imgui.is_mouse_hovering_rect(
+            self._panel_position, (self._panel_position[0] + self._panel_width, self._panel_position[1] + self._panel_height), clip=False)
+        if scene_hover and self._key_mouse_left:
+            camera_matrix: pgf.Matrix4d = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
+            view_matrix = camera_matrix.GetInverse()
+            mouse_projection_matrix = self._calc_mouse_matrix(self._calc_projection_matrix())
+            intersection = self._hydra.TestIntersection(view_matrix, mouse_projection_matrix, self._sm.get_root(), self._hydra_rend_params)
+            pp.pprint(intersection)
+
+
+
+    def _calc_mouse_matrix(self, projection_matrix: pgf.Matrix4d) -> pgf.Matrix4d:
+        """
+        Offset the projection matrix so the mouse position is at the center of the viewport.
+        """
+        mouse_x, mouse_y = self._key_mouse_position
+        # Convert mouse position to viewport-local coordinates
+        local_x = mouse_x - self._panel_position[0]
+        local_y = mouse_y - self._panel_position[1]
+        # Convert to normalized device coordinates (NDC)
+        ndc_x = (2.0 * local_x / self._panel_width) - 1.0
+        ndc_y = 1.0 - (2.0 * local_y / self._panel_height)
+        # Create an offset matrix to shift the projection center
+        offset = np.identity(4)
+        offset[0, 3] = -ndc_x
+        offset[1, 3] = -ndc_y
+        # Combine with the original projection matrix
+        proj_np = np.array(projection_matrix)
+        new_proj = np.dot(proj_np, offset)
+        return pgf.Matrix4d(new_proj)
+
+    def _calc_projection_matrix(self) -> pgf.Matrix4d:
+        """
+        Calculate the projection matrix for the viewport.
+        """
+        fov = self._calc_fov()
+        aspect = self._panel_width / self._panel_height
+        near = self._cfg["viewport"]["clipping_range"][0]
+        far = self._cfg["viewport"]["clipping_range"][1]
+        return compute_perspective_matrix(fov, aspect, near, far)
+
+
+
     def _update_viewport_input(self):
         """
         Update the viewport input.
@@ -213,7 +270,8 @@ class ViewportPanel(cbase.Panel):
         if self._incremental_zoom_out:
             self._calc_incremental_zoom(out=True)
         if self._frame_scene:
-            self.calc_frame_scene()      
+            self.calc_frame_scene() 
+        self._calc_viewport_selection()     
 
     def _calc_fov(self):
         """
