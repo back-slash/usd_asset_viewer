@@ -24,25 +24,6 @@ import pxr.UsdLux as plux
 import pxr.UsdShade as pshd
 import numpy as np
 
-def compute_perspective_matrix(fov_y_deg, aspect, near, far):
-    """
-    Compute a right-handed perspective projection matrix (OpenGL style).
-    fov_y_deg: vertical field of view in degrees
-    aspect: width / height
-    near, far: near and far clip planes
-    Returns: pgf.Matrix4d
-    """
-    fov_y_rad = np.deg2rad(fov_y_deg)
-    f = 1.0 / np.tan(fov_y_rad / 2.0)
-    nf = 1.0 / (near - far)
-    mat = np.zeros((4, 4))
-    mat[0, 0] = f / aspect
-    mat[1, 1] = f
-    mat[2, 2] = (far + near) * nf
-    mat[2, 3] = (2 * far * near) * nf
-    mat[3, 2] = -1.0
-    return pgf.Matrix4d(mat)
-
 # C++
 import core.c_base as cdraw
 
@@ -209,45 +190,48 @@ class ViewportPanel(cbase.Panel):
         scene_hover = imgui.is_mouse_hovering_rect(
             self._panel_position, (self._panel_position[0] + self._panel_width, self._panel_position[1] + self._panel_height), clip=False)
         if scene_hover and self._key_mouse_left:
+            # Get camera and create frustum
             camera_matrix: pgf.Matrix4d = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
-            view_matrix = camera_matrix.GetInverse()
-            mouse_projection_matrix = self._calc_mouse_matrix(self._calc_projection_matrix())
-            intersection = self._hydra.TestIntersection(view_matrix, mouse_projection_matrix, self._sm.get_root(), self._hydra_rend_params)
+
+            camera_api_object = pgeo.Camera(self._sm.get_camera())
+            camera_api_object.Get
+
+            # Create camera frustum
+            camera_frustum = pgf.Frustum()
+            camera_frustum.SetPositionAndRotationFromMatrix(camera_matrix * self._sm.get_up_axis_matrix())
+            camera_frustum.SetProjectionType(pgf.Frustum.Perspective)
+            
+            # Set frustum parameters
+            aspect_ratio = self._panel_width / self._panel_height
+            near_z = self._cfg["viewport"]["clipping_range"][0]
+            far_z = self._cfg["viewport"]["clipping_range"][1]
+            camera_frustum.SetPerspective(self._calc_fov(), aspect_ratio, near_z, far_z)
+            
+            # Get mouse position and convert to normalized coordinates
+            mouse_x, mouse_y = self._key_mouse_position
+            local_x = mouse_x - self._panel_position[0]
+            local_y = mouse_y - self._panel_position[1]
+            
+            # Convert to normalized coordinates (0 to 1)
+            clicked_point = pgf.Vec2d(local_x / self._panel_width, local_y / self._panel_height)
+            
+            # Convert to NDC (-1 to 1)
+            clicked_point[0] = 2.0 * clicked_point[0] - 1.0
+            clicked_point[1] = -2.0 * clicked_point[1] + 1.0
+            
+            # Create pixel-sized frustum for precise picking
+            pixel_size = pgf.Vec2d(1.0 / self._panel_width, 1.0 / self._panel_height)
+            pixel_frustum = camera_frustum.ComputeNarrowedFrustum(clicked_point, pixel_size)
+            
+            # Test intersection
+            intersection = self._hydra.TestIntersection(
+                pixel_frustum.ComputeViewMatrix(),
+                pixel_frustum.ComputeProjectionMatrix(),
+                self._sm.get_root(),
+                self._hydra_rend_params
+            )
             pp.pprint(intersection)
-
-
-
-    def _calc_mouse_matrix(self, projection_matrix: pgf.Matrix4d) -> pgf.Matrix4d:
-        """
-        Offset the projection matrix so the mouse position is at the center of the viewport.
-        """
-        mouse_x, mouse_y = self._key_mouse_position
-        # Convert mouse position to viewport-local coordinates
-        local_x = mouse_x - self._panel_position[0]
-        local_y = mouse_y - self._panel_position[1]
-        # Convert to normalized device coordinates (NDC)
-        ndc_x = (2.0 * local_x / self._panel_width) - 1.0
-        ndc_y = 1.0 - (2.0 * local_y / self._panel_height)
-        # Create an offset matrix to shift the projection center
-        offset = np.identity(4)
-        offset[0, 3] = -ndc_x
-        offset[1, 3] = -ndc_y
-        # Combine with the original projection matrix
-        proj_np = np.array(projection_matrix)
-        new_proj = np.dot(proj_np, offset)
-        return pgf.Matrix4d(new_proj)
-
-    def _calc_projection_matrix(self) -> pgf.Matrix4d:
-        """
-        Calculate the projection matrix for the viewport.
-        """
-        fov = self._calc_fov()
-        aspect = self._panel_width / self._panel_height
-        near = self._cfg["viewport"]["clipping_range"][0]
-        far = self._cfg["viewport"]["clipping_range"][1]
-        return compute_perspective_matrix(fov, aspect, near, far)
-
-
+            print(self._calc_fov())
 
     def _update_viewport_input(self):
         """
