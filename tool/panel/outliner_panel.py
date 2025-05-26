@@ -161,15 +161,6 @@ class OutlinerEntryPencil(cbase.NodePencil):
             elif segment < self._indent - 2:
                 pass
 
-    def deselect_all(self):
-        """
-        Deselect all nodes in the outliner.
-        """
-        for path_node in self._node.get_sm().get_path_node_list():
-            path_node.set_selected(False)
-        for data_node in self._node.get_sm().get_data_node_list():
-            data_node.set_selected(False)
-
     def _draw_node(self):
         """
         Draw the node icon, name and selectable.
@@ -195,7 +186,7 @@ class OutlinerEntryPencil(cbase.NodePencil):
                 if imgui.get_io().key_shift or imgui.get_io().key_ctrl:
                     self._node.set_selected(not self._node.get_selected())
                 else:
-                    self.deselect_all()
+                    self._node.get_sm().deselect_all()
                     self._node.set_selected(True)
         icon_bg_min = node_rect_min
         icon_bg_max = (node_rect_min[0] + 20, node_rect_min[1] + 20)

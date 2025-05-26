@@ -131,8 +131,8 @@ class TrackbarPanel(cbase.Panel):
         trackbar_inner_width = (trackbar_bg_max - trackbar_bg_min)[0] - 10
         trackbar_height = (trackbar_bg_max - trackbar_bg_min)[1]
         self._time_range = self._end_time - self._start_time
-        frame_width = trackbar_inner_width / (self._time_range + 1)
-        imgui.set_cursor_pos((imgui.get_cursor_pos_x() + 5, imgui.get_cursor_pos_y() + 10))
+        frame_width = (trackbar_inner_width - 2.5) / (self._time_range + 1)
+        imgui.set_cursor_pos((imgui.get_cursor_pos_x() + 10, imgui.get_cursor_pos_y() + 10))
         original_cursor_pos = imgui.get_cursor_pos()
         imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() - (frame_width * 0.5))
         for index in range(1, int(self._time_range) + 2):
@@ -147,8 +147,8 @@ class TrackbarPanel(cbase.Panel):
             frame_line_end = frame_line_start + imgui.ImVec2(0, trackbar_height * 0.333)
             imgui.set_cursor_pos_x(frame_pos[0])
             self._draw_list.add_line(frame_line_start, frame_line_end, line_color, thickness=line_width)
-        imgui.set_cursor_pos(original_cursor_pos)
-        imgui.push_item_width(trackbar_inner_width)
+        imgui.set_cursor_pos(original_cursor_pos - (5, 0))
+        imgui.push_item_width(trackbar_inner_width + 5)
         if self._animation:
             flags = 0
         else:

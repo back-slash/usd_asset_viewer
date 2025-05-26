@@ -1074,7 +1074,8 @@ class SceneManager:
         if not self._usd_path:
             self._stage: pusd.Stage = pusd.Stage.CreateInMemory()
             cube = pgeo.Cube.Define(self._stage, "/Cube")
-            cube.GetSizeAttr().Set(100.0)
+            xformOp = cube.AddTransformOp()
+            xformOp.Set(pgf.Matrix4d().SetScale((100,100,100)))
         else:
             self._stage: pusd.Stage = pusd.Stage.Open(self._usd_path)
         self._root = self._stage.GetPseudoRoot()
@@ -1108,6 +1109,13 @@ class SceneManager:
             "": Root,
             "Xform": XForm,
             "Scope" : XForm,
+            "Cube": Mesh,
+            "Sphere": Mesh,
+            "Cylinder": Mesh,
+            "Capsule": Mesh,
+            "Cone": Mesh,
+            "Plane": Mesh,
+            "MeshTopology": Mesh,
             "Mesh": Mesh,
             "DistantLight": Light,
             "DiskLight": Light,
@@ -1360,7 +1368,14 @@ class SceneManager:
                 prim.SetActive(False)   
         return bbox_center, bbox_size
 
-
+    def deselect_all(self):
+        """
+        Deselect all nodes in the outliner.
+        """
+        for path_node in self.get_path_node_list():
+            path_node.set_selected(False)
+        for data_node in self.get_data_node_list():
+            data_node.set_selected(False)
 
     def get_camera(self) -> pusd.Prim:
         """
@@ -1549,6 +1564,31 @@ class SceneManager:
             print(f"Unknown data object type: {data_object['owner'].GetTypeName()}")
         self._add_data_node(data_node)
         return data_node
+
+    def get_recursive_children(self, prim: pusd.Prim) -> list[Pathed]:
+        """
+        Get all child nodes of a prim recursively.
+        """
+        child_nodes = []
+        for child in prim.GetChildren():
+            node = self.init_path_node(child)
+            if node:
+                child_nodes.append(node)
+                child_nodes.extend(self.get_recursive_children(child))
+        return child_nodes
+    
+    def get_recursive_parents(self, prim: pusd.Prim) -> list[Pathed]:
+        """
+        Get all parent nodes of a prim recursively.
+        """
+        parent_nodes = []
+        parent = prim.GetParent()
+        while parent:
+            node = self.init_path_node(parent)
+            if node:
+                parent_nodes.append(node)
+            parent = parent.GetParent()
+        return parent_nodes
 
     def get_stage(self) -> pusd.Stage:
         """

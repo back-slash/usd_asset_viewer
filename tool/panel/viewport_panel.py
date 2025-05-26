@@ -188,50 +188,40 @@ class ViewportPanel(cbase.Panel):
         Calculate the selection in the viewport.
         """
         scene_hover = imgui.is_mouse_hovering_rect(
-            self._panel_position, (self._panel_position[0] + self._panel_width, self._panel_position[1] + self._panel_height), clip=False)
+            self._panel_position, (self._panel_position[0] + self._panel_width, self._panel_position[1] + self._panel_height), clip=False)    
         if scene_hover and self._key_mouse_left:
-            # Get camera and create frustum
             camera_matrix: pgf.Matrix4d = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
-
-            camera_api_object = pgeo.Camera(self._sm.get_camera())
-            camera_api_object.Get
-
-            # Create camera frustum
             camera_frustum = pgf.Frustum()
-            camera_frustum.SetPositionAndRotationFromMatrix(camera_matrix * self._sm.get_up_axis_matrix())
+            camera_frustum.SetPositionAndRotationFromMatrix(camera_matrix)
             camera_frustum.SetProjectionType(pgf.Frustum.Perspective)
             
-            # Set frustum parameters
             aspect_ratio = self._panel_width / self._panel_height
             near_z = self._cfg["viewport"]["clipping_range"][0]
             far_z = self._cfg["viewport"]["clipping_range"][1]
             camera_frustum.SetPerspective(self._calc_fov(), aspect_ratio, near_z, far_z)
             
-            # Get mouse position and convert to normalized coordinates
-            mouse_x, mouse_y = self._key_mouse_position
-            local_x = mouse_x - self._panel_position[0]
-            local_y = mouse_y - self._panel_position[1]
+            local_x = self._key_mouse_position[0] - self._panel_position[0]
+            local_y = self._key_mouse_position[1] - self._panel_position[1]
             
-            # Convert to normalized coordinates (0 to 1)
-            clicked_point = pgf.Vec2d(local_x / self._panel_width, local_y / self._panel_height)
-            
-            # Convert to NDC (-1 to 1)
-            clicked_point[0] = 2.0 * clicked_point[0] - 1.0
-            clicked_point[1] = -2.0 * clicked_point[1] + 1.0
-            
-            # Create pixel-sized frustum for precise picking
+            mouse_ndc = pgf.Vec2d(
+                (2.0 * local_x / self._panel_width) - 1.0, 
+                1.0 - (2.0 * local_y / self._panel_height))            
             pixel_size = pgf.Vec2d(1.0 / self._panel_width, 1.0 / self._panel_height)
-            pixel_frustum = camera_frustum.ComputeNarrowedFrustum(clicked_point, pixel_size)
-            
-            # Test intersection
+            pixel_frustum = camera_frustum.ComputeNarrowedFrustum(mouse_ndc, pixel_size)
             intersection = self._hydra.TestIntersection(
                 pixel_frustum.ComputeViewMatrix(),
                 pixel_frustum.ComputeProjectionMatrix(),
                 self._sm.get_root(),
                 self._hydra_rend_params
             )
-            pp.pprint(intersection)
-            print(self._calc_fov())
+            intersection_path = intersection[2]
+            intersection_prim = self._sm.get_stage().GetPrimAtPath(intersection_path)
+            if intersection_prim:
+                node = self._sm.init_path_node(intersection_prim)
+                if node:
+                    node.set_selected(True)
+            else:
+                self._sm.deselect_all()
 
     def _update_viewport_input(self):
         """
