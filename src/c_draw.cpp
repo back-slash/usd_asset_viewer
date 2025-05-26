@@ -181,12 +181,19 @@ void c_draw_opengl_bone(pybind11::list bone_list, pybind11::dict draw_dict) {
     c_setup_opengl_viewport(
         draw_dict
     );
-
+    std::vector<float> line_color;
+    std::vector<float> face_color;
     float line_width = 2.0f;
-    std::vector<float> line_color = { 0.5f, 0.5f, 0.5f, 1.0f };
-    std::vector<float> face_color = { 0.33f, 0.33f, 0.33f, 1.0f };
-
     for (auto bone : bone_list) {
+        bool selected = bone.attr("get_selected")().cast<bool>();
+        if (selected) {
+            line_color = { 0.0f, 0.5f, 0.5f, 1.0f };
+            face_color = { 0.0f, 0.33f, 0.33f, 1.0f };
+        } 
+        else {
+            line_color = { 0.5f, 0.5f, 0.5f, 1.0f };
+            face_color = { 0.33f, 0.33f, 0.33f, 1.0f };
+        }
         pybind11::dict data_dict = bone.attr("get_data_object")();
         pxr::GfMatrix4d bone_matrix = data_dict["anim_matrix"].cast<pxr::GfMatrix4d>();
         pxr::GfVec3d root_vert = bone_matrix.ExtractTranslation();

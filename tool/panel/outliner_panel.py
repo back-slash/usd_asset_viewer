@@ -159,8 +159,7 @@ class OutlinerEntryPencil(cbase.NodePencil):
                 imgui.pop_style_color(3)
                 imgui.pop_style_var(1)
             elif segment < self._indent - 2:
-                if hasattr(self._node, "get_parent_node") and self._node.get_parent_node():
-                    pass
+                pass
 
     def deselect_all(self):
         """
@@ -172,7 +171,7 @@ class OutlinerEntryPencil(cbase.NodePencil):
             data_node.set_selected(False)
 
     def _draw_node(self):
-        """and hasattr(self._node, "get_parent_node")
+        """
         Draw the node icon, name and selectable.
         """       
         imgui.same_line()
@@ -193,8 +192,8 @@ class OutlinerEntryPencil(cbase.NodePencil):
         hovered = imgui.is_mouse_hovering_rect(node_rect_min, node_rect_max)
         if hovered:
             if imgui.is_mouse_clicked(imgui.MouseButton_.left):
-                if imgui.get_io().key_shift:
-                    self._node.set_selected(True)
+                if imgui.get_io().key_shift or imgui.get_io().key_ctrl:
+                    self._node.set_selected(not self._node.get_selected())
                 else:
                     self.deselect_all()
                     self._node.set_selected(True)

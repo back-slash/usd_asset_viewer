@@ -105,13 +105,6 @@ class ViewportPanel(cbase.Panel):
         """
         Update Hydra render parameters.
         """
-        selected_list: list[pusd.Prim] = []
-        path_node_list = self._sm.get_path_node_list()
-        for path_node in path_node_list:
-            if path_node.get_selected():
-                selected_list.append(path_node.get_prim())
-                
-        self._hydra.SetSelected(selected_list)
         draw_style_dict = self._cfg["viewport"]["draw_style"]
         selected_draw_style_dict = draw_style_dict[self._current_draw_style]
         self._hydra_rend_params = pimg.RenderParams()
@@ -325,7 +318,18 @@ class ViewportPanel(cbase.Panel):
         draw_dict["grid_color"] = self._cfg["viewport"]["grid_color"]
         draw_dict["up_axis"] = self._sm.get_up_axis()
         return draw_dict 
-            
+
+    def _update_selected_list(self) -> None:
+        """
+        Update the selected list for the viewport.
+        """
+        selected_list: list[pusd.Prim] = []
+        path_node_list = self._sm.get_path_node_list()
+        for path_node in path_node_list:
+            if path_node.get_selected():
+                selected_list.append(path_node.get_path())
+        self._hydra.SetSelected(selected_list)
+
     def _hydra_render_loop(self) -> None:
         """
         Render loop for the Hydra renderer.
@@ -338,6 +342,7 @@ class ViewportPanel(cbase.Panel):
         self._hydra.SetRenderBufferSize(pgf.Vec2i(int(self._panel_width), int(self._panel_height))) 
         self._update_hydra_time()
         self._update_viewport_input()
+        self._update_selected_list()
         if self._user_cfg["show"]["mesh"]:
             self._hydra.Render(self._sm.get_root(), self._hydra_rend_params)
         if self._user_cfg["show"]["grid"]:

@@ -195,6 +195,14 @@ class Pathed(Node):
         Get the prim of the node.
         """
         return self._prim_object
+    
+    def set_prim(self, prim: pusd.Prim):
+        """
+        Set the prim of the node.
+        """
+        self._prim_object = prim
+        self._data_object = pskl.Animation(prim)
+        self._path = prim.GetPath()
 
     def get_parent_prim(self) -> pusd.Prim:
         """
@@ -224,7 +232,7 @@ class Primative(Pathed):
         Load the attributes of the node.
         """
         self._attribute_list = []
-        for attribute in self._data_object.GetAttributes():
+        for attribute in self.get_prim().GetAttributes():
             node_attribute = self._sm.init_path_node(attribute)
             self._add_attribute(node_attribute)
 
@@ -396,8 +404,6 @@ class Light(Primative):
         self.light_intensity = self._data_object.GetIntensityAttr().Get()
         self.light_visibility = self.get_prim().GetAttribute("visibility").Get()
 
-
-
 class Camera(Primative):
     """
     Class representing a camera node.
@@ -409,7 +415,6 @@ class Camera(Primative):
         super()._init_node_data()    
         self._node_color = (0.4, 0.4, 0.8, 1.0)
         self._node_icon = cstat.Icon.ICON_CAMERA
-
 
 class Skeleton(Primative):
     """
@@ -474,10 +479,18 @@ class Skeleton(Primative):
         """
         for child in self._child_list:
             if isinstance(child, Animation):
-                self._animation = True
+                self._animation = child
                 return True
         self._animation = False
         self._is_animating = False
+
+    def get_animation(self) -> 'Animation':
+        """
+        Get the animation of the skeleton.
+        """
+        if self._animation:
+            return self._animation
+        return None
 
     def enable_animation(self):
         """
@@ -493,6 +506,7 @@ class Skeleton(Primative):
         if self._animation:
             self._is_animating = False
 
+
     def update_animation(self):
         """
         Update animation.
@@ -502,15 +516,15 @@ class Skeleton(Primative):
                 self._sm.get_current_time()
                 parent_bone_path = bone.get_relative_path().GetParentPath()
                 if parent_bone_path == psdf.Path("."):
-                    parent_bone_matrix = pgeo.Xformable(self._data_object.GetPrim()).ComputeLocalToWorldTransform(self._sm.get_current_time())
+                    parent_bone_matrix = pgeo.Xformable(self.get_prim()).ComputeLocalToWorldTransform(self._sm.get_current_time())
                 else:
                     parent_bone_matrix = pgf.Matrix4d()
                 for parent_bone in self._bone_dict:
                     if parent_bone.get_relative_path() == parent_bone_path:
                         parent_bone_matrix = self._bone_dict[parent_bone]["anim_matrix"]
-                translation_list = self._animation.GetPrim().GetAttribute("translations").Get(self._sm.get_current_time())
-                rotation_list = self._animation.GetPrim().GetAttribute("rotations").Get(self._sm.get_current_time())
-                scale_list = self._animation.GetPrim().GetAttribute("scales").Get(self._sm.get_current_time())
+                translation_list = self._animation.get_prim().GetAttribute("translations").Get(self._sm.get_current_time())
+                rotation_list = self._animation.get_prim().GetAttribute("rotations").Get(self._sm.get_current_time())
+                scale_list = self._animation.get_prim().GetAttribute("scales").Get(self._sm.get_current_time())
                 matrix = pgf.Matrix4d().SetScale(pgf.Vec3d(scale_list[index])).SetTranslate(pgf.Vec3d(translation_list[index])).SetRotateOnly(rotation_list[index])
                 anim_matrix = matrix * parent_bone_matrix
                 self._bone_dict[bone]["anim_matrix"] = anim_matrix
@@ -1093,6 +1107,7 @@ class SceneManager:
         prim_classes = {
             "": Root,
             "Xform": XForm,
+            "Scope" : XForm,
             "Mesh": Mesh,
             "DistantLight": Light,
             "DiskLight": Light,
@@ -1462,12 +1477,19 @@ class SceneManager:
         Disable animation.
         """
         self._animation = False
+        animation_node = None
+        path = None
         for path_node in self.get_path_node_list_by_type(Skeleton):
             path_node: Skeleton
             if path_node.check_animation():
+                animation_node = path_node.get_animation()
+                path = path_node.get_path()
                 path_node.get_prim().SetActive(False)
                 path_node.disable_animation()
                 path_node.update_animation()
+                if animation_node:
+                    animation_node.set_prim(self._stage.GetPrimAtPath(path))
+                    animation_node._init_node_attributes()
 
     def get_path_node_list(self) -> list[Pathed]:
         """

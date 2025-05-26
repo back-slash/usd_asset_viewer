@@ -44,7 +44,17 @@ class DetailPanel(cbase.Panel):
         Draw the detail tab.
         """
         if self._stage:
-            pass
+            for path_node in self._sm.get_path_node_list():
+                if not issubclass(path_node.__class__, cbase.Primative):
+                    continue
+                path_node: cbase.Primative
+                if path_node.get_selected():
+                    attribute_list = path_node.get_attribute_nodes()
+                    for attribute_node in attribute_list:
+                        imgui.text(attribute_node.get_name())
+                        imgui.same_line()
+                        data_object: pusd.Attribute = attribute_node.get_data_object()
+                        imgui.text(str(data_object.Get(self._sm.get_current_time())))
 
     def _draw_scene_tab(self) -> None:
         """
@@ -53,6 +63,9 @@ class DetailPanel(cbase.Panel):
         imgui.set_cursor_pos_x(10)
         width = imgui.get_content_region_avail()[0] - 10
         cutils.draw_generic_sub_window("Light Settings:", (width, 0), self._draw_scene_settings)
+        imgui.new_line()
+        imgui.set_cursor_pos_x(10)
+        cutils.draw_generic_sub_window("Playback Settings:", (width, 0), self._draw_playback_settings)
 
     def _draw_scene_settings(self) -> None:
         """
@@ -63,7 +76,13 @@ class DetailPanel(cbase.Panel):
             if not hasattr(light, "light_adjustment_pencil"):
                 light.light_adjustment_pencil = LightAdjustmentPencil(light)
             light.light_adjustment_pencil.update_draw()
-         
+
+    def _draw_playback_settings(self) -> None:
+        """
+        Draw the playback settings.
+        """
+
+
     def draw(self) -> None:
         """
         Draw the outliner panel.
@@ -102,6 +121,7 @@ class LightAdjustmentPencil(cbase.NodePencil):
         imgui.push_style_color(imgui.Col_.frame_bg_active, (0.175, 0.175, 0.175, 1))
         imgui.push_style_color(imgui.Col_.frame_bg_hovered, (0.175, 0.175, 0.175, 1))
         imgui.push_style_color(imgui.Col_.slider_grab, (0.1, 0.1, 0.1, 1))
+        imgui.push_style_color(imgui.Col_.slider_grab_active, (0.1, 0.1, 0.1, 1))
 
         start_cursor_pos = imgui.get_cursor_pos()
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 10)
@@ -162,5 +182,5 @@ class LightAdjustmentPencil(cbase.NodePencil):
             self._api_object.GetColorAttr().Set(self._node.light_color)
             self._api_object.GetIntensityAttr().Set(self._node.light_intensity)
         imgui.pop_style_var(7)
-        imgui.pop_style_color(10)        
+        imgui.pop_style_color(11)        
     
