@@ -157,8 +157,8 @@ class OutlinerEntryPencil(cbase.NodePencil):
         Draw the navigation of the node.
         """
         self._nav_list = []
-        check_node: cbase.Primative = self._node
-        for segment in range(self._indent - 1, -1, -1):
+        parent_node: cbase.Primative = self._node.get_parent_node()
+        for segment in range(self._indent):
             if (segment == self._indent - 1):
                 if not self._node.get_child_nodes():
                     nav_icon = cstat.Icon.ICON_NAV_END
@@ -167,20 +167,23 @@ class OutlinerEntryPencil(cbase.NodePencil):
                 elif self._node.get_expanded() and not self._node.get_parent_node():
                     nav_icon = cstat.Icon.ICON_NAV_OPEN_NOP
                 elif not self._node.get_expanded() and self._node.get_parent_node():
-                    nav_icon = cstat.Icon.ICON_NAV_CLOSED_NOS      
+                    nav_icon = cstat.Icon.ICON_NAV_CLOSED_NOS
                 else:
                     nav_icon = cstat.Icon.ICON_NAV_CLOSED_NOP_NOS
             else:
-                if not check_node:
-                    nav_icon = cstat.Icon.ICON_NAV_LINE_L
-                elif self._node.get_has_lower_sibling():
+                if parent_node and self._node.get_has_lower_sibling():
                     nav_icon = cstat.Icon.ICON_NAV_LINE_T
+                elif parent_node and parent_node.get_has_lower_sibling():
+                    nav_icon = cstat.Icon.ICON_NAV_LINE_VERTICAL
+                elif parent_node and not self._node.get_has_lower_sibling() and parent_node.get_has_lower_sibling():
+                    nav_icon = cstat.Icon.ICON_NAV_LINE_HORIZONTAL          
+                elif parent_node and not self._node.get_has_lower_sibling():
+                    nav_icon = cstat.Icon.ICON_NAV_LINE_L
                 else:
-                    nav_icon = cstat.Icon.ICON_NAV_LINE_VERTICAL            
-            if check_node:
-                check_node = check_node.get_parent_node()
+                    nav_icon = cstat.Icon.ICON_NAV_SPACER            
+            if parent_node:
+                parent_node = parent_node.get_parent_node()
             self._nav_list.append(nav_icon)
-        self._nav_list.reverse()
 
 
     def _draw_navigation(self):
@@ -196,11 +199,14 @@ class OutlinerEntryPencil(cbase.NodePencil):
             imgui.push_style_var(imgui.StyleVar_.frame_padding, (0, 0))
             imgui.same_line()
             imgui.set_cursor_pos_x(self._indent_size_x * index)
-            if imgui.image_button(f"##nav_{self._node.get_data_object()}", nav_icon_id, image_size=(22, 22), bg_col=(0.0, 0.0, 0.0, 0.0), tint_col=nav_color):
-                if self._node.get_expanded():
-                    self._node.set_expanded(False)
-                else:
-                    self._node.set_expanded(True)
+            if nav_segment == self._nav_list[-1]:
+                if imgui.image_button(f"##nav_{self._node.get_data_object()}", nav_icon_id, image_size=(22, 22), bg_col=(0.0, 0.0, 0.0, 0.0), tint_col=nav_color):
+                    if self._node.get_expanded():
+                        self._node.set_expanded(False)
+                    else:
+                        self._node.set_expanded(True)
+            else:
+                imgui.image_with_bg(nav_icon_id, (22, 22), bg_col=(0.0, 0.0, 0.0, 0.0), tint_col=nav_color)
             imgui.pop_style_color(3)
             imgui.pop_style_var(1)
 
