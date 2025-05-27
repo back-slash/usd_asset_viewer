@@ -144,9 +144,9 @@ class ViewportPanel(cbase.Panel):
         io = imgui.get_io()
         self._key_f = imgui.is_key_pressed(imgui.Key.f)
         self._key_esc = imgui.is_key_pressed(imgui.Key.escape)
-        self._key_alt = imgui.is_key_pressed(imgui.Key.left_alt) or imgui.is_key_pressed(imgui.Key.right_alt)
-        self._key_shift = imgui.is_key_pressed(imgui.Key.left_shift) or imgui.is_key_pressed(imgui.Key.right_shift)
-        self._key_ctrl = imgui.is_key_pressed(imgui.Key.left_ctrl) or imgui.is_key_pressed(imgui.Key.right_ctrl)
+        self._key_alt = imgui.is_key_down(imgui.Key.left_alt) or imgui.is_key_down(imgui.Key.right_alt)
+        self._key_shift = imgui.is_key_down(imgui.Key.left_shift) or imgui.is_key_down(imgui.Key.right_shift)
+        self._key_ctrl = imgui.is_key_down(imgui.Key.left_ctrl) or imgui.is_key_down(imgui.Key.right_ctrl)
         
         self._key_mouse_position = glfw.get_cursor_pos(self._window)
         self._key_mouse_position_delta = self._calc_smooth_delta(self._key_mouse_position)
@@ -190,7 +190,8 @@ class ViewportPanel(cbase.Panel):
         """
         scene_hover = imgui.is_mouse_hovering_rect(
             self._panel_position, (self._panel_position[0] + self._panel_width, self._panel_position[1] + self._panel_height), clip=False)    
-        if scene_hover and self._key_mouse_left:
+        print(self._key_alt)
+        if scene_hover and self._key_mouse_left and not self._key_alt:
             camera_matrix: pgf.Matrix4d = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
             camera_frustum = pgf.Frustum()
             camera_frustum.SetPositionAndRotationFromMatrix(camera_matrix)
@@ -266,7 +267,7 @@ class ViewportPanel(cbase.Panel):
         Calculate the user rotation of the lights.
         """
         rot_axis = self._sm.get_up_vector()
-        rot_y_matrix = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x))
+        rot_y_matrix = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x * 0.5))
         light_transform = self._sm.get_light_xform().GetAttribute("xformOp:transform").Get()
         light_transform = light_transform * rot_y_matrix
         self._sm.get_light_xform().GetAttribute("xformOp:transform").Set(light_transform)
@@ -280,8 +281,8 @@ class ViewportPanel(cbase.Panel):
         camera_position = camera_xform.ExtractTranslation()
         x_rotation_axis = camera_xform.TransformDir(pgf.Vec3d(1, 0, 0))
         rot_axis = self._sm.get_up_vector()
-        rot_matrix_y = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x))
-        rot_matrix_x = pgf.Matrix4d().SetRotate(pgf.Rotation(x_rotation_axis, -delta_y))
+        rot_matrix_y = pgf.Matrix4d().SetRotate(pgf.Rotation(rot_axis, -delta_x * 0.25))
+        rot_matrix_x = pgf.Matrix4d().SetRotate(pgf.Rotation(x_rotation_axis, -delta_y * 0.25))
         world_rotation: pgf.Matrix4d = (rot_matrix_x * rot_matrix_y)
         relative_pos: pgf.Vec3d = camera_position - pivot_point
         new_position = world_rotation.Transform(relative_pos) + pivot_point
@@ -293,7 +294,7 @@ class ViewportPanel(cbase.Panel):
         """
         Calculate the zoom transformation for the viewport.
         """
-        transform_factor = self._scene_bbox_size.GetLength() / 100
+        transform_factor = self._scene_bbox_size.GetLength() / 100 * 0.5
         transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(0, 0, -delta_x * transform_factor))
         camera_xform = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
         transform = transform * camera_xform
@@ -314,7 +315,7 @@ class ViewportPanel(cbase.Panel):
         """
         Calculate the pan transformation for the viewport.
         """
-        transform_factor = self._scene_bbox_size.GetLength() / 150
+        transform_factor = self._scene_bbox_size.GetLength() / 150 * 0.25
         transform = pgf.Matrix4d().SetTranslate(pgf.Vec3d(-delta_x * transform_factor, delta_y * transform_factor, 0))
         camera_xform = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
         transform = transform * camera_xform
