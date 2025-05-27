@@ -71,11 +71,19 @@ class OutlinerPanel(cbase.Panel):
             node.outliner_pencil = OutlinerEntryPencil(node, indent)
         node.outliner_pencil.set_index(self._node_index)
         node.outliner_pencil.update_draw()
+        if node.get_detailed():
+            node_details = node.get_detail_nodes()
+            for node_detail in node_details:
+                if not hasattr(node_detail, "outliner_pencil"):
+                    node_detail.outliner_pencil = OutlinerPropertyPencil(node_detail, self._node_index, indent + 1)
+                node_detail.outliner_pencil.update_draw()
         if node.get_expanded():
             node_children = node.get_child_nodes()
             if node_children:
                 for child in node_children:
                     self._recursive_node_draw(child, indent + 1)
+        if node.get_detailed():
+            pass
             
     def draw(self) -> None:
         """
@@ -122,6 +130,8 @@ class OutlinerEntryPencil(cbase.NodePencil):
         imgui.set_cursor_pos_x(0)
         bg_max_x = imgui.get_content_region_avail()[0] - 2
         self._draw_y_pos = imgui.get_cursor_pos_y() + imgui.get_text_line_height_with_spacing() + 15
+        if self._node.get_detailed():
+            self._draw_y_pos += 22 * len(self._node.get_detail_nodes())
         bg_rect_min = imgui.ImVec2(imgui.get_cursor_pos_x(), self._draw_y_pos) - imgui.ImVec2(0, self._scroll[1])
         bg_rect_max = imgui.ImVec2(bg_max_x, self._draw_y_pos + 22) - imgui.ImVec2(0, self._scroll[1])
         bg_color = (0.1, 0.1, 0.1, 1) if odd_index else (0.12, 0.12, 0.12, 1)
@@ -178,6 +188,11 @@ class OutlinerEntryPencil(cbase.NodePencil):
         node_rect_min = imgui.ImVec2(indent_cursor_pos_x + 2, self._draw_y_pos + 1) - self._scroll
         node_rect_max = (node_rect_min[0] + node_width, node_rect_min[1] + 20)
         node_base_color = (0.35, 0.35, 0.35, 1.0) if self._node.get_selected() else (0.25, 0.25, 0.25, 1.0)
+        if self._node.get_detailed():
+            detail_count = len(self._node.get_detail_nodes())
+            detail_rect_max = (node_rect_max[0], node_rect_max[1] + (22 * detail_count))
+            self._draw_list.add_rect_filled(node_rect_min, detail_rect_max, imgui.get_color_u32(node_base_color), rounding=2.0)
+            self._draw_list.add_rect(node_rect_min, detail_rect_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=2.0)
         self._draw_list.add_rect_filled(node_rect_min, node_rect_max, imgui.get_color_u32(node_base_color), rounding=2.0)
         self._draw_list.add_rect(node_rect_min, node_rect_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=2.0)
         hovered = imgui.is_mouse_hovering_rect(node_rect_min, node_rect_max)
@@ -201,7 +216,7 @@ class OutlinerEntryPencil(cbase.NodePencil):
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 4)
         imgui.text(self._node.get_name())
         imgui.pop_style_color(1)
-        if issubclass(self._node.__class__, cbase.Primative):
+        if self._node.get_detail_nodes():
             self._node: cbase.Primative
             imgui.same_line()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + 10)
@@ -209,13 +224,14 @@ class OutlinerEntryPencil(cbase.NodePencil):
             imgui.push_style_color(imgui.Col_.button_hovered, (0, 0, 0, 0))
             imgui.push_style_color(imgui.Col_.button_active, (0, 0, 0, 0))
             imgui.push_style_var(imgui.StyleVar_.frame_padding, (5, 5))
-            icon_arrow = cstat.Icon.ICON_ARROW_DOWN if self._node.get_expanded() else cstat.Icon.ICON_ARROW_LEFT
+            icon_arrow = cstat.Icon.ICON_ARROW_DOWN if self._node.get_detailed() else cstat.Icon.ICON_ARROW_LEFT
             icon_arrow_id = cutils.FileHelper.read(cstat.Filetype.ICON, icon_arrow, (12, 12))
-            if True:
-                if imgui.image_button(f"##{self._node.get_data_object()}", icon_arrow_id, (12, 12), tint_col=(0, 0, 0, 1)):
-                    self._node.set_expanded(False)
+            if imgui.image_button(f"##{self._node.get_data_object()}", icon_arrow_id, (12, 12), tint_col=(0, 0, 0, 1)):
+                self._node.set_detailed(not self._node.get_detailed())
             imgui.pop_style_color(3)
-            imgui.pop_style_var(1)
+            imgui.pop_style_var(1)        
+
+        if issubclass(self._node.__class__, cbase.Primative):
             if self._node.has_visibility():
                 imgui.same_line()
                 imgui.set_cursor_pos_x(node_rect_max[0] - 28)
@@ -261,28 +277,21 @@ class OutlinerPropertyPencil(cbase.NodePencil):
         self._index = index
         self._indent = indent
 
-    def _draw_navigation(self):
-        """
-        Draw the navigation of the node.
-        """
-        for entry in range(self._indent):
-            pass
-
     def _draw_node(self):
         """
         Draw the node icon and name.
         """
-        imgui.set_cursor_pos(self._position)
-        imgui.text(self._node_name)
-        if self._node_icon:
-            imgui.image(self._node_icon, size=(16, 16), uv0=(0, 0), uv1=(1, 1))
+        imgui.text(self._node.get_name())
 
     def _draw(self):
         """
         Draw the outliner entry.
         """
-        self._draw_navigation()
+        imgui.push_style_var(imgui.StyleVar_.item_spacing, (0, 0))  
+        self._scroll = imgui.ImVec2(imgui.get_scroll_x(), imgui.get_scroll_y())
         self._draw_node()
+        imgui.pop_style_var(1)
+        imgui.new_line()
 
 
 #####################################################################################################################################

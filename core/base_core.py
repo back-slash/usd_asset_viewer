@@ -47,6 +47,8 @@ class Node:
         self._hovered = False
         self._active = True
         self._expanded = False
+        self._detailed = False
+        self._detail_list: list['Node'] = []
         self._node_color = (0.5, 0.5, 0.5, 1.0)
         self._node_icon = cstat.Icon.ICON_UNKNOWN
         self._name = None
@@ -74,6 +76,30 @@ class Node:
             self._name = name
         else:
             self._name = self._data_object.GetName()
+
+    def _init_node_details(self):
+        """
+        Load the associations of the node.
+        """
+
+    def set_detailed(self, detailed: bool):
+        """
+        Set the detailed state of the node.
+        """
+        self._detailed = detailed
+
+    def _add_detail(self, detail: 'Node'):
+        """
+        Add an association to the node.
+        """
+        if detail and detail not in self._detail_list:
+            self._detail_list.append(detail)
+
+    def get_detail_nodes(self) -> list['Node']:
+        """
+        Get the association nodes.
+        """
+        return self._detail_list
 
     def set_expanded(self, expanded: bool):
         """
@@ -110,6 +136,12 @@ class Node:
         Get the scene manager.
         """
         return self._sm
+    
+    def get_detailed(self) -> bool:
+        """
+        Check if the node is detailed.
+        """
+        return self._detailed
 
     def get_visible(self) -> bool:
         """
@@ -212,6 +244,7 @@ class Pathed(Node):
 
 
 
+
 class Primative(Pathed):
     """
     Class representing a  node.
@@ -220,6 +253,7 @@ class Primative(Pathed):
     def __init__(self, data_object: pusd.Prim):
         self._attribute_list: list['Attribute'] = []   
         self._child_list: list['Pathed'] = []
+        self._association_list: list['Pathed'] = []
         super().__init__(data_object)
 
     def _init_node_data(self):
@@ -270,6 +304,7 @@ class Primative(Pathed):
         Get the attribute nodes.
         """
         return self._attribute_list
+
 
     def has_visibility(self) -> bool:
         """
@@ -373,12 +408,21 @@ class Mesh(Primative):
         self._node_color = (0.8, 0.4, 0.4, 1.0)
         self._node_icon = cstat.Icon.ICON_MESH
         self._display_color = self._data_object.GetDisplayColorAttr()
-        self._init_materials()
+        self._init_detail_nodes()
 
-    def _init_materials(self):
+    def _init_detail_nodes(self):
         """
         Load the materials of the mesh node.
         """
+        super()._init_node_details()
+        self._detail_list = []
+        assigned_materials =  pshd.MaterialBindingAPI(self.get_prim()).ComputeBoundMaterial()
+        if assigned_materials:
+            for material in assigned_materials:
+                if isinstance(material, pshd.Material):
+                    material_node = self._sm.init_path_node(material.GetPrim())
+                    if material_node and material_node not in self._detail_list:
+                        self._add_detail(material_node)
    
     def get_display_color(self) -> tuple[float, float, float, float]:
         """
