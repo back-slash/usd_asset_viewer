@@ -74,7 +74,7 @@ class OutlinerPanel(cbase.Panel):
         if node.get_detailed():
             node_details = node.get_detail_nodes()
             for node_detail in node_details:
-                if not hasattr(node_detail, "outliner_pencil"):
+                if not hasattr(node_detail, "outliner_detail_pencil"):
                     node_detail.outliner_detail_pencil = OutlinerPropertyPencil(node_detail, self._node_index, indent + 1)
                 node_detail.outliner_detail_pencil.update_draw()
         if node.get_expanded():
@@ -191,7 +191,7 @@ class OutlinerEntryPencil(cbase.NodePencil):
         node_base_color = imgui.ImVec4(0.4, 0.4, 0.4, 1.0) if self._node.get_selected() else imgui.ImVec4(0.25, 0.25, 0.25, 1.0)
         if self._node.get_detailed():
             detail_count = len(self._node.get_detail_nodes())
-            detail_rect_max = (node_rect_max[0], node_rect_max[1] + (22 * detail_count))
+            detail_rect_max = (node_rect_max[0], node_rect_max[1] + (22 * detail_count) - 1)
             self._draw_list.add_rect_filled(node_rect_min, detail_rect_max, imgui.get_color_u32(node_base_color * 0.75), rounding=2.0)
             self._draw_list.add_rect(node_rect_min, detail_rect_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=2.0)
         self._draw_list.add_rect_filled(node_rect_min, node_rect_max, imgui.get_color_u32(node_base_color), rounding=2.0)
@@ -278,7 +278,6 @@ class OutlinerPropertyPencil(cbase.NodePencil):
         self._index = index
         self._indent = indent
         self._indent_size_x = 20
-        print(f"Creating OutlinerPropertyPencil for {type(self._node)} with index {self._node_color}")
 
     def _draw_node(self):
         """
@@ -300,10 +299,10 @@ class OutlinerPropertyPencil(cbase.NodePencil):
         self._draw_list.add_rect_filled(node_rect_min, node_rect_max, imgui.get_color_u32(self._node_color), rounding=2.0)
         self._draw_list.add_rect(node_rect_min, node_rect_max, imgui.get_color_u32((0, 0, 0, 1)), rounding=2.0)
         internal_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, cstat.Icon.ICON_ROOT, (22, 22))  
-        imgui.push_style_var(imgui.StyleVar_.frame_padding, (1, 1))     
+        imgui.push_style_var(imgui.StyleVar_.frame_padding, (0, 0))     
         imgui.set_cursor_pos_x(indent_cursor_pos_x)
         imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() - 2)
-        imgui.image(internal_icon_id, (22, 22), tint_col=(0, 0, 0, 1))
+        imgui.image_with_bg(internal_icon_id, (22, 22), tint_col=(0, 0, 0, 1))
         imgui.pop_style_var(1)
         imgui.same_line()
         imgui.set_cursor_pos_x(indent_cursor_pos_x + 25)

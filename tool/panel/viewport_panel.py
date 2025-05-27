@@ -190,7 +190,6 @@ class ViewportPanel(cbase.Panel):
         """
         scene_hover = imgui.is_mouse_hovering_rect(
             self._panel_position, (self._panel_position[0] + self._panel_width, self._panel_position[1] + self._panel_height), clip=False)    
-        print(self._key_alt)
         if scene_hover and self._key_mouse_left and not self._key_alt:
             camera_matrix: pgf.Matrix4d = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
             camera_frustum = pgf.Frustum()
@@ -211,24 +210,28 @@ class ViewportPanel(cbase.Panel):
             pixel_size = pgf.Vec2d(1.0 / self._panel_width, 1.0 / self._panel_height)
             pixel_frustum = camera_frustum.ComputeNarrowedFrustum(mouse_ndc, pixel_size)
             try:
-                intersection = self._hydra.TestIntersection(
-                    pixel_frustum.ComputeViewMatrix(),
-                    pixel_frustum.ComputeProjectionMatrix(),
-                    self._sm.get_root(),
-                    self._hydra_rend_params
-                )
-                intersection_path = intersection[2]
-                intersection_prim = self._sm.get_stage().GetPrimAtPath(intersection_path)
-            except:
-                pass
-            if intersection_prim:
-                node = self._sm.init_path_node(intersection_prim)
-                if node:
-                    if not self._key_shift or self._key_ctrl:
-                        self._sm.deselect_all()
-                    node.set_selected(True)
-            else:
-                self._sm.deselect_all()
+                self._intersection_test(pixel_frustum)
+            except Exception as e:
+                print(f"Error during intersection test: {e}", file=sys.stderr)
+
+    def _intersection_test(self, pixel_frustum: pgf.Frustum) -> list[pusd.Prim]:
+        intersection = self._hydra.TestIntersection(
+            pixel_frustum.ComputeViewMatrix(),
+            pixel_frustum.ComputeProjectionMatrix(),
+            self._sm.get_root(),
+            self._hydra_rend_params
+        )
+        intersection_path = intersection[2]
+        intersection_prim = self._sm.get_stage().GetPrimAtPath(intersection_path)
+        if intersection_prim:
+            node = self._sm.init_path_node(intersection_prim)
+            if node:
+                if not self._key_shift or self._key_ctrl:
+                    self._sm.deselect_all()
+                node.set_selected(True)
+        else:
+            self._sm.deselect_all()            
+
 
     def _update_viewport_input(self):
         """
