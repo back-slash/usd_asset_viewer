@@ -5,6 +5,7 @@
 #####################################################################################################################################
 
 # PYTHON
+from tabnanny import check
 from typing import Any
 import os
 
@@ -54,6 +55,7 @@ class OutlinerPanel(cbase.Panel):
         """
         if self._stage:
             pass
+
     def _draw_standard_tab(self) -> None:
         if not self._stage:
             return
@@ -138,39 +140,69 @@ class OutlinerEntryPencil(cbase.NodePencil):
         bg_color = (0.1, 0.1, 0.1, 1) if odd_index else (0.12, 0.12, 0.12, 1)
         self._draw_list.add_rect_filled(bg_rect_min, bg_rect_max, imgui.get_color_u32(bg_color), rounding=2.0)
 
+    def _has_lower_sibling(self, node: cbase.Primative) -> bool:
+        """
+        Check if the node has a lower sibling.
+        """
+        parent_node = node.get_parent_node()
+        if not parent_node:
+            return False
+        sibling_list = parent_node.get_child_nodes()
+        if sibling_list[-1] != node:
+            return True
+        return False
+
+    def _calc_navigation(self):
+        """
+        Draw the navigation of the node.
+        """
+        self._nav_list = []
+        check_node: cbase.Primative = self._node
+        for segment in range(self._indent - 1, -1, -1):
+            if (segment == self._indent - 1):
+                if not self._node.get_child_nodes():
+                    nav_icon = cstat.Icon.ICON_NAV_END
+                elif self._node.get_expanded() and self._node.get_parent_node():
+                    nav_icon = cstat.Icon.ICON_NAV_OPEN
+                elif self._node.get_expanded() and not self._node.get_parent_node():
+                    nav_icon = cstat.Icon.ICON_NAV_OPEN_NOP
+                elif not self._node.get_expanded() and self._node.get_parent_node():
+                    nav_icon = cstat.Icon.ICON_NAV_CLOSED_NOS      
+                else:
+                    nav_icon = cstat.Icon.ICON_NAV_CLOSED_NOP_NOS
+            else:
+                if not check_node:
+                    nav_icon = cstat.Icon.ICON_NAV_LINE_L
+                elif self._node.get_has_lower_sibling():
+                    nav_icon = cstat.Icon.ICON_NAV_LINE_T
+                else:
+                    nav_icon = cstat.Icon.ICON_NAV_LINE_VERTICAL            
+            if check_node:
+                check_node = check_node.get_parent_node()
+            self._nav_list.append(nav_icon)
+        self._nav_list.reverse()
+
+
     def _draw_navigation(self):
         """
         Draw the navigation of the node.
         """
         nav_color = (0.33, 0.33, 0.33, 1)
-        for segment in range(0, self._indent):
-            if segment == self._indent - 1:
-                if not hasattr(self._node, "get_child_nodes") or not self._node.get_child_nodes():
-                    nav_color = (0.0, 0.0, 0.0, 0.0)
-                if self._node.get_expanded() and self._node.get_parent_node():
-                    nav_icon = cstat.Icon.ICON_NAV_OPEN
-                elif self._node.get_expanded() and not self._node.get_parent_node():
-                    nav_icon = cstat.Icon.ICON_NAV_OPEN_NOP
-                elif not self._node.get_expanded() and self._node.get_parent_node():
-                    nav_icon = cstat.Icon.ICON_NAV_CLOSED_NOS            
+        for index, nav_segment in enumerate(self._nav_list):
+            nav_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, nav_segment, (22, 22))
+            imgui.push_style_color(imgui.Col_.button, (0, 0, 0, 0))
+            imgui.push_style_color(imgui.Col_.button_hovered, (0, 0, 0, 0))
+            imgui.push_style_color(imgui.Col_.button_active, (0, 0, 0, 0))
+            imgui.push_style_var(imgui.StyleVar_.frame_padding, (0, 0))
+            imgui.same_line()
+            imgui.set_cursor_pos_x(self._indent_size_x * index)
+            if imgui.image_button(f"##nav_{self._node.get_data_object()}", nav_icon_id, image_size=(22, 22), bg_col=(0.0, 0.0, 0.0, 0.0), tint_col=nav_color):
+                if self._node.get_expanded():
+                    self._node.set_expanded(False)
                 else:
-                    nav_icon = cstat.Icon.ICON_NAV_CLOSED_NOP_NOS
-                nav_icon_id = cutils.FileHelper.read(cstat.Filetype.ICON, nav_icon, (22, 22))
-                imgui.push_style_color(imgui.Col_.button, (0, 0, 0, 0))
-                imgui.push_style_color(imgui.Col_.button_hovered, (0, 0, 0, 0))
-                imgui.push_style_color(imgui.Col_.button_active, (0, 0, 0, 0))
-                imgui.push_style_var(imgui.StyleVar_.frame_padding, (0, 0))
-                imgui.same_line()
-                imgui.set_cursor_pos_x(self._indent_size_x * segment)
-                if imgui.image_button(f"##nav_{self._node.get_data_object()}", nav_icon_id, image_size=(22, 22), bg_col=(0.0, 0.0, 0.0, 0.0), tint_col=nav_color):
-                    if self._node.get_expanded():
-                        self._node.set_expanded(False)
-                    else:
-                        self._node.set_expanded(True)
-                imgui.pop_style_color(3)
-                imgui.pop_style_var(1)
-            elif segment < self._indent - 2:
-                pass
+                    self._node.set_expanded(True)
+            imgui.pop_style_color(3)
+            imgui.pop_style_var(1)
 
     def _draw_node(self):
         """
@@ -233,7 +265,7 @@ class OutlinerEntryPencil(cbase.NodePencil):
             imgui.pop_style_var(1)        
 
         if issubclass(self._node.__class__, cbase.Primative):
-            if self._node.has_visibility():
+            if self._node.get_has_visibility():
                 imgui.same_line()
                 imgui.set_cursor_pos_x(node_rect_max[0] - 28)
                 imgui.push_style_color(imgui.Col_.button, (0, 0, 0, 0))
@@ -255,6 +287,7 @@ class OutlinerEntryPencil(cbase.NodePencil):
         self._scroll = imgui.ImVec2(imgui.get_scroll_x(), imgui.get_scroll_y())
         self._draw_background()
         self._draw_visibility()
+        self._calc_navigation()
         self._draw_navigation()
         self._draw_node()
         imgui.pop_style_var(1)

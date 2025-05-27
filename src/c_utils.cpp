@@ -91,6 +91,9 @@ void c_setup_opengl_viewport(pybind11::dict draw_dict) {
     glLoadMatrixd(camera_matrix_inverse_gl);
 }
 
+
+
+
 void c_check_opengl_error() {
     GLenum err = glGetError();
     if (err != GL_NO_ERROR) {

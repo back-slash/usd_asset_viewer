@@ -42,6 +42,7 @@ class Node:
     """
     def __init__(self, data_object, parent_node=None):
         self._parent_node = parent_node
+        self._has_lower_sibling = False
         self._visible = True
         self._selected = False
         self._hovered = False
@@ -53,6 +54,7 @@ class Node:
         self._node_icon = cstat.Icon.ICON_UNKNOWN
         self._name = None
         self._data_object: pusd.Prim | dict = data_object
+        self._child_list: list['Pathed'] = []
         self._init_scene_manager()
         self._init_node_data()
 
@@ -66,7 +68,8 @@ class Node:
         """
         Set the default values for the node.
         """
-        raise NotImplementedError("The '_init_node_data' method must be implemented by subclasses.")
+        self._init_node_children()
+        self._init_node_details()
     
     def _set_name(self, name: str=None):
         """
@@ -94,6 +97,42 @@ class Node:
         """
         if detail and detail not in self._detail_list:
             self._detail_list.append(detail)
+
+    def _init_node_children(self):
+        """
+        Load the children of the node.
+        """
+
+    def _add_child(self, child: 'Node'):
+        """
+        Add a child node to the node.
+        """
+        if child and child not in self._child_list:
+            self._child_list.append(child)
+
+    def get_child_nodes(self) -> list['Node']:
+        """
+        Get the child nodes.
+        """
+        return self._child_list   
+
+    def calc_lower_sibling(self) -> bool:
+        """
+        Check if the node has a lower sibling.
+        """
+        parent_node = self.get_parent_node()
+        if parent_node:
+            sibling_list = parent_node.get_child_nodes()
+            if sibling_list and self != sibling_list[-1]:
+                self._has_lower_sibling = True
+                return
+        self._has_lower_sibling = False
+
+    def get_has_lower_sibling(self) -> bool:
+        """
+        Get the has lower sibling state of the node.
+        """
+        return self._has_lower_sibling
 
     def get_detail_nodes(self) -> list['Node']:
         """
@@ -125,7 +164,7 @@ class Node:
         """
         self._hovered = hovered
 
-    def get_data_object(self) -> pgeo.Mesh | plux.DistantLight:
+    def get_data_object(self) -> pgeo.Mesh | plux.DistantLight | pusd.Attribute:
         """
         Get the data object of the node.
         """
@@ -202,16 +241,18 @@ class Pathed(Node):
     Class representing a path node.
     """
 
-    def __init__(self, data_object):
-        self._parent_node = None    
+    def __init__(self, data_object, parent_node=None):
         self._path = None
         self._prim_object = None        
-        super().__init__(data_object)
+        super().__init__(data_object, parent_node)
 
     def _init_node_data(self):
+        super()._init_node_data()
         self._set_name()
         self._data_object: pusd.Prim | pusd.Attribute
         self._path = self._data_object.GetPath()
+        print(f"Path: {self._path}")
+        print(f"Prim: {self._name}")
         parent_path = self._path.GetParentPath()
         self._parent_prim = self._sm.get_stage().GetPrimAtPath(parent_path)
         self._prim_object = self._sm.get_stage().GetPrimAtPath(self._path)
@@ -243,23 +284,20 @@ class Pathed(Node):
         return self._parent_prim
 
 
-
-
 class Primative(Pathed):
     """
     Class representing a  node.
     """
 
-    def __init__(self, data_object: pusd.Prim):
+    def __init__(self, data_object, parent_node=None):
         self._attribute_list: list['Attribute'] = []   
-        self._child_list: list['Pathed'] = []
         self._association_list: list['Pathed'] = []
-        super().__init__(data_object)
+        super().__init__(data_object, parent_node)
 
     def _init_node_data(self):
         super()._init_node_data()
         self._init_node_attributes()
-        self._init_node_children()
+        self._has_visibility = self._calc_visibility()
 
     def _init_node_attributes(self):
         """
@@ -267,7 +305,7 @@ class Primative(Pathed):
         """
         self._attribute_list = []
         for attribute in self.get_prim().GetAttributes():
-            node_attribute = self._sm.init_path_node(attribute)
+            node_attribute = self._sm.init_path_node(attribute, self)
             self._add_attribute(node_attribute)
 
     def _add_attribute(self, attribute: 'Attribute'):
@@ -277,36 +315,13 @@ class Primative(Pathed):
         if attribute and attribute not in self._attribute_list:
             self._attribute_list.append(attribute)
 
-    def _init_node_children(self):
-        """
-        Load the children of the node.
-        """
-        self._child_list = []
-        for child in self._data_object.GetChildren():
-            node_child = self._sm.init_path_node(child)
-            self._add_child(node_child)
-
-    def _add_child(self, child: 'Node'):
-        """
-        Add a child node to the node.
-        """
-        if child and child not in self._child_list:
-            self._child_list.append(child)
-
-    def get_child_nodes(self) -> list['Node']:
-        """
-        Get the child nodes.
-        """
-        return self._child_list   
-
     def get_attribute_nodes(self) -> list['Attribute']:
         """
         Get the attribute nodes.
         """
         return self._attribute_list
 
-
-    def has_visibility(self) -> bool:
+    def _calc_visibility(self) -> bool:
         """
         Check if the node has visibility.
         """
@@ -314,19 +329,34 @@ class Primative(Pathed):
         if attribute:
             return True
 
+    def _init_node_children(self):
+        """
+        Load the children of the node.
+        """
+        self._child_list = []
+        for child in self._data_object.GetChildren():
+            node_child = self._sm.init_path_node(child, self)
+            self._add_child(node_child)
+
+    def get_has_visibility(self) -> bool:
+        """
+        Get the has visibility state of the node.
+        """
+        return self._has_visibility
+
     def set_visibility(self, visible) -> None:
         super().set_visibility(visible)
         token = pgeo.Tokens.inherited if visible else pgeo.Tokens.invisible
         for time in range(self._sm.get_time_range()[0], self._sm.get_time_range()[1]):
-            if self.has_visibility():
+            if self.get_has_visibility():
                 self.get_prim().GetAttribute("visibility").Set(token, time)
 
 class Root(Primative):
     """
     Class representing the root node.
     """
-    def __init__(self, data_object: pusd.Prim):
-        super().__init__(data_object)
+    def __init__(self, data_object, parent_node=None):
+        super().__init__(data_object, parent_node)
         self._data_object: pusd.Prim
 
     def _init_node_data(self):
@@ -340,9 +370,9 @@ class Attribute(Pathed):
     Class representing an attribute of a node.
     """
 
-    def __init__(self, data_object):
+    def __init__(self, data_object, parent_node=None):
         self._connection_path_list: list['Attribute'] = []
-        super().__init__(data_object)
+        super().__init__(data_object, parent_node)
         self._data_object: pusd.Attribute
         self._connected = False
 
@@ -367,7 +397,7 @@ class Attribute(Pathed):
         Add an input node to the node.
         """
         attribute = self._sm.get_stage().GetPrimAtPath(path)
-        attribute_node = self._sm.init_path_node(attribute)
+        attribute_node = self._sm.init_path_node(attribute, self)
         if attribute_node and attribute_node not in self._connection_path_list:
             self._connection_path_list.append(attribute_node)
 
@@ -382,8 +412,8 @@ class XForm(Primative):
     """
     Class representing a transform node.
     """
-    def __init__(self, data_object: pgeo.Xform):
-        super().__init__(data_object)
+    def __init__(self, data_object, parent_node=None):
+        super().__init__(data_object, parent_node)
         self._data_object: pgeo.Xform
 
     def _init_node_data(self):
@@ -397,9 +427,9 @@ class Mesh(Primative):
     Class representing a mesh node.
     """
 
-    def __init__(self, data_object):
+    def __init__(self, data_object, parent_node=None):
         self._display_color = None  
-        super().__init__(data_object)      
+        super().__init__(data_object, parent_node)      
         self._data_object: pgeo.Mesh
 
     def _init_node_data(self):
@@ -420,7 +450,7 @@ class Mesh(Primative):
         if assigned_materials:
             for material in assigned_materials:
                 if isinstance(material, pshd.Material):
-                    material_node = self._sm.init_path_node(material.GetPrim())
+                    material_node = self._sm.init_path_node(material.GetPrim(), self)
                     if material_node and material_node not in self._detail_list:
                         self._add_detail(material_node)
    
@@ -435,8 +465,8 @@ class Light(Primative):
     """
     Class representing a light node.
     """
-    def __init__(self, data_object: plux.BoundableLightBase | plux.NonboundableLightBase):
-        super().__init__(data_object)
+    def __init__(self, data_object, parent_node=None):
+        super().__init__(data_object, parent_node)
 
     def _init_node_data(self):
         super()._init_node_data()
@@ -452,8 +482,8 @@ class Camera(Primative):
     """
     Class representing a camera node.
     """
-    def __init__(self, data_object):
-        super().__init__(data_object)
+    def __init__(self, data_object, parent_node=None):
+        super().__init__(data_object, parent_node)
         
     def _init_node_data(self):
         super()._init_node_data()    
@@ -464,9 +494,9 @@ class Skeleton(Primative):
     """
     Class representing a skeleton node.
     """
-    def __init__(self, data_object):
+    def __init__(self, data_object, parent_node=None):
         self._is_animating = False
-        super().__init__(data_object)
+        super().__init__(data_object, parent_node)
           
     def _init_node_data(self):
         super()._init_node_data()
@@ -491,7 +521,8 @@ class Skeleton(Primative):
             bone_matrix: pgf.Matrix4d = bone_matrix_list[index]
             bone_entry_dict = {
                 "index": index,
-                "owner": self._data_object,
+                "node_parent" : self,
+                "prim_parent": self._data_object,
                 "path": sdf_path,
                 "name": path_split[-1],
                 "matrix": bone_matrix,
@@ -579,15 +610,15 @@ class SkeletonRoot(Primative):
     """
     Class representing a skeleton root node.
     """
-    def __init__(self, data_object):
-        super().__init__(data_object)
+    def __init__(self, data_object, parent_node=None):
+        super().__init__(data_object, parent_node)
         self._init_zero_root()
         self.zero_root()
 
     def _init_node_data(self):
         super()._init_node_data()
         self._data_object = pskl.Root(self._data_object)
-        self._node_color = (0.6, 0.4, 0.8, 1.0)
+        self._node_color = (0.2, 0.4, 0.4, 1.0)
         self._node_icon = cstat.Icon.ICON_SKELETON_ROOT
 
     def _init_zero_root(self):
@@ -625,8 +656,8 @@ class Animation(Primative):
     """
     Class representing a skeleton node.
     """
-    def __init__(self, data_object):
-        super().__init__(data_object)
+    def __init__(self, data_object, parent_node=None):
+        super().__init__(data_object, parent_node)
         
     def _init_node_data(self):
         super()._init_node_data()
@@ -639,8 +670,8 @@ class Material(Primative):
     """
     Class representing a material node.
     """
-    def __init__(self, data_object):
-        super().__init__(data_object)
+    def __init__(self, data_object, parent_node=None):
+        super().__init__(data_object, parent_node)
         
     def _init_node_data(self):
         super()._init_node_data()    
@@ -657,8 +688,8 @@ class Curve(Primative):
     """
     Class representing a curve node.
     """
-    def __init__(self, data_object):
-        super().__init__(data_object)
+    def __init__(self, data_object, parent_node=None):
+        super().__init__(data_object, parent_node)
 
     def _init_node_data(self):
         super()._init_node_data()
@@ -670,12 +701,13 @@ class Data(Node):
     """
     Class representing a data node.
     """
-    def __init__(self, data_object):
-        super().__init__(data_object)
+    def __init__(self, data_object, parent_node=None):
+        super().__init__(data_object, parent_node)
 
     def _init_node_data(self):
+        super()._init_node_data()
         self._set_name(self._data_object["name"])
-        self._parent_node: pusd.Prim = self._data_object["owner"]
+        self._parent_node: 'Node' = self._data_object["node_parent"]
         self._relative_path = self._data_object["path"]
 
     def get_relative_path(self) -> psdf.Path:
@@ -689,8 +721,8 @@ class Texture(Data):
     """
     Class representing a texture node.
     """
-    def __init__(self, data_object):
-        super().__init__(data_object)
+    def __init__(self, data_object, parent_node=None):
+        super().__init__(data_object, parent_node)
 
     def _init_node_data(self):
         super()._init_node_data()
@@ -702,8 +734,8 @@ class Bone(Data):
     """
     Class representing a bone node.
     """
-    def __init__(self, data_object):
-        super().__init__(data_object)
+    def __init__(self, data_object, parent_node=None):
+        super().__init__(data_object, parent_node)
         self._child_list: list['Bone'] = []
 
     def _init_node_data(self):
@@ -734,7 +766,6 @@ class NodePencil:
     """
 
     def __init__(self, node: Node):
-
         self._node_name = None
         self._node_icon = None
         self._node_color = None
@@ -1123,8 +1154,9 @@ class SceneManager:
             self._stage: pusd.Stage = pusd.Stage.Open(self._usd_path)
         self._root = self._stage.GetPseudoRoot()
         self._init_time_manager()
-        internal_root = self._init_internal_node(self._root)
+        internal_root = self._init_internal_node(self._root, None)
         self._add_path_node(internal_root)
+        self.init_node_hierarchy()
         self._calc_up_axis()
         self._scene_bbox_center, self._scene_bbox_size = self.create_scene_bounding_box()
         self.init_scene_default_objects()
@@ -1145,7 +1177,7 @@ class SceneManager:
         self._start_time = self._stage.GetStartTimeCode()
         self._end_time = self._stage.GetEndTimeCode()
     
-    def _init_internal_node(self, input_object: pusd.Prim | pusd.Attribute) -> Node | None:
+    def _init_internal_node(self, input_object: pusd.Prim | pusd.Attribute, parent_object: pusd.Prim | pusd.Attribute) -> Node | None:
         """
         Get appropriate node type and init.
         """
@@ -1196,7 +1228,7 @@ class SceneManager:
             return Attribute(input_object)
         input_object_type = str(input_object.GetTypeName())
         if input_object_type in prim_classes:
-            return prim_classes[input_object_type](input_object)
+            return prim_classes[input_object_type](input_object, parent_object)
         else:
             print(f"Unknown node type: {input_object_type}")
         return None
@@ -1205,9 +1237,9 @@ class SceneManager:
         """
         Get appropriate data type and init.
         """
-        if isinstance(data_object["owner"], pskl.Skeleton):
+        if isinstance(data_object["prim_parent"], pskl.Skeleton):
             return Bone(data_object)
-        elif isinstance(data_object["owner"], pshd.Material):
+        elif isinstance(data_object["prim_parent"], pshd.Material):
             return Texture(data_object)
         else:
             return None
@@ -1320,6 +1352,13 @@ class SceneManager:
         light_scale = pgf.Vec3d(target_scale, target_scale, target_scale)
         self._light_xform.GetAttribute("xformOp:transform").Set(pgf.Matrix4d().SetScale(light_scale) * self._up_axis_matrix.GetInverse())
 
+    def init_node_hierarchy(self) -> None:
+        """
+        Initialize the node hierarchy.
+        """
+        for node in (self._path_node_list + self._data_node_list):
+            node.calc_lower_sibling()
+        
 
     def create_camera_dict(self):
         """
@@ -1333,7 +1372,7 @@ class SceneManager:
             if prim.HasAPI(pgeo.Camera):
                 camera_list.append(prim)  
         for camera_prim in camera_list:
-            camera = self.init_path_node(camera_prim)
+            camera = self.init_path_node(camera_prim, self)
             camera: Camera
             xformable = pgeo.Xformable(camera.get_prim())
             world_transform = xformable.ComputeLocalToWorldTransform(pusd.TimeCode.Default())
@@ -1367,7 +1406,7 @@ class SceneManager:
             if prim.HasAPI(plux.LightAPI):
                 light_list.append(prim)   
         for light_prim in light_list:
-            light = self.init_path_node(light_prim)
+            light = self.init_path_node(light_prim, None)
             light: Light
             xformable = pgeo.Xformable(light.get_prim())
             world_transform = xformable.ComputeLocalToWorldTransform(pusd.TimeCode.Default())
@@ -1582,14 +1621,14 @@ class SceneManager:
                 node_list.append(node)
         return node_list
 
-    def init_path_node(self, data_object: pusd.Prim) -> Pathed:
+    def init_path_node(self, data_object: pusd.Prim, parent_node) -> Pathed:
         """
         Initialize a path node and add it to the scene manager.
         """
         for path_node in self._path_node_list:
             if path_node.get_prim() == data_object:
                 return path_node
-        path_node = self._init_internal_node(data_object)
+        path_node = self._init_internal_node(data_object, parent_node)
         if not path_node:
             print(f"Unknown path object type: {data_object.GetTypeName()}")
             return None
@@ -1615,7 +1654,7 @@ class SceneManager:
         """
         child_nodes = []
         for child in prim.GetChildren():
-            node = self.init_path_node(child)
+            node = self.init_path_node(child, None)
             if node:
                 child_nodes.append(node)
                 child_nodes.extend(self.get_recursive_children(child))

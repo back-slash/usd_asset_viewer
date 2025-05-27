@@ -224,7 +224,7 @@ class ViewportPanel(cbase.Panel):
         intersection_path = intersection[2]
         intersection_prim = self._sm.get_stage().GetPrimAtPath(intersection_path)
         if intersection_prim:
-            node = self._sm.init_path_node(intersection_prim)
+            node = self._sm.init_path_node(intersection_prim, None)
             if node:
                 if not self._key_shift or self._key_ctrl:
                     self._sm.deselect_all()
