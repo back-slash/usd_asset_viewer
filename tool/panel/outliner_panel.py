@@ -75,8 +75,8 @@ class OutlinerPanel(cbase.Panel):
             node_details = node.get_detail_nodes()
             for node_detail in node_details:
                 if not hasattr(node_detail, "outliner_pencil"):
-                    node_detail.outliner_pencil = OutlinerPropertyPencil(node_detail, self._node_index, indent + 1)
-                node_detail.outliner_pencil.update_draw()
+                    node_detail.outliner_detail_pencil = OutlinerPropertyPencil(node_detail, self._node_index, indent + 1)
+                node_detail.outliner_detail_pencil.update_draw()
         if node.get_expanded():
             node_children = node.get_child_nodes()
             if node_children:
@@ -307,8 +307,10 @@ class OutlinerPropertyPencil(cbase.NodePencil):
         imgui.pop_style_var(1)
         imgui.same_line()
         imgui.set_cursor_pos_x(indent_cursor_pos_x + 25)
-        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 3)        
+        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + 3) 
+        imgui.push_style_color(imgui.Col_.text, (0.1, 0.1, 0.1, 1))       
         imgui.text(self._node.get_name())
+        imgui.pop_style_color(1)
 
     def _draw(self):
         """

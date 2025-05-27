@@ -209,14 +209,17 @@ class ViewportPanel(cbase.Panel):
                 1.0 - (2.0 * local_y / self._panel_height))
             pixel_size = pgf.Vec2d(1.0 / self._panel_width, 1.0 / self._panel_height)
             pixel_frustum = camera_frustum.ComputeNarrowedFrustum(mouse_ndc, pixel_size)
-            intersection = self._hydra.TestIntersection(
-                pixel_frustum.ComputeViewMatrix(),
-                pixel_frustum.ComputeProjectionMatrix(),
-                self._sm.get_root(),
-                self._hydra_rend_params
-            )
-            intersection_path = intersection[2]
-            intersection_prim = self._sm.get_stage().GetPrimAtPath(intersection_path)
+            try:
+                intersection = self._hydra.TestIntersection(
+                    pixel_frustum.ComputeViewMatrix(),
+                    pixel_frustum.ComputeProjectionMatrix(),
+                    self._sm.get_root(),
+                    self._hydra_rend_params
+                )
+                intersection_path = intersection[2]
+                intersection_prim = self._sm.get_stage().GetPrimAtPath(intersection_path)
+            except:
+                pass
             if intersection_prim:
                 node = self._sm.init_path_node(intersection_prim)
                 if node:
