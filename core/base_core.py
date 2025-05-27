@@ -49,7 +49,7 @@ class Node:
         self._expanded = False
         self._detailed = False
         self._detail_list: list['Node'] = []
-        self._node_color = (0.5, 0.5, 0.5, 1.0)
+        self._node_color = (0.33, 0.33, 0.33, 1.0)
         self._node_icon = cstat.Icon.ICON_UNKNOWN
         self._name = None
         self._data_object: pusd.Prim | dict = data_object
@@ -550,7 +550,6 @@ class Skeleton(Primative):
         if self._animation:
             self._is_animating = False
 
-
     def update_animation(self):
         """
         Update animation.
@@ -645,7 +644,7 @@ class Material(Primative):
         
     def _init_node_data(self):
         super()._init_node_data()    
-        self._node_color = (0.8, 0.4, 0.6, 1.0)
+        self._node_color = (0.5, 0.4, 0.6, 1.0)
         self._node_icon = cstat.Icon.ICON_MATERIAL
 
     def _init_textures(self):
