@@ -190,7 +190,7 @@ class ViewportPanel(cbase.Panel):
         """
         scene_hover = imgui.is_mouse_hovering_rect(
             self._panel_position, (self._panel_position[0] + self._panel_width, self._panel_position[1] + self._panel_height), clip=False)    
-        if scene_hover and self._key_mouse_left and not self._key_alt:
+        if scene_hover and imgui.is_mouse_clicked(imgui.MouseButton_.left) and not self._key_alt:
             camera_matrix: pgf.Matrix4d = self._sm.get_camera().GetAttribute("xformOp:transform").Get()
             camera_frustum = pgf.Frustum()
             camera_frustum.SetPositionAndRotationFromMatrix(camera_matrix)
@@ -361,16 +361,20 @@ class ViewportPanel(cbase.Panel):
         draw_dict["up_axis"] = self._sm.get_up_axis()
         return draw_dict 
 
-    def _update_selected_list(self) -> None:
+    def _update_selected_list(self, clear=False) -> None:
         """
         Update the selected list for the viewport.
         """
-        selected_list: list[pusd.Prim] = []
+        self._selected_list: list[pusd.Prim] = []
+        if clear:
+            self._hydra.SetSelected(self._selected_list)
+            return
         path_node_list = self._sm.get_path_node_list()
         for path_node in path_node_list:
             if path_node.get_selected():
-                selected_list.append(path_node.get_path())
-        self._hydra.SetSelected(selected_list)
+                if isinstance(path_node, cbase.Mesh):
+                    self._selected_list.append(path_node.get_path())
+        self._hydra.SetSelected(self._selected_list)
 
     def _hydra_render_loop(self) -> None:
         """
@@ -381,12 +385,24 @@ class ViewportPanel(cbase.Panel):
         self._hydra_x_min = int(self._panel_position[0])
         self._hydra_y_min = int(display_size[1] - self._panel_position[1] - self._panel_height)
         self._hydra.SetRenderViewport((self._hydra_x_min, self._hydra_y_min, self._panel_width, self._panel_height))
-        self._hydra.SetRenderBufferSize(pgf.Vec2i(int(self._panel_width), int(self._panel_height))) 
+        self._hydra.SetRenderBufferSize(pgf.Vec2i(int(self._panel_width), int(self._panel_height)))
         self._update_hydra_time()
         self._update_viewport_input()
-        self._update_selected_list()
         if self._user_cfg["show"]["mesh"]:
+            self._update_selected_list(clear=True)
             self._hydra.Render(self._sm.get_root(), self._hydra_rend_params)
+            self._update_selected_list()
+            selection_pass_render_params = pimg.RenderParams()
+            selection_pass_render_params.drawMode = pimg.DrawMode.DRAW_WIREFRAME
+            selection_pass_render_params.enableLighting = False
+            selection_pass_render_params.enableSampleAlphaToCoverage = True
+            selection_pass_render_params.showProxy = False
+            selection_pass_render_params.highlight = True
+            selection_pass_render_params.cullStyle = pimg.CullStyle.CULL_STYLE_BACK
+            selection_pass_render_params.frame = self._sm.get_current_time()
+            selection_pass_render_params.wireframeColor = pgf.Vec4f(0.66, 0.66, 0.66, 1.0)
+            for path in self._selected_list:
+                self._hydra.Render(self._stage.GetPrimAtPath(path), selection_pass_render_params)
         if self._user_cfg["show"]["grid"]:
             cdraw.c_draw_opengl_grid(self._create_c_opengl_draw_dict())
         if self._user_cfg["show"]["gizmo"]:

@@ -322,6 +322,12 @@ class TrackbarPanel(cbase.Panel):
         self._draw_motion_mode()
         self._draw_horizonal_line()
 
+    def set_enable_animation(self, enable) -> None:
+        """
+        Set the animation state.
+        """
+        self._animation = enable
+
     def update_usd(self):
         super().update_usd()
         self._init_time()

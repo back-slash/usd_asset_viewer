@@ -601,9 +601,10 @@ class Skeleton(Primative):
                 translation_list = self._animation.get_prim().GetAttribute("translations").Get(self._sm.get_current_time())
                 rotation_list = self._animation.get_prim().GetAttribute("rotations").Get(self._sm.get_current_time())
                 scale_list = self._animation.get_prim().GetAttribute("scales").Get(self._sm.get_current_time())
-                matrix = pgf.Matrix4d().SetScale(pgf.Vec3d(scale_list[index])).SetTranslate(pgf.Vec3d(translation_list[index])).SetRotateOnly(rotation_list[index])
-                anim_matrix = matrix * parent_bone_matrix
-                self._bone_dict[bone]["anim_matrix"] = anim_matrix
+                if translation_list and rotation_list and scale_list:
+                    matrix = pgf.Matrix4d().SetScale(pgf.Vec3d(scale_list[index])).SetTranslate(pgf.Vec3d(translation_list[index])).SetRotateOnly(rotation_list[index])
+                    anim_matrix = matrix * parent_bone_matrix
+                    self._bone_dict[bone]["anim_matrix"] = anim_matrix
         else:
             for index, bone in enumerate(self._bone_dict):
                 self._bone_dict[bone]["anim_matrix"] = self._bone_dict[bone]["matrix"]
@@ -1554,6 +1555,12 @@ class SceneManager:
         self._stage.Reload()
         self._init_usd_scene()
         self.update_skeletal_animation()      
+
+    def set_animation(self, enable: bool):
+        """
+        Set the animation state of the scene.
+        """
+        self._animation = enable
 
     def enable_animation(self):
         """

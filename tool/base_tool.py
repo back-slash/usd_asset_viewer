@@ -53,6 +53,8 @@ class USDAssetViewer(cbase.Frame):
         Initialize the USD stage and scene manager.
         """
         if self._usd_path and usd_path == self._usd_path:
+            self._sm.set_animation(False)
+            self._trackbar_panel.set_enable_animation(False)
             self._sm.reload_scene()
             return
         if usd_path:

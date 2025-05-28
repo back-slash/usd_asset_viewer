@@ -138,7 +138,8 @@ class AttributePencil(cbase.NodePencil):
         imgui.set_cursor_pos_x(10)
         cursor_position = imgui.get_cursor_pos()
         content_available = imgui.get_content_region_avail()
-        bg_rect_min = imgui.ImVec2(cursor_position[0], cursor_position[1] - 5) + imgui.get_window_pos()
+        scroll_offset = imgui.ImVec2(imgui.get_scroll_x(), imgui.get_scroll_y())
+        bg_rect_min = imgui.ImVec2(cursor_position[0], cursor_position[1] - 5) + imgui.get_window_pos() - scroll_offset
         bg_rect_max = imgui.ImVec2(bg_rect_min[0] + content_available[0], bg_rect_min[1] + 22)
         self._draw_list.add_rect_filled(bg_rect_min, bg_rect_max, imgui.get_color_u32((0.2, 0.2, 0.2, 1)), rounding=2.0, flags=0)
         bg_type_rect_min = imgui.ImVec2(bg_rect_max[0] - 20, bg_rect_min[1])
