@@ -1,7 +1,15 @@
 from typing import Any, Dict, List
 
-
-
+def c_select_bone(mouse_x: int, mouse_y: int, bone_list: List[Any], draw_dict: Dict[str, Any]) -> Any:
+    """
+    Select OpenGL bone at mouse position.
+    
+    Args:
+        mouse_x: X coordinate of the mouse.
+        mouse_y: Y coordinate of the mouse.
+        bone_list: List of bone objects.
+        draw_dict: Drawing parameters.
+    """
 
 def c_clear_scene_cache() -> None:
     """

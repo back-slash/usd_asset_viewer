@@ -37,7 +37,7 @@ endif()
 #################################################################################################################
 #################################################################################################################
 
-# SETUP PYTHON (WINDOIWS)
+# SETUP PYTHON (WINDOWS)
 if (IS_WINDOWS)
     find_package(Python COMPONENTS Interpreter Development)
     if(Python_FOUND)
@@ -55,24 +55,22 @@ link_directories(
 )
 include_directories(${OPENUSD_PATH}/include)
 
-
 # SETUP GLAD
 include_directories(${GLAD_PATH})
 add_library(glad ${GLAD_PATH}/src/glad.c)
 target_include_directories(glad PUBLIC ${GLAD_PATH}/include)
-
 
 # SETUP PYBIND11
 add_subdirectory(${PYBIND11_PATH} ${CMAKE_BINARY_DIR}/pybind11_build)
 pybind11_add_module(c_base src/c_base.cpp)
 
 
-# CREATE
 set_target_properties(c_base PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/../core
     LIBRARY_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/../core
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../core   
 )
+
 target_link_libraries(c_base
     PRIVATE
         usd_gf
@@ -85,20 +83,11 @@ target_link_libraries(c_base
         usd_usdSkel
         usd_usdRender
         usd_usdUtils
-        usd_kind
-        usd_ar
-        usd_js
-        usd_plug
-        usd_work
-        usd_arch
-        usd_pcp
-        usd_vt
         usd_trace
         usd_python
         usd_usdImagingGL
         glad
 )
-
 
 #################################################################################################################
 #################################################################################################################

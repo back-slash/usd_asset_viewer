@@ -412,6 +412,14 @@ class ViewportPanel(cbase.Panel):
         if self._user_cfg["show"]["camera"]:
             cdraw.c_draw_opengl_camera(self._create_c_opengl_draw_dict(), self._sm.create_camera_dict())                      
         if self._user_cfg["show"]["bones"]:
+            if imgui.is_mouse_clicked(imgui.MouseButton_.left) and not self._key_alt:
+                local_mouse_pos = (self._key_mouse_position[0],
+                                   imgui.get_io().display_size[1] - self._key_mouse_position[1])
+                if not self._selected_list:
+                    cdraw.c_select_bone(local_mouse_pos[0], 
+                                        local_mouse_pos[1], 
+                                        self._sm.get_data_node_list_by_type(cbase.Bone),
+                                        self._create_c_opengl_draw_dict())
             cdraw.c_draw_opengl_bone(self._sm.get_data_node_list_by_type(cbase.Bone), self._create_c_opengl_draw_dict())
         if self._user_cfg["show"]["xray"]:
             cdraw.c_draw_opengl_bone_xray(self._sm.get_data_node_list_by_type(cbase.Bone), self._create_c_opengl_draw_dict())

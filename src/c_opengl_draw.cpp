@@ -40,6 +40,183 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//Draw bone faces for selection purposes
+void c_draw_opengl_bone_selection(pybind11::list bone_list, pybind11::dict draw_dict) {
+    glEnable(GL_DEPTH_TEST); // Enable depth test for correct selection
+    int bone_id = 1;
+    for (auto bone : bone_list) {
+        glPushName(bone_id);
+        pybind11::dict data_dict = bone.attr("get_data_object")();
+        pxr::GfMatrix4d bone_matrix = data_dict["anim_matrix"].cast<pxr::GfMatrix4d>();
+        pxr::GfVec3d root_vert = bone_matrix.ExtractTranslation();
+        pybind11::list bone_children = bone.attr("get_child_nodes")();
+        if (bone_children.size() == 0) {
+            pxr::GfVec3d end_bone_start_vert = bone_matrix.Transform(pxr::GfVec3d(-1.0, 0.0, 0.0));
+            pxr::GfVec3d end_bone_vert_1 = bone_matrix.Transform(pxr::GfVec3d(0.0, 1.0, 1.0));
+            pxr::GfVec3d end_bone_vert_2 = bone_matrix.Transform(pxr::GfVec3d(0.0, -1.0, 1.0));
+            pxr::GfVec3d end_bone_vert_3 = bone_matrix.Transform(pxr::GfVec3d(0.0, -1.0, -1.0));
+            pxr::GfVec3d end_bone_vert_4 = bone_matrix.Transform(pxr::GfVec3d(0.0, 1.0, -1.0));
+            pxr::GfVec3d end_bone_end_vert = bone_matrix.Transform(pxr::GfVec3d(1.0, 0.0, 0.0));
+
+            glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
+
+            glBegin(GL_TRIANGLES);           
+            glVertex3d(end_bone_start_vert[0], end_bone_start_vert[1], end_bone_start_vert[2]);
+            glVertex3d(end_bone_vert_1[0], end_bone_vert_1[1], end_bone_vert_1[2]);             
+            glVertex3d(end_bone_vert_2[0], end_bone_vert_2[1], end_bone_vert_2[2]);          
+            
+            glVertex3d(end_bone_start_vert[0], end_bone_start_vert[1], end_bone_start_vert[2]);
+            glVertex3d(end_bone_vert_2[0], end_bone_vert_2[1], end_bone_vert_2[2]);
+            glVertex3d(end_bone_vert_3[0], end_bone_vert_3[1], end_bone_vert_3[2]);
+            
+            glVertex3d(end_bone_start_vert[0], end_bone_start_vert[1], end_bone_start_vert[2]);
+            glVertex3d(end_bone_vert_3[0], end_bone_vert_3[1], end_bone_vert_3[2]);
+            glVertex3d(end_bone_vert_4[0], end_bone_vert_4[1], end_bone_vert_4[2]);
+
+            glVertex3d(end_bone_start_vert[0], end_bone_start_vert[1], end_bone_start_vert[2]);
+            glVertex3d(end_bone_vert_4[0], end_bone_vert_4[1], end_bone_vert_4[2]);
+            glVertex3d(end_bone_vert_1[0], end_bone_vert_1[1], end_bone_vert_1[2]);
+
+            glVertex3d(end_bone_end_vert[0], end_bone_end_vert[1], end_bone_end_vert[2]);
+            glVertex3d(end_bone_vert_1[0], end_bone_vert_1[1], end_bone_vert_1[2]);
+            glVertex3d(end_bone_vert_2[0], end_bone_vert_2[1], end_bone_vert_2[2]);
+
+            glVertex3d(end_bone_end_vert[0], end_bone_end_vert[1], end_bone_end_vert[2]);
+            glVertex3d(end_bone_vert_2[0], end_bone_vert_2[1], end_bone_vert_2[2]);
+            glVertex3d(end_bone_vert_3[0], end_bone_vert_3[1], end_bone_vert_3[2]);
+
+            glVertex3d(end_bone_end_vert[0], end_bone_end_vert[1], end_bone_end_vert[2]);
+            glVertex3d(end_bone_vert_3[0], end_bone_vert_3[1], end_bone_vert_3[2]);
+            glVertex3d(end_bone_vert_4[0], end_bone_vert_4[1], end_bone_vert_4[2]);
+
+            glVertex3d(end_bone_end_vert[0], end_bone_end_vert[1], end_bone_end_vert[2]);
+            glVertex3d(end_bone_vert_4[0], end_bone_vert_4[1], end_bone_vert_4[2]);
+            glVertex3d(end_bone_vert_1[0], end_bone_vert_1[1], end_bone_vert_1[2]);
+            glEnd();
+        }
+
+        for (auto child : bone_children) {
+            pybind11::dict child_data_dict = child.attr("get_data_object")();
+            pxr::GfMatrix4d child_matrix = child_data_dict["anim_matrix"].cast<pxr::GfMatrix4d>();
+            pxr::GfVec3d child_root_vert = child_matrix.ExtractTranslation();
+            double bone_length = (child_root_vert - root_vert).GetLength();
+            
+            if (bone_length < 0.1) {
+                continue;
+            }
+
+            double bone_spur = bone_length * 0.2;
+            double bone_radius = bone_length / 25.0;
+            pxr::GfVec3d up(0.0, 0.0, 1.0);
+
+            pxr::GfMatrix4d bone_world_matrix = calc_look_at_x(root_vert, child_root_vert, up);
+            pxr::GfVec3d bone_middle_vert_1 = bone_world_matrix.Transform(pxr::GfVec3d(bone_spur, bone_radius, bone_radius));
+            pxr::GfVec3d bone_middle_vert_2 = bone_world_matrix.Transform(pxr::GfVec3d(bone_spur, -bone_radius, bone_radius));
+            pxr::GfVec3d bone_middle_vert_3 = bone_world_matrix.Transform(pxr::GfVec3d(bone_spur, -bone_radius, -bone_radius));
+            pxr::GfVec3d bone_middle_vert_4 = bone_world_matrix.Transform(pxr::GfVec3d(bone_spur, bone_radius, -bone_radius));
+            pxr::GfVec3d calc_end_vert = child_root_vert;
+          
+            glBegin(GL_TRIANGLES);
+            glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
+            glVertex3d(root_vert[0], root_vert[1], root_vert[2]);   
+            glVertex3d(bone_middle_vert_1[0], bone_middle_vert_1[1], bone_middle_vert_1[2]);
+            glVertex3d(bone_middle_vert_2[0], bone_middle_vert_2[1], bone_middle_vert_2[2]);
+            glVertex3d(root_vert[0], root_vert[1], root_vert[2]);
+            glVertex3d(bone_middle_vert_2[0], bone_middle_vert_2[1], bone_middle_vert_2[2]);
+            glVertex3d(bone_middle_vert_3[0], bone_middle_vert_3[1], bone_middle_vert_3[2]);
+            glVertex3d(root_vert[0], root_vert[1], root_vert[2]);            
+            glVertex3d(bone_middle_vert_3[0], bone_middle_vert_3[1], bone_middle_vert_3[2]);
+            glVertex3d(bone_middle_vert_4[0], bone_middle_vert_4[1], bone_middle_vert_4[2]);
+            glVertex3d(root_vert[0], root_vert[1], root_vert[2]);            
+            glVertex3d(bone_middle_vert_4[0], bone_middle_vert_4[1], bone_middle_vert_4[2]);
+            glVertex3d(bone_middle_vert_1[0], bone_middle_vert_1[1], bone_middle_vert_1[2]);
+            glVertex3d(calc_end_vert[0], calc_end_vert[1], calc_end_vert[2]);            
+            glVertex3d(bone_middle_vert_1[0], bone_middle_vert_1[1], bone_middle_vert_1[2]);
+            glVertex3d(bone_middle_vert_2[0], bone_middle_vert_2[1], bone_middle_vert_2[2]);
+            glVertex3d(calc_end_vert[0], calc_end_vert[1], calc_end_vert[2]);
+            glVertex3d(bone_middle_vert_2[0], bone_middle_vert_2[1], bone_middle_vert_2[2]);
+            glVertex3d(bone_middle_vert_3[0], bone_middle_vert_3[1], bone_middle_vert_3[2]);
+            glVertex3d(calc_end_vert[0], calc_end_vert[1], calc_end_vert[2]); 
+            glVertex3d(bone_middle_vert_3[0], bone_middle_vert_3[1], bone_middle_vert_3[2]);
+            glVertex3d(bone_middle_vert_4[0], bone_middle_vert_4[1], bone_middle_vert_4[2]);
+            glVertex3d(calc_end_vert[0], calc_end_vert[1], calc_end_vert[2]);  
+            glVertex3d(bone_middle_vert_4[0], bone_middle_vert_4[1], bone_middle_vert_4[2]);
+            glVertex3d(bone_middle_vert_1[0], bone_middle_vert_1[1], bone_middle_vert_1[2]);
+            glEnd();
+        }
+        glPopName();
+        bone_id++;
+    } 
+    c_check_opengl_error();
+}
+
+
+
+// Perform bone selection at given screen coordinates
+int c_select_bone_at_position(pybind11::list bone_list, pybind11::dict draw_dict, float mouse_x, float mouse_y) {
+    const int SELECTION_BUFFER_SIZE = 512;
+    GLuint selection_buffer[SELECTION_BUFFER_SIZE];
+    GLint viewport[4];
+    glSelectBuffer(SELECTION_BUFFER_SIZE, selection_buffer);    
+    int hydra_x_min = draw_dict["hydra_x_min"].cast<int>();
+    int hydra_y_min = draw_dict["hydra_y_min"].cast<int>();
+    int panel_width = draw_dict["panel_width"].cast<int>();
+    int panel_height = draw_dict["panel_height"].cast<int>();
+    glViewport(hydra_x_min, hydra_y_min, panel_width, panel_height);
+    glGetIntegerv(GL_VIEWPORT, viewport);
+    glRenderMode(GL_SELECT);
+    glInitNames();
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    c_create_pick_matrix(mouse_x, mouse_y, 5.0, 5.0, viewport);
+    double fov = draw_dict["fov"].cast<double>();
+    double aspect = double(panel_width) / double(panel_height); // Ensure floating point division
+    double near_plane = draw_dict["near_z"].cast<double>();
+    double far_plane = draw_dict["far_z"].cast<double>();
+    c_create_pick_perspective(fov, aspect, near_plane, far_plane);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    pxr::GfMatrix4d camera_matrix = draw_dict["camera_matrix"].cast<pxr::GfMatrix4d>();
+    double camera_matrix_inverse_gl[16];
+    convert_matrix_usd_gl(camera_matrix.GetInverse(), camera_matrix_inverse_gl);
+    glLoadMatrixd(camera_matrix_inverse_gl);
+    c_draw_opengl_bone_selection(bone_list, draw_dict);
+    GLint hits = glRenderMode(GL_RENDER);
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    int selected_bone_id = 0;
+    if (hits > 0) {
+        GLuint* ptr = selection_buffer;
+        GLuint min_depth = 0xffffffff;
+        for (int i = 0; i < hits; i++) {
+            GLuint name_count = *ptr++;
+            GLuint z1 = *ptr++;
+            GLuint z2 = *ptr++;
+            if (name_count > 0) {
+                GLuint bone_id = ptr[name_count - 1];
+                if (z1 < min_depth) {
+                    min_depth = z1;
+                    selected_bone_id = bone_id;
+                }
+            }
+            ptr += name_count;
+        }
+    }
+    return selected_bone_id;
+}
+
+
+// Select bone logic
+void c_select_bone(float mouse_x, float mouse_y, pybind11::list bone_list, pybind11::dict draw_dict) {
+    int selected_bone_id = c_select_bone_at_position(bone_list, draw_dict, mouse_x, mouse_y);
+    if (selected_bone_id != 0) {
+        pybind11::object selected_bone = c_get_bone_by_id(bone_list, selected_bone_id);
+        selected_bone.attr("set_selected")(true);
+    }
+}
+
 
 
 // Draws bones for overlay visualization
@@ -48,7 +225,6 @@ void c_draw_opengl_bone_xray(pybind11::list bone_list, pybind11::dict draw_dict)
     c_setup_opengl_viewport(
         draw_dict
     );
-    glDisable(GL_DEPTH_TEST);
     
     float line_width = 1.0f;
     std::vector<float> line_color = { 0.66f, 1.0f, 0.66f, 0.5f };
@@ -169,7 +345,7 @@ void c_draw_opengl_bone_xray(pybind11::list bone_list, pybind11::dict draw_dict)
         }
     
     }
-    glEnable(GL_DEPTH_TEST);
+
     glPopMatrix();
     c_check_opengl_error();
 }
@@ -198,6 +374,24 @@ void c_draw_opengl_bone(pybind11::list bone_list, pybind11::dict draw_dict) {
         pxr::GfMatrix4d bone_matrix = data_dict["anim_matrix"].cast<pxr::GfMatrix4d>();
         pxr::GfVec3d root_vert = bone_matrix.ExtractTranslation();
         pybind11::list bone_children = bone.attr("get_child_nodes")();
+
+        if (selected) {
+            glLineWidth(line_width);
+            glBegin(GL_LINES);
+            glColor3f(1.0f, 0.0f, 0.0f);
+            glVertex3d(root_vert[0], root_vert[1], root_vert[2]);
+            pxr::GfVec3d x_axis = bone_matrix.Transform(pxr::GfVec3d(1.0, 0.0, 0.0));
+            glVertex3d(x_axis[0], x_axis[1], x_axis[2]);
+            glColor3f(0.0f, 1.0f, 0.0f);
+            glVertex3d(root_vert[0], root_vert[1], root_vert[2]);
+            pxr::GfVec3d y_axis = bone_matrix.Transform(pxr::GfVec3d(0.0, 1.0, 0.0));
+            glVertex3d(y_axis[0], y_axis[1], y_axis[2]);
+            glColor3f(0.0f, 0.0f, 1.0f);
+            glVertex3d(root_vert[0], root_vert[1], root_vert[2]);
+            pxr::GfVec3d z_axis = bone_matrix.Transform(pxr::GfVec3d(0.0, 0.0, 1.0));
+            glVertex3d(z_axis[0], z_axis[1], z_axis[2]);
+            glEnd();
+        }
 
         if (bone_children.size() == 0) {
 

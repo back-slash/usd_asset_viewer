@@ -7,6 +7,9 @@
 // C++
 #include <iostream>
 #include <vector>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 // PyBind11
 #include "usd_pybind_cast.h"
@@ -91,7 +94,30 @@ void c_setup_opengl_viewport(pybind11::dict draw_dict) {
     glLoadMatrixd(camera_matrix_inverse_gl);
 }
 
+void c_create_pick_matrix(GLdouble x, GLdouble y, GLdouble delta_x, GLdouble delta_y, const GLint viewport[4]) {
+    if (delta_x <= 0.0 || delta_y <= 0.0) return;
+    glTranslated(
+        (viewport[2] - 2.0 * (x - viewport[0])) / delta_x,
+        (viewport[3] - 2.0 * (y - viewport[1])) / delta_y,
+        0.0
+    );
+    glScaled(viewport[2] / delta_x, viewport[3] / delta_y, 1.0);
+}
 
+
+void c_create_pick_perspective(GLdouble fovy, GLdouble aspect, GLdouble near_z, GLdouble far_z) {
+    GLdouble height = tan(fovy * M_PI / 360.0) * near_z;
+    GLdouble width = height * aspect;
+    glFrustum(-width, width, -height, height, near_z, far_z);
+}
+
+
+pybind11::object c_get_bone_by_id(pybind11::list bone_list, int bone_id) {
+    if (bone_id <= 0 || bone_id > static_cast<int>(bone_list.size())) {
+        return pybind11::none();
+    }
+    return bone_list[bone_id - 1];
+}
 
 
 void c_check_opengl_error() {

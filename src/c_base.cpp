@@ -27,7 +27,7 @@
 #undef max
 
 // Project
-#include "c_draw.cpp"
+#include "c_opengl_draw.cpp"
 #include "c_utils.cpp"
 
 
@@ -55,4 +55,9 @@ PYBIND11_MODULE(c_base, m) {
       m.def("c_draw_opengl_camera", &c_draw_opengl_camera, "Draw OpenGL Camera",
             pybind11::arg("draw_dict"),
             pybind11::arg("camera_dict"));
+      m.def("c_select_bone", &c_select_bone, "Select OpenGL bone at mouse position.",
+                  pybind11::arg("mouse_x"),
+                  pybind11::arg("mouse_y"),
+                  pybind11::arg("bone_list"),
+                  pybind11::arg("draw_dict"));
 }
