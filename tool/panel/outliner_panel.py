@@ -5,7 +5,6 @@
 #####################################################################################################################################
 
 # PYTHON
-from tabnanny import check
 from typing import Any
 import os
 
@@ -157,8 +156,9 @@ class OutlinerEntryPencil(cbase.NodePencil):
         Draw the navigation of the node.
         """
         self._nav_list = []
-        parent_node: cbase.Primative = self._node.get_parent_node()
-        for segment in range(self._indent):
+        node_anscenstor = self._node
+        for segment in range(self._indent -1, -1, -1):
+            parent_node = node_anscenstor.get_parent_node() if node_anscenstor else None
             if (segment == self._indent - 1):
                 if not self._node.get_child_nodes():
                     nav_icon = cstat.Icon.ICON_NAV_END
@@ -171,19 +171,24 @@ class OutlinerEntryPencil(cbase.NodePencil):
                 else:
                     nav_icon = cstat.Icon.ICON_NAV_CLOSED_NOP_NOS
             else:
-                if parent_node and self._node.get_has_lower_sibling():
+                if not parent_node and self._node not in node_anscenstor.get_child_nodes():
+                    nav_icon = cstat.Icon.ICON_NAV_SPACER
+                elif parent_node and parent_node.get_has_lower_sibling():
                     nav_icon = cstat.Icon.ICON_NAV_LINE_T
                 elif parent_node and parent_node.get_has_lower_sibling():
-                    nav_icon = cstat.Icon.ICON_NAV_LINE_VERTICAL
+                    nav_icon = cstat.Icon.ICON_NAV_LINE_VERTICAL      
                 elif parent_node and not self._node.get_has_lower_sibling() and parent_node.get_has_lower_sibling():
-                    nav_icon = cstat.Icon.ICON_NAV_LINE_HORIZONTAL          
-                elif parent_node and not self._node.get_has_lower_sibling():
+                    nav_icon = cstat.Icon.ICON_NAV_LINE_VERTICAL
+                elif not parent_node and self._node.get_has_lower_sibling():
+                    nav_icon = cstat.Icon.ICON_NAV_LINE_T
+                elif not self._node.get_has_lower_sibling() or (parent_node and not self._node.get_has_lower_sibling()):
                     nav_icon = cstat.Icon.ICON_NAV_LINE_L
                 else:
                     nav_icon = cstat.Icon.ICON_NAV_SPACER            
-            if parent_node:
-                parent_node = parent_node.get_parent_node()
+            if node_anscenstor:
+                node_anscenstor = node_anscenstor.get_parent_node()
             self._nav_list.append(nav_icon)
+        self._nav_list.reverse()
 
 
     def _draw_navigation(self):
