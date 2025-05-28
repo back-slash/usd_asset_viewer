@@ -151,14 +151,21 @@ class OutlinerEntryPencil(cbase.NodePencil):
             return True
         return False
 
+    def _get_index_parent_node(self, node: cbase.Node, index):
+        for parent_index in range(0, index):
+            parent = node.get_parent_node()
+            node = parent
+        return node
+
+
     def _calc_navigation(self):
         """
         Draw the navigation of the node.
         """
         self._nav_list = []
-        node_anscenstor = self._node
-        for segment in range(self._indent -1, -1, -1):
-            parent_node = node_anscenstor.get_parent_node() if node_anscenstor else None
+        index_node: cbase.Pathed = self._node
+        for index, segment in enumerate(range(self._indent - 1, -1, -1)):
+            parent_node = index_node.get_parent_node() if index_node else None
             if (segment == self._indent - 1):
                 if not self._node.get_child_nodes():
                     nav_icon = cstat.Icon.ICON_NAV_END
@@ -171,24 +178,37 @@ class OutlinerEntryPencil(cbase.NodePencil):
                 else:
                     nav_icon = cstat.Icon.ICON_NAV_CLOSED_NOP_NOS
             else:
-                if not parent_node and self._node not in node_anscenstor.get_child_nodes():
-                    nav_icon = cstat.Icon.ICON_NAV_SPACER
-                elif parent_node and parent_node.get_has_lower_sibling():
-                    nav_icon = cstat.Icon.ICON_NAV_LINE_T
-                elif parent_node and parent_node.get_has_lower_sibling():
-                    nav_icon = cstat.Icon.ICON_NAV_LINE_VERTICAL      
-                elif parent_node and not self._node.get_has_lower_sibling() and parent_node.get_has_lower_sibling():
-                    nav_icon = cstat.Icon.ICON_NAV_LINE_VERTICAL
-                elif not parent_node and self._node.get_has_lower_sibling():
-                    nav_icon = cstat.Icon.ICON_NAV_LINE_T
-                elif not self._node.get_has_lower_sibling() or (parent_node and not self._node.get_has_lower_sibling()):
-                    nav_icon = cstat.Icon.ICON_NAV_LINE_L
+                if not parent_node and self._node not in index_node.get_child_nodes():
+                    nav_icon = cstat.Icon.ICON_NAV_SPACER               
+                elif self._get_index_parent_node(self._node, index - 1).get_has_lower_sibling():
+                    if self._node.get_has_lower_sibling() and index < 2:
+                        nav_icon = cstat.Icon.ICON_NAV_LINE_T
+                    else:
+                        nav_icon = cstat.Icon.ICON_NAV_LINE_VERTICAL
+                elif self._node in index_node.get_child_nodes():
+                    if self._node.get_has_lower_sibling():
+                        nav_icon = cstat.Icon.ICON_NAV_LINE_T
+                    elif not self._node.get_has_lower_sibling():
+                        nav_icon = cstat.Icon.ICON_NAV_LINE_L
                 else:
                     nav_icon = cstat.Icon.ICON_NAV_SPACER            
-            if node_anscenstor:
-                node_anscenstor = node_anscenstor.get_parent_node()
+            index_node = index_node.get_parent_node()
             self._nav_list.append(nav_icon)
         self._nav_list.reverse()
+
+    def _recursive_collapse(self, node: cbase.Node):
+        node.set_expanded(False)
+        node_children = node.get_child_nodes()
+        for node_child in node_children:
+            node_child.set_expanded(False)
+            self._recursive_collapse(node_child)
+
+    def _recursive_expand(self, node: cbase.Node):
+        node.set_expanded(True)
+        node_children = node.get_child_nodes()
+        for node_child in node_children:
+            node_child.set_expanded(True)
+            self._recursive_expand(node_child)
 
 
     def _draw_navigation(self):
@@ -206,10 +226,17 @@ class OutlinerEntryPencil(cbase.NodePencil):
             imgui.set_cursor_pos_x(self._indent_size_x * index)
             if nav_segment == self._nav_list[-1]:
                 if imgui.image_button(f"##nav_{self._node.get_data_object()}", nav_icon_id, image_size=(22, 22), bg_col=(0.0, 0.0, 0.0, 0.0), tint_col=nav_color):
+                    key_shift = imgui.get_io().key_shift
                     if self._node.get_expanded():
-                        self._node.set_expanded(False)
+                        if key_shift:
+                            self._recursive_collapse(self._node)                            
+                        else:
+                            self._node.set_expanded(False)
                     else:
-                        self._node.set_expanded(True)
+                        if key_shift:
+                            self._recursive_expand(self._node)  
+                        else:
+                            self._node.set_expanded(True)
             else:
                 imgui.image_with_bg(nav_icon_id, (22, 22), bg_col=(0.0, 0.0, 0.0, 0.0), tint_col=nav_color)
             imgui.pop_style_color(3)

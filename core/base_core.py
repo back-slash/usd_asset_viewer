@@ -533,10 +533,12 @@ class Skeleton(Primative):
         for bone in self._bone_dict:
             parent_path = bone.get_relative_path().GetParentPath()
             if parent_path == psdf.Path("."):
+                bone._parent_node = self
                 self._add_child(bone)
             else:
                 parent_bone = self._get_bone_from_path(parent_path)
                 if parent_bone:
+                    bone._parent_node = parent_bone
                     parent_bone.add_child(bone)
 
     def _get_bone_from_path(self, path: psdf.Path) -> 'Bone':
@@ -1359,7 +1361,6 @@ class SceneManager:
         for node in (self._path_node_list + self._data_node_list):
             node.calc_lower_sibling()
         
-
     def create_camera_dict(self):
         """
         Create a list of lights in the scene.
