@@ -102,8 +102,8 @@ void c_create_pick_matrix(GLdouble x, GLdouble y, GLdouble delta_x, GLdouble del
 }
 
 
-void c_create_pick_perspective(GLdouble fovy, GLdouble aspect, GLdouble near_z, GLdouble far_z) {
-    GLdouble height = tan(fovy * M_PI / 360.0) * near_z;
+void c_create_pick_perspective(GLdouble fov, GLdouble aspect, GLdouble near_z, GLdouble far_z) {
+    GLdouble height = tan(fov * M_PI / 360.0) * near_z;
     GLdouble width = height * aspect;
     glFrustum(-width, width, -height, height, near_z, far_z);
 }
@@ -121,13 +121,6 @@ void c_check_opengl_error() {
     GLenum err = glGetError();
     if (err != GL_NO_ERROR) {
         std::cerr << "OpenGL error: " << err << std::endl;
-    }
-}
-
-void check_gl_error(const char* msg) {
-    GLenum err = glGetError();
-    if (err != GL_NO_ERROR) {
-        std::cerr << "OpenGL error (" << msg << "): " << err << std::endl;
     }
 }
 
