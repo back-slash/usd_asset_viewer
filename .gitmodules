@@ -1,0 +1,9 @@
+[submodule "external/pybind11"]
+	path = external/pybind11
+	url = https://github.com/pybind/pybind11.git
+[submodule "external/glad"]
+	path = external/glad
+	url = https://github.com/Dav1dde/glad.git
+[submodule "external/OpenUSD"]
+	path = external/OpenUSD
+	url = https://github.com/PixarAnimationStudios/OpenUSD.git
