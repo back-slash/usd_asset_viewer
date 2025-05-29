@@ -3,6 +3,7 @@
 
 
 ## Status
+- DAY 29/30
 - WORK IN PROGRESS
 
 
