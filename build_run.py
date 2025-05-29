@@ -9,15 +9,28 @@ import subprocess
 import sys
 import argparse
 import tempfile
+
 #####################################################################################################################################
-parser = argparse.ArgumentParser(description="USD Asset Viewer Build and Run Script")
-parser.add_argument("--run", action="store_true", help="run tool")
+parser = argparse.ArgumentParser()
+parser.add_argument("--run", action="store_true")
 args = parser.parse_args()
 #####################################################################################################################################
 # SET VISUAL STUDIO PATH (WINDOWS)
 #####################################################################################################################################
+
+
+os_type = os.name
+if os_type == 'nt': python_name = "python"
+else: python_name = "python3"
+build_directory = "build"
+cmake_cache = os.path.join(build_directory, "CMakeCache.txt")
+venv_directory = os.path.join(os.path.dirname(__file__), ".venv")
+requirements_file = os.path.join(os.path.dirname(__file__), "requirements.txt")
+
+
 def find_vs_path():
-    drive_list = [f"{drive}:\\" for drive in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" if os.path.exists(f"{drive}:\\Program Files\\Microsoft Visual Studio")]
+    common_path = "\\Program Files\\Microsoft Visual Studio"
+    drive_list = [f"{drive}:\\" for drive in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" if os.path.exists(f"{drive}:{common_path}")]
     if drive_list:
         vs_root = os.path.join(drive_list[0], "Program Files", "Microsoft Visual Studio")
     if not os.path.exists(vs_root):
@@ -31,18 +44,6 @@ def find_vs_path():
         path = os.path.join(vs_root, latest_year, edition, "VC", "Auxiliary", "Build", "vcvarsall.bat")
         if os.path.exists(path):
             return path
-#####################################################################################################################################
-
-os_type = os.name
-if os_type == 'nt': python_name = "python"
-else: python_name = "python3"
-build_directory = "build"
-cmake_cache = os.path.join(build_directory, "CMakeCache.txt")
-venv_directory = os.path.join(os.path.dirname(__file__), ".venv")
-requirements_file = os.path.join(os.path.dirname(__file__), "requirements.txt")
-
-
-
 
 
 def run_python_command_ve(command_list):
@@ -86,10 +87,8 @@ def init_submodules():
     try:
         subprocess.run(["git", "submodule", "update", "--init", "--recursive"], check=True, cwd=os.path.dirname(__file__))
         print("Sub-modules initialized successfully...")
-        return True
     except subprocess.CalledProcessError:
         print("Warning: git not found")
-        return False
 
 
 def check_usd_build():
@@ -103,7 +102,6 @@ def create_build():
         if not os.path.isdir(build_directory):
             os.makedirs(build_directory)
         subprocess.check_call(["cmake", "-S", ".", "-B", build_directory])
-        return True
 
 
 def run_build_process():
