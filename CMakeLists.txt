@@ -10,7 +10,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #################################################################################################################
 
 # External Dependencies
-set(OPENUSD_PATH "P:/DATA/CODE/OpenUSD")
+set(OPENUSD_PATH "${CMAKE_SOURCE_DIR}/external/OpenUSD_")
 set(GLAD_PATH "${CMAKE_SOURCE_DIR}/external/GLAD")
 set(PYBIND11_PATH "${CMAKE_SOURCE_DIR}/external/pybind11")
 #################################################################################################################

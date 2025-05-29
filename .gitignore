@@ -1,5 +1,6 @@
 #COMPILED
 __pycache__/
+external/OpenUSD_
 
 #HIDDEN
 .*
