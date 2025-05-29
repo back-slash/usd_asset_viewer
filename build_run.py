@@ -34,25 +34,50 @@ def find_vs_path():
 #####################################################################################################################################
 
 os_type = os.name
+if os_type == 'nt': python_name = "python"
+else: python_name = "python3"
 build_directory = "build"
 cmake_cache = os.path.join(build_directory, "CMakeCache.txt")
 venv_directory = os.path.join(os.path.dirname(__file__), ".venv")
 requirements_file = os.path.join(os.path.dirname(__file__), "requirements.txt")
 
 
-def build_usd_module_windows(python_path):
-    vs_path = find_vs_path()
-    if not vs_path:
-        print("Visual Studio not found. Please install Visual Studio with C++ development tools.")
-        return False
-    print(f"Setting up MSVC environment...")
+
+
+
+def run_python_command_ve(command_list):
+    """
+    Run a Python command in the virtual environment.
+    """
+    if os_type == 'nt':
+        venv_activate = os.path.join(os.path.dirname(__file__), ".venv/Scripts/activate.bat")
+        command_list.insert(0, f'call "{venv_activate}"')
+    else:
+        venv_activate = os.path.join(os.path.dirname(__file__), ".venv/bin/activate")
+        command_list.insert(0, f'. "{venv_activate}"')
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.bat', delete=False) as f:
+        for command in command_list:
+            f.write(f'{command}\n')
+        batch_file = f.name
+    if os_type == 'nt':
+        subprocess.check_call([batch_file], shell=True)
+    else:
+        os.chmod(batch_file, 0o755)
+        subprocess.check_call([batch_file], shell=True)
+
+
+def build_usd_module():
     script_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD", "build_scripts", "build_usd.py")
     output_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_")
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.bat', delete=False) as f:
-        f.write(f'call "{vs_path}" x64\n')
-        f.write(f'{python_path} "{script_path}" --ptex --usd-imaging "{output_path}"\n')
-        batch_file = f.name
-    subprocess.check_call([batch_file], shell=True)
+    command_list = [f'{python_name} "{script_path}" --ptex --usd-imaging "{output_path}"\n']    
+    if os_type == 'nt':
+        vs_path = find_vs_path()
+        if not vs_path:
+            print("Visual Studio not found. Please install Visual Studio with C++ development tools.")
+            return False
+        print(f"Setting up MSVC environment...")
+        command_list.insert(0, f'call "{vs_path}" x64\n',)
+    run_python_command_ve(command_list)
     return True
 
 
@@ -70,13 +95,6 @@ def init_submodules():
 def check_usd_build():
     include_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_.flag")
     return os.path.exists(include_path)
-
-
-def build_usd_module(python_path: str):
-    print("Building git submodules...")
-    script_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD", "build_scripts", "build_usd.py")
-    output_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD")
-    subprocess.run([python_path, script_path, "--ptex", "--usd-imaging", output_path])
     
 
 def create_build():
@@ -93,52 +111,36 @@ def run_build_process():
     subprocess.check_call(["cmake", "--build", build_directory, "--config", "Release"])
 
 
-def setup_virtual_environment() -> str:
+def setup_virtual_environment():
     if not os.path.isdir(venv_directory):
         print("Creating virtual environment...")
         subprocess.check_call([sys.executable, "-m", "venv", venv_directory])
-    if os_type == 'nt':
-        venv_activate = os.path.join(os.path.dirname(__file__), ".venv/Scripts/activate.bat")
-    else:
-        venv_activate = os.path.join(os.path.dirname(__file__), ".venv/bin/activate")
-    python_path = os.path.join(os.path.dirname(venv_activate), "python")
-    return python_path, venv_activate
 
 
-def activate_virtual_environment(venv_activate):
-    print(f"Activating virtual environment...")
-    subprocess.call(venv_activate)
-
-
-def install_python_dependencies(python_executable: str):
+def install_python_dependencies():
     print("Check/Install Python requirements...")
-    subprocess.check_call([python_executable, "-m", "pip", "install", "-r", requirements_file])
+    run_python_command_ve([f'{python_name} -m pip install -r "{requirements_file}"'])
 
 
-def run(python_path: str):
+def run():
     print("Running the USD Asset Viewer...")
-    subprocess.run([python_path, "build_run.py", "--run"])
+    run_python_command_ve([f"{python_name} build_run.py --run"])
 
 
 def build_run():
     init_submodules()
-    python_path, venv_activate = setup_virtual_environment()
-    activate_virtual_environment(venv_activate)
-    install_python_dependencies(python_path)
+    setup_virtual_environment()
+    install_python_dependencies()
     usd_build = False
     if not check_usd_build():
-        if os_type == 'nt':
-            usd_build = build_usd_module_windows(python_path)
-        else:
-            usd_build = build_usd_module(python_path)
+        usd_build = build_usd_module()
     if usd_build:
         usd_built_flag = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_.flag")
         with open(usd_built_flag, "w") as f:
-            f.write("USD build complete\n")
-    else:
-        create_build()
-        run_build_process()
-        run(python_path)
+            f.write("USD build complete!\n")
+    create_build()
+    run_build_process()
+    run()
 
 
 #####################################################################################################################################
@@ -148,7 +150,6 @@ if not args.run:
     build_run()
 
 else:
-    python_path, venv_activate = setup_virtual_environment()
-    activate_virtual_environment(venv_activate)
-    import tool.base_tool as bt
-    bt.USDAssetViewer()
+    sys.path.append(os.path.join(os.path.dirname(__file__), "external", "OpenUSD_", "lib", "python"))
+    import tool.base_tool as base_tool
+    base_tool.USDAssetViewer()
