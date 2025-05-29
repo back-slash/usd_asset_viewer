@@ -3,6 +3,8 @@
 
 
 ## Status
+- 1 Month Project
+- Day 29/31
 - WORK IN PROGRESS
 
 
@@ -20,14 +22,14 @@
         - Shaded with wireframe
         - Full shading
     - OGL visualization for non-geometry objects:
+        - Grid
+        - Orientation gizmo
         - Camera
         - XForm
         - Lights
-        - Bone (Solid and XRay)
+        - Bone (solid and xray)
 - Outliner panel:
     - Standard view
-    - Skeleton view
-    - Material view
 - Details panel:
     - Input / Output
 - Trackbar panel:
@@ -40,32 +42,28 @@
         - Add
         - Subtract
         - Mask
-- Nodes
-    - Visualize the scene as nodes
 
 
 ## Installation
-#### COMPATIBILITY
+#### Compatibility:
 - Windows (Tested)
 - Linux (Tested)
 - Mac (WIP)
-#### USD
-- Clone OpenUSD https://github.com/PixarAnimationStudios/OpenUSD
-- Install using provided build script. Include `--usd-imaging` and `--ptex` and fllow instructions
-- Set OpenUSD path in `CMakeLists.txt`
-#### GLAD
-- Go to https://glad.dav1d.de/ to download GLAD (4.5). Set path in `CMakeLists.txt`
-#### PYBIND
-- Go to https://github.com/pybind/pybind11 and clone. Set path in `CMakeLists.txt`
-#### PYTHON
-- Python 3
-- Dependencies:
-    - imgui_bundle
-    - toml
+#### Requirments:
+- Python >3.10
+- C ++ Compiler
+    - Windows: VS 2019+ (OpenUSD)
+
+
+#### Steps:
+1) `git clone https://github.com/back-slash/usd_asset_viewer.git`
+2) `cd usd_asset_viewer`
+3) Windows: `python build_run.py` Linux: `python3 build_run.py`
+4) Allow build script to install all dependencies. This can take a long time due to building OpenUSD.
+5) Once building is complete USD Asset Viewer will open.
 
 
 ## Usage
-- Once all dependencies and installed, and paths set in `CMakeLists.txt`, run `build_run.py`
 - File > Open USD > *.usd
 
 
