@@ -251,8 +251,6 @@ class Pathed(Node):
         self._set_name()
         self._data_object: pusd.Prim | pusd.Attribute
         self._path = self._data_object.GetPath()
-        print(f"Path: {self._path}")
-        print(f"Prim: {self._name}")
         parent_path = self._path.GetParentPath()
         self._parent_prim = self._sm.get_stage().GetPrimAtPath(parent_path)
         self._prim_object = self._sm.get_stage().GetPrimAtPath(self._path)
