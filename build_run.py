@@ -9,7 +9,6 @@ import subprocess
 import sys
 import argparse
 import tempfile
-import glob
 #####################################################################################################################################
 parser = argparse.ArgumentParser(description="USD Asset Viewer Build and Run Script")
 parser.add_argument("--run", action="store_true", help="run tool")
@@ -17,23 +16,21 @@ args = parser.parse_args()
 #####################################################################################################################################
 # SET VISUAL STUDIO PATH (WINDOWS)
 #####################################################################################################################################
-def find_vs_paths():
-    drive_list = [f"{drive}:\\" for drive in "CDEFGHIJKLMNOPQRSTUVWXYZ" if os.path.exists(f"{drive}:\\Program Files\\Microsoft Visual Studio")]
+def find_vs_path():
+    drive_list = [f"{drive}:\\" for drive in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" if os.path.exists(f"{drive}:\\Program Files\\Microsoft Visual Studio")]
     if drive_list:
         vs_root = os.path.join(drive_list[0], "Program Files", "Microsoft Visual Studio")
     if not os.path.exists(vs_root):
-        return []
+        return False
     year_list = [directory for directory in os.listdir(vs_root) if directory.isdigit()]
     if not year_list:
-        return []
+        return False
     latest_year = max(year_list)
     editions = ["Community", "Professional", "Enterprise", "BuildTools"]
-    found_paths = []
     for edition in editions:
-        pattern = os.path.join(vs_root, latest_year, edition, "VC", "Auxiliary", "Build", "vcvarsall.bat")
-        matches = glob.glob(pattern)
-        found_paths.extend(matches)
-    return found_paths
+        path = os.path.join(vs_root, latest_year, edition, "VC", "Auxiliary", "Build", "vcvarsall.bat")
+        if os.path.exists(path):
+            return path
 #####################################################################################################################################
 
 os_type = os.name
@@ -44,17 +41,19 @@ requirements_file = os.path.join(os.path.dirname(__file__), "requirements.txt")
 
 
 def build_usd_module_windows(python_path):
-    vs_paths = find_vs_paths()
-    for vs_path in vs_paths:
-        if os.path.exists(vs_path):
-            print(f"Setting up MSVC environment...")
-            script_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD", "build_scripts", "build_usd.py")
-            output_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_")
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.bat', delete=False) as f:
-                f.write(f'call "{vs_path}" x64\n')
-                f.write(f'{python_path} "{script_path}" --ptex --usd-imaging "{output_path}"\n')
-                batch_file = f.name
-            subprocess.check_call([batch_file], shell=True)
+    vs_path = find_vs_path()
+    if not vs_path:
+        print("Visual Studio not found. Please install Visual Studio with C++ development tools.")
+        return False
+    print(f"Setting up MSVC environment...")
+    script_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD", "build_scripts", "build_usd.py")
+    output_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_")
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.bat', delete=False) as f:
+        f.write(f'call "{vs_path}" x64\n')
+        f.write(f'{python_path} "{script_path}" --ptex --usd-imaging "{output_path}"\n')
+        batch_file = f.name
+    subprocess.check_call([batch_file], shell=True)
+    return True
 
 
 def init_submodules():
@@ -69,7 +68,7 @@ def init_submodules():
 
 
 def check_usd_build():
-    include_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_")
+    include_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_.flag")
     return os.path.exists(include_path)
 
 
@@ -126,14 +125,20 @@ def build_run():
     python_path, venv_activate = setup_virtual_environment()
     activate_virtual_environment(venv_activate)
     install_python_dependencies(python_path)
+    usd_build = False
     if not check_usd_build():
         if os_type == 'nt':
-            build_usd_module_windows(python_path)
+            usd_build = build_usd_module_windows(python_path)
         else:
-            build_usd_module(python_path)
-    create_build()
-    run_build_process()
-    run(python_path)
+            usd_build = build_usd_module(python_path)
+    if usd_build:
+        usd_built_flag = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_.flag")
+        with open(usd_built_flag, "w") as f:
+            f.write("USD build complete\n")
+    else:
+        create_build()
+        run_build_process()
+        run(python_path)
 
 
 #####################################################################################################################################
