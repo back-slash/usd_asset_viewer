@@ -64,11 +64,11 @@ def install_python_dependencies(python_executable: str):
     subprocess.check_call([python_executable, "-m", "pip", "install", "-r", requirements_file])
 
 def build_run():
-    #create_build()
-    #run_build_process()
-    #python_path, venv_activate = setup_virtual_environment()
-    #activate_virtual_environment(venv_activate)
-    #install_python_dependencies(python_path)
+    create_build()
+    run_build_process()
+    python_path, venv_activate = setup_virtual_environment()
+    activate_virtual_environment(venv_activate)
+    install_python_dependencies(python_path)
     import tool.base_tool as tbase
     ui = tbase.USDAssetViewer()
 
