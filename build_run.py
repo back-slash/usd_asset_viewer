@@ -11,7 +11,7 @@ import argparse
 import tempfile
 
 #####################################################################################################################################
-USD_PATH = "" # USE IF MANUALLY BUILDING OR ALREADY HAVE USD BUILT
+USD_PATH = "" # USE IF MANUALLY BUILDING OR ALREADY HAVE A COMPATIBLE USD BUILD
 #####################################################################################################################################
 parser = argparse.ArgumentParser()
 parser.add_argument("--run", action="store_true")
@@ -24,8 +24,9 @@ build_directory = "build"
 cmake_cache = os.path.join(build_directory, "CMakeCache.txt")
 venv_directory = os.path.join(os.path.dirname(__file__), ".venv")
 requirements_file = os.path.join(os.path.dirname(__file__), "requirements.txt")
-#####################################################################################################################################
 capured_env = os.environ.copy()
+#####################################################################################################################################
+
 
 def run_python_command(command_list: list, venv: bool = True):
     """
@@ -38,7 +39,8 @@ def run_python_command(command_list: list, venv: bool = True):
         else:
             venv_activate = os.path.join(os.path.dirname(__file__), ".venv/bin/activate")
             command_list.insert(0, f'. "{venv_activate}"')
-    with tempfile.NamedTemporaryFile(mode='w', delete=False) as file:
+    file_type = ".bat" if os_type == 'nt' else ""
+    with tempfile.NamedTemporaryFile(mode='w', suffix=file_type, delete=False) as file:
         for command in command_list:
             file.write(f'{command}\n')
         batch_file = file.name
@@ -78,7 +80,6 @@ def check_usd_build(usd_path) -> bool:
         return False
 
 
-
 def build_usd_module() -> bool:
     """
     Build the USD module using the provided script.
@@ -93,6 +94,8 @@ def build_usd_module() -> bool:
             print("Visual Studio not found. Please build OpenUSD manually.")
             return False
         command_list.insert(0, f'call "{vs_path}" x64\n',)
+        special_print("Using Visual Studio at:", vs_path)
+        special_print("Building OpenUSD...")
         run_python_command(command_list)
         build = True
     else:
@@ -101,13 +104,13 @@ def build_usd_module() -> bool:
         command_list.insert(2, f'. {os.path.join(usd_path, ".venv", "bin", "activate")}\n')
         command_list.insert(3, f'pip install PySide6 PyOpenGL')
         command_list.append(f'rm -r .venv\n')
+        special_print("Building OpenUSD...")
         run_python_command(command_list, venv=False)
         build = True
     if build:
         usd_built_flag = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_.flag")
         with open(usd_built_flag, "w") as f:
             f.write("USD build completed successfully.\n")   
-
 
 
 # WELP
@@ -203,11 +206,10 @@ def special_print(printable):
 
 
 #####################################################################################################################################
-
+# Entry
 
 if not args.run:
     build_run()
-
 else:
     if not USD_PATH:
         USD_PATH = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_", "lib", "python")

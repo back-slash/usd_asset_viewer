@@ -11,7 +11,7 @@
 
 ## Features
 
-#### Core (1 Month Challenge)
+### Core (1 Month Project)
 - Hydra viewport
     - Default camera
     - Default lighting
@@ -35,14 +35,16 @@
         - In place
         - Root motion
 
-#### Future
+### Future
 - Animation node editor:
     - Add
     - Subtract
     - Mask
 - Material editor:
-    - Basic editing
-
+    - Add
+    - Subtract
+    - Multiply
+    - Mask
 
 ## Installation
 #### Compatibility:
@@ -50,6 +52,7 @@
 - Linux (Tested)
 - Mac (WIP)
 #### Requirments:
+- git
 - Python >=3.10
 - C ++ Compiler
     - Windows: VS 2019+ (OpenUSD)
@@ -62,6 +65,7 @@
 3) Windows: `python build_run.py` Linux: `python3 build_run.py`
 4) Allow build script to install all dependencies. This can take a long time due to building OpenUSD.
 5) Once building is complete USD Asset Viewer will open.
+6) Future runs can be done using step 3.
 
 
 ## Usage
