@@ -50,7 +50,7 @@ def run_python_command(command_list: list, venv: bool = True, cwd: str = None) -
         subprocess.run([batch_file], shell=True)
     else:
         os.chmod(batch_file, 0o755)
-        subprocess.run([batch_file], shell=True, cwd=cwd, env=capured_env)
+        subprocess.run([batch_file], shell=True, cwd=cwd, env=capured_env, executable="/bin/bash")
 
 
 def init_submodules() -> bool:
