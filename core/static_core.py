@@ -33,6 +33,7 @@ class Icon(Enum):
     ICON_LIGHT = "icon_light"
     ICON_CAMERA = "icon_camera"
     ICON_MATERIAL = "icon_material"
+    ICON_SHADER = "icon_shader"
     ICON_TEXTURE = "icon_texture"
     ICON_NULL = "icon_null"
     ICON_CURVE = "icon_curve"

@@ -679,11 +679,22 @@ class Material(Primative):
         self._node_color = (0.5, 0.4, 0.6, 1.0)
         self._node_icon = cstat.Icon.ICON_MATERIAL
 
+class Shader(Primative):
+    """
+    Class representing a shader node.
+    """
+    def __init__(self, data_object, parent_node=None):
+        super().__init__(data_object, parent_node)
+        
+    def _init_node_data(self):
+        super()._init_node_data()    
+        self._node_color = (0.3, 0.7, 0.2, 1.0)
+        self._node_icon = cstat.Icon.ICON_SHADER
+
     def _init_textures(self):
         """
-        Load the textures of the material node.
+        Load the textures of the shader node.
         """
-
 
 class Curve(Primative):
     """
@@ -1207,6 +1218,7 @@ class SceneManager:
             "Skeleton": Skeleton,
             "SkelRoot": SkeletonRoot,
             "SkelAnimation": Animation,
+            "Shader" : Shader,
             "Material": Material,
             "BasisCurves": Curve,
             "NurbsCurves": Curve,
