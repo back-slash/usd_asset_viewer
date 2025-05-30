@@ -9,13 +9,15 @@ import subprocess
 import sys
 import argparse
 import tempfile
-
 #####################################################################################################################################
-USD_PATH = "" # USE IF MANUALLY BUILDING OR ALREADY HAVE A COMPATIBLE USD BUILD
+USD_PATH = "" # Root directory for manually compiled OpenUSD
 #####################################################################################################################################
 parser = argparse.ArgumentParser()
 parser.add_argument("--run", action="store_true")
+parser.add_argument("--usd-path", type=str)
 args = parser.parse_args()
+if args.usd_path:
+    USD_PATH = args.usd_path
 #####################################################################################################################################
 os_type = os.name
 if os_type == 'nt': python_name = "python"
@@ -28,7 +30,7 @@ capured_env = os.environ.copy()
 #####################################################################################################################################
 
 
-def run_python_command(command_list: list, venv: bool = True):
+def run_python_command(command_list: list, venv: bool = True, cwd: str = None) -> None:
     """
     Run a Python command w/ or w/o virtual environment.
     """
@@ -45,10 +47,10 @@ def run_python_command(command_list: list, venv: bool = True):
             file.write(f'{command}\n')
         batch_file = file.name
     if os_type == 'nt':
-        subprocess.check_call([batch_file], shell=True)
+        subprocess.run([batch_file], shell=True)
     else:
         os.chmod(batch_file, 0o755)
-        subprocess.check_call([batch_file], shell=True, env=capured_env)
+        subprocess.run([batch_file], shell=True, cwd=cwd, env=capured_env)
 
 
 def init_submodules() -> bool:
@@ -105,7 +107,7 @@ def build_usd_module() -> bool:
         command_list.insert(3, f'pip install PySide6 PyOpenGL')
         command_list.append(f'rm -r .venv\n')
         special_print("Building OpenUSD...")
-        run_python_command(command_list, venv=False)
+        run_python_command(command_list, venv=False, cwd=usd_path)
         build = True
     if build:
         usd_built_flag = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_.flag")
@@ -212,7 +214,8 @@ if not args.run:
     build_run()
 else:
     if not USD_PATH:
-        USD_PATH = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_", "lib", "python")
+        USD_PATH = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_")
+    USD_PATH = os.path.join(USD_PATH, "lib", "python")
     sys.path.append(USD_PATH)
     import tool.base_tool as base_tool
     base_tool.USDAssetViewer()
