@@ -25,7 +25,7 @@ cmake_cache = os.path.join(build_directory, "CMakeCache.txt")
 venv_directory = os.path.join(os.path.dirname(__file__), ".venv")
 requirements_file = os.path.join(os.path.dirname(__file__), "requirements.txt")
 #####################################################################################################################################
-
+capured_env = os.environ.copy()
 
 def run_python_command(command_list: list, venv: bool = True):
     """
@@ -46,7 +46,7 @@ def run_python_command(command_list: list, venv: bool = True):
         subprocess.check_call([batch_file], shell=True)
     else:
         os.chmod(batch_file, 0o755)
-        subprocess.check_call([batch_file], shell=True)
+        subprocess.check_call([batch_file], shell=True, env=capured_env)
 
 
 def init_submodules() -> bool:
