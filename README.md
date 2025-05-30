@@ -1,19 +1,17 @@
 # USD Asset Viewer
 - A python/C++ tool for navigating USD (Universal Scene Description) scene hierarchies.
 
-
 ## Status
 - 1 Month Project
-- Day 29/31
+- Day 30/31
 - WORK IN PROGRESS
-
 
 ## Current Screenshot
 ![USD Asset Viewer WIP Screenshot](docs/current_wip.png)
 
-
 ## Features
-#### Core
+
+#### Core (1 Month Challenge)
 - Hydra viewport
     - Default camera
     - Default lighting
@@ -31,17 +29,19 @@
 - Outliner panel:
     - Standard view
 - Details panel:
-    - Input / Output
+    - Attributes
 - Trackbar panel:
     - Animation Modes:
-        - In Place
-        - Root Motion
+        - In place
+        - Root motion
+
 #### Future
-- Animation blending
-    - Node Editor:
-        - Add
-        - Subtract
-        - Mask
+- Animation node editor:
+    - Add
+    - Subtract
+    - Mask
+- Material editor:
+    - Basic editing
 
 
 ## Installation
@@ -50,12 +50,13 @@
 - Linux (Tested)
 - Mac (WIP)
 #### Requirments:
-- Python >3.10
+- Python >=3.10
 - C ++ Compiler
     - Windows: VS 2019+ (OpenUSD)
 
 
 #### Steps:
+0) Open terminal or powershell.
 1) `git clone https://github.com/back-slash/usd_asset_viewer.git`
 2) `cd usd_asset_viewer`
 3) Windows: `python build_run.py` Linux: `python3 build_run.py`
