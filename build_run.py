@@ -85,7 +85,7 @@ def build_usd_module():
         command_list.insert(1, f'{sys.executable} -m venv {os.path.join(usd_path, ".venv")}\n')
         command_list.insert(2, f'. {os.path.join(usd_path, ".venv", "bin", "activate")}\n')
         command_list.insert(3, f'pip install PySide6 PyOpenGL')
-        command_list.append(f'rm -f .venv\n')
+        command_list.append(f'rm -r .venv\n')
         run_python_command(command_list, venv=False)
 
 
@@ -159,7 +159,7 @@ def special_print(printable):
     # Print each pound sign in a different ANSI color
     colors = ['\033[91m', '\033[92m', '\033[94m']  # Red, Green, Blue
     reset = '\033[0m'
-    orange = '\033[93m'
+    orange = '\033[95m'
     print(' '.join(f"{color}#{reset}" for color in colors), f"{orange}{printable}{reset}",)
 
 
