@@ -15,9 +15,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--run", action="store_true")
 args = parser.parse_args()
 #####################################################################################################################################
-# SET VISUAL STUDIO PATH (WINDOWS)
-#####################################################################################################################################
-
 
 os_type = os.name
 if os_type == 'nt': python_name = "python"
@@ -27,6 +24,7 @@ cmake_cache = os.path.join(build_directory, "CMakeCache.txt")
 venv_directory = os.path.join(os.path.dirname(__file__), ".venv")
 requirements_file = os.path.join(os.path.dirname(__file__), "requirements.txt")
 
+#####################################################################################################################################
 
 def find_vs_path():
     common_path = "\\Program Files\\Microsoft Visual Studio"
@@ -46,20 +44,21 @@ def find_vs_path():
             return path
 
 
-def run_python_command_ve(command_list):
+def run_python_command(command_list: list, venv: bool = True):
     """
     Run a Python command in the virtual environment.
     """
-    if os_type == 'nt':
-        venv_activate = os.path.join(os.path.dirname(__file__), ".venv/Scripts/activate.bat")
-        command_list.insert(0, f'call "{venv_activate}"')
-    else:
-        venv_activate = os.path.join(os.path.dirname(__file__), ".venv/bin/activate")
-        command_list.insert(0, f'. "{venv_activate}"')
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.bat', delete=False) as f:
+    if venv:
+        if os_type == 'nt':
+            venv_activate = os.path.join(os.path.dirname(__file__), ".venv/Scripts/activate.bat")
+            command_list.insert(0, f'call "{venv_activate}"')
+        else:
+            venv_activate = os.path.join(os.path.dirname(__file__), ".venv/bin/activate")
+            command_list.insert(0, f'. "{venv_activate}"')
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.bat', delete=False) as file:
         for command in command_list:
-            f.write(f'{command}\n')
-        batch_file = f.name
+            file.write(f'{command}\n')
+        batch_file = file.name
     if os_type == 'nt':
         subprocess.check_call([batch_file], shell=True)
     else:
@@ -68,6 +67,7 @@ def run_python_command_ve(command_list):
 
 
 def build_usd_module():
+    usd_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD")
     script_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD", "build_scripts", "build_usd.py")
     output_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_")
     command_list = [f'{python_name} "{script_path}" --ptex --usd-imaging "{output_path}"\n']    
@@ -78,8 +78,15 @@ def build_usd_module():
             return False
         print(f"Setting up MSVC environment...")
         command_list.insert(0, f'call "{vs_path}" x64\n',)
-    run_python_command_ve(command_list)
-    return True
+        run_python_command(command_list)
+        return True
+    else:
+        command_list.insert(1, f'cd {usd_path}\n')        
+        command_list.insert(2, f'{sys.executable} venv {os.path.join(usd_path, ".venv")}\n')
+        command_list.insert(3, f'source {os.path.join(usd_path, ".venv", "bin", "activate")}\n')
+        command_list.append(4, f'pip install PySide6 PyOpenGL')
+        run_python_command(command_list, venv=False)
+
 
 
 def init_submodules():
@@ -117,12 +124,12 @@ def setup_virtual_environment():
 
 def install_python_dependencies():
     print("Check/Install Python requirements...")
-    run_python_command_ve([f'{python_name} -m pip install -r "{requirements_file}"'])
+    run_python_command([f'{python_name} -m pip install -r "{requirements_file}"'])
 
 
 def run():
     print("Running the USD Asset Viewer...")
-    run_python_command_ve([f"{python_name} build_run.py --run"])
+    run_python_command([f"{python_name} build_run.py --run"])
 
 
 def build_run():
