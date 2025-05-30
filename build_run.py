@@ -87,6 +87,7 @@ def build_usd_module():
         command_list.insert(3, f'pip install PySide6 PyOpenGL')
         command_list.append(f'rm -r .venv\n')
         run_python_command(command_list, venv=False)
+        return True
 
 
 
