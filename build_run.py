@@ -29,7 +29,7 @@ requirements_file = os.path.join(os.path.dirname(__file__), "requirements.txt")
 
 def run_python_command(command_list: list, venv: bool = True):
     """
-    Run a Python command in the virtual environment.
+    Run a Python command w/ or w/o virtual environment.
     """
     if venv:
         if os_type == 'nt':
@@ -49,7 +49,7 @@ def run_python_command(command_list: list, venv: bool = True):
         subprocess.check_call([batch_file], shell=True)
 
 
-def init_submodules():
+def init_submodules() -> bool:
     """
     Initialize git submodules if they exist.
     """
@@ -63,18 +63,23 @@ def init_submodules():
         return False
 
 
-def check_usd_build():
+def check_usd_build(usd_path) -> bool:
     """
     Check if the USD build exists in the expected location.
     """
-    if os.path.exists(USD_PATH):
-        special_print("USD build found at:", USD_PATH)
+    build_flag_file = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_.flag")
+    if os.path.exists(build_flag_file):
         return True
-    include_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_.flag")
-    return os.path.exists(include_path)
+    elif os.path.exists(usd_path):
+        special_print("USD build found at:", usd_path)
+        return True
+    else:
+        special_print("USD build not found...")
+        return False
 
 
-def build_usd_module():
+
+def build_usd_module() -> bool:
     """
     Build the USD module using the provided script.
     """
@@ -89,7 +94,7 @@ def build_usd_module():
             return False
         command_list.insert(0, f'call "{vs_path}" x64\n',)
         run_python_command(command_list)
-        return True
+        build = True
     else:
         command_list.insert(0, f'cd {usd_path}\n')        
         command_list.insert(1, f'{sys.executable} -m venv {os.path.join(usd_path, ".venv")}\n')
@@ -97,7 +102,12 @@ def build_usd_module():
         command_list.insert(3, f'pip install PySide6 PyOpenGL')
         command_list.append(f'rm -r .venv\n')
         run_python_command(command_list, venv=False)
-        return True
+        build = True
+    if build:
+        usd_built_flag = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_.flag")
+        with open(usd_built_flag, "w") as f:
+            f.write("USD build completed successfully.\n")   
+
 
 
 # WELP
@@ -173,15 +183,10 @@ def build_run():
     if not init_submodules():
         special_print("Submodules initialization failed. Please ensure git is installed and try again.")
         return
+    if not check_usd_build(USD_PATH):
+        build_usd_module()
     setup_virtual_environment()
     install_python_dependencies()
-    usd_build = False
-    if not check_usd_build():
-        usd_build = build_usd_module()
-    if usd_build:
-        usd_built_flag = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_.flag")
-        with open(usd_built_flag, "w") as f:
-            f.write("USD build completed successfully.\n")
     create_build()
     run_build_process()
     run()
