@@ -48,22 +48,30 @@ def run_python_command(command_list: list, venv: bool = True, cwd: str = None) -
             file.write(f'{command}\n')
         batch_file = file.name
     if os_type == 'nt':
-        subprocess.run([batch_file], shell=True)
+        try:
+            subprocess.run([batch_file], shell=True)
+        except subprocess.CalledProcessError as e:
+            special_print(f"Error running command: {e}")
+            return
     else:
         os.chmod(batch_file, 0o755)
-        subprocess.run([batch_file], shell=True, cwd=cwd, env=capured_env)
+        try:
+            subprocess.run([batch_file], shell=True, cwd=cwd, env=capured_env)
+        except subprocess.CalledProcessError as e:
+            special_print(f"Error running command: {e}")
+            return
 
 
 def init_submodules() -> bool:
     """
     Initialize git submodules if they exist.
     """
-    special_print("Initializing git submodules...")
+    special_print("Initializing git sub-modules...")
     try:
-        subprocess.run(["git", "submodule", "update", "--init", "--recursive"], check=True, cwd=os.path.dirname(__file__))
+        run_python_command(["git submodule update --init --recursive"], venv=False, cwd=os.path.dirname(__file__))
         special_print("Sub-modules initialized successfully...")
         return True
-    except subprocess.CalledProcessError:
+    except:
         special_print("Warning: git not found...")
         return False
 
@@ -76,7 +84,7 @@ def check_usd_build(usd_path) -> bool:
     if os.path.exists(build_flag_file):
         return True
     elif os.path.exists(usd_path):
-        special_print("USD build found at:", usd_path)
+        special_print(f"USD build found at: {usd_path}")
         return True
     else:
         special_print("USD build not found...")
@@ -89,8 +97,9 @@ def build_usd_module() -> bool:
     """
     script_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD", "build_scripts", "build_usd.py")
     output_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_")
+    command_list = [f'{python_name} "{script_path}" --ptex --usd-imaging "{output_path}"\n']
+    build = False
     if os_type == 'nt':
-        command_list = [f'{python_name} "{script_path}" --ptex --usd-imaging "{output_path}"\n']
         vs_path = find_vs_path()
         if not vs_path:
             print("Visual Studio not found. Please build OpenUSD manually.")
@@ -101,12 +110,14 @@ def build_usd_module() -> bool:
         run_python_command(command_list)
         build = True
     else:
-        print("Linux warning: please build OpenUSD with the provided script.")
-        build = False
+        special_print("Building OpenUSD...")
+        run_python_command(command_list, venv=True)
+        build = True
     if build:
         usd_built_flag = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_.flag")
         with open(usd_built_flag, "w") as f:
-            f.write("USD build completed successfully.")   
+            f.write("USD build completed successfully.")
+    return build 
 
 
 # WELP
@@ -139,7 +150,7 @@ def create_build():
         special_print(f"Generating CMake files in directory: {build_directory}...")
         if not os.path.isdir(build_directory):
             os.makedirs(build_directory)
-        subprocess.check_call(["cmake", "-S", ".", "-B", build_directory])
+        run_python_command([f"cmake -S . -B {build_directory}"], venv=False)
 
 
 def run_build_process():
@@ -147,7 +158,7 @@ def run_build_process():
     Run the build process using CMake.
     """
     special_print(f"Running CMake in directory: {build_directory}...")
-    subprocess.check_call(["cmake", "--build", build_directory, "--config", "Release"])
+    run_python_command([f"cmake --build {build_directory} --config Release"], venv=False)
 
 
 def setup_virtual_environment():
@@ -156,7 +167,7 @@ def setup_virtual_environment():
     """
     if not os.path.isdir(venv_directory):
         special_print("Creating virtual environment...")
-        subprocess.check_call([sys.executable, "-m", "venv", venv_directory])
+        run_python_command([f'{python_name} -m venv {venv_directory}'], venv=False)
 
 
 def install_python_dependencies():
@@ -184,6 +195,8 @@ def build_run():
         return
     if not check_usd_build(USD_PATH):
         build = build_usd_module()
+    else:
+        build = True
     if build:
         setup_virtual_environment()
         install_python_dependencies()
