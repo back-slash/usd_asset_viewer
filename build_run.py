@@ -31,7 +31,7 @@ capured_env = os.environ.copy()
 #####################################################################################################################################
 
 
-def run_python_command(command_list: list, venv: bool = True, cwd: str = None) -> None:
+def run_python_command(command_list: list, venv: bool = True, cwd: str = None, env: dict = capured_env) -> None:
     """
     Run a Python command w/ or w/o virtual environment.
     """
@@ -49,14 +49,14 @@ def run_python_command(command_list: list, venv: bool = True, cwd: str = None) -
         batch_file = file.name
     if os_type == 'nt':
         try:
-            subprocess.run([batch_file], shell=True)
+            subprocess.run([batch_file], shell=True, env=env)
         except subprocess.CalledProcessError as e:
             special_print(f"Error running command: {e}")
             return
     else:
         os.chmod(batch_file, 0o755)
         try:
-            subprocess.run([batch_file], shell=True, cwd=cwd, env=capured_env)
+            subprocess.run([batch_file], shell=True, cwd=cwd, env=env)
         except subprocess.CalledProcessError as e:
             special_print(f"Error running command: {e}")
             return
@@ -146,6 +146,8 @@ def create_build():
     """
     Create the build directory and generate CMake files if they do not exist.
     """
+    if os.path.isfile(cmake_cache):
+        run_python_command([f"cmake --build {build_directory} --target clean"], venv=False)
     if not os.path.isfile(cmake_cache):
         special_print(f"Generating CMake files in directory: {build_directory}...")
         if not os.path.isdir(build_directory):
@@ -183,7 +185,16 @@ def run():
     Run the USD Asset Viewer application.
     """
     special_print("Running the USD Asset Viewer...")
-    run_python_command([f"{python_name} build_run.py --run"])
+    env = os.environ.copy()
+    global USD_PATH
+    if not USD_PATH:
+        USD_PATH = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_")
+    bin = os.path.join(USD_PATH, "bin")
+    lib = os.path.join(USD_PATH, "lib")
+    python_lib = os.path.join(USD_PATH, "lib", "python")
+    env["PATH"] = str(bin) + os.pathsep + str(lib) + os.pathsep + os.environ.get("PATH", "")
+    env["PYTHONPATH"] = str(python_lib) + os.pathsep + os.environ.get("PYTHONPATH", "")
+    run_python_command([f"{python_name} build_run.py --run"], env=env)
 
 
 def build_run():
@@ -221,9 +232,5 @@ def special_print(printable):
 if not args.run:
     build_run()
 else:
-    if not USD_PATH:
-        USD_PATH = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_")
-    USD_PATH = os.path.join(USD_PATH, "lib", "python")
-    sys.path.append(USD_PATH)
     import tool.base_tool as base_tool
     base_tool.USDAssetViewer()
