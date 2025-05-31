@@ -105,7 +105,7 @@ def build_usd_module() -> bool:
             print("Visual Studio not found. Please build OpenUSD manually.")
             return False
         command_list.insert(0, f'call "{vs_path}" x64\n',)
-        special_print("Using Visual Studio at:", vs_path)
+        special_print("Using Visual Studio at: {vs_path}")
         special_print("Building OpenUSD...")
         run_python_command(command_list)
         build = True
