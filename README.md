@@ -54,11 +54,13 @@
 #### Requirments:
 - git
 - Python >=3.10
+- venv
 - C ++ Compiler
     - Windows: VS 2019+ (OpenUSD)
 
 
 #### Steps:
+0) Ensure requirements are met before install.
 1) Open terminal or powershell.
 2) `git clone https://github.com/back-slash/usd_asset_viewer.git`
 3) `cd usd_asset_viewer`

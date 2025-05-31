@@ -30,7 +30,7 @@ capured_env = os.environ.copy()
 #####################################################################################################################################
 
 
-def run_python_command(command_list: list, venv: bool = True, cwd: str = None, env: dict = capured_env) -> None:
+def run_python_command(command_list: list, venv: bool = True, cwd: str | None = None, env: dict = capured_env) -> None:
     """
     Run a Python command w/ or w/o virtual environment.
     """
@@ -71,7 +71,6 @@ def init_submodules() -> bool:
         special_print("Sub-modules initialized successfully...")
         return True
     except:
-        special_print("Warning: git not found...")
         return False
 
 
@@ -107,16 +106,16 @@ def build_usd_module() -> bool:
         special_print("Using Visual Studio at: {vs_path}")
         special_print("Building OpenUSD...")
         run_python_command(command_list)
-        build = True
+        build = os.path.exists(os.path.join(output_path, "lib", "python"))
     else:
         special_print("Building OpenUSD...")
         run_python_command(command_list, venv=True)
-        build = True
+        build = os.path.exists(os.path.join(output_path, "lib", "python"))
     if build:
         usd_built_flag = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_.flag")
         with open(usd_built_flag, "w") as f:
             f.write("USD build completed successfully.")
-    return build 
+    return build
 
 
 # WELP
@@ -201,15 +200,15 @@ def build_run():
     Main function to build and run the USD Asset Viewer.
     """
     if not init_submodules():
-        special_print("Submodules initialization failed. Please ensure git is installed and try again.")
+        special_print("Sub-module initialization failed. Please ensure git is installed.")
         return
+    setup_virtual_environment()
+    install_python_dependencies()
     if not check_usd_build(USD_PATH):
         build = build_usd_module()
     else:
         build = True
     if build:
-        setup_virtual_environment()
-        install_python_dependencies()
         create_build()
         run_build_process()
         run()
