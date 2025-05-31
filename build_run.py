@@ -2,7 +2,6 @@
 # USD Asset Viewer | Build and Run Script
 # TODO:
 # MACOS: Add support for building on macOS
-# LINUX: Add support for building USD via script on Linux
 #####################################################################################################################################
 # PYTHON
 import os
