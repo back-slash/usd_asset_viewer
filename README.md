@@ -59,14 +59,15 @@
 
 
 #### Steps:
-0) Open terminal or powershell.
+1) Open terminal or powershell.
 2) `git clone https://github.com/back-slash/usd_asset_viewer.git`
 3) `cd usd_asset_viewer`
-4) If you have OpenUSD, add the root path to step 5: `--usd-path path/to/usd` or enter in `build_run.py`.
-5) Windows: `python build_run.py` Linux: `python3 build_run.py`
-6) Allow build script to install all dependencies. This can take a long time due to building OpenUSD.
-7) Once building is complete USD Asset Viewer will open.
-8) Future runs can be done using step 4.
+4) Linux Only: `chmod 775 build_usd_linux.sh` then `./build_usd_linux.sh`. Wait for OpenUSD to build.
+5) If you have OpenUSD or are on Linux, add the root path to step 6: `--usd-path path/to/usd` or enter in `build_run.py`.
+6) Windows: `python build_run.py` Linux: `python3 build_run.py`
+7) Allow build script to install all dependencies.
+8) Once building is complete USD Asset Viewer will open.
+9) Future runs can be done using step 6.
 
 
 ## Usage
