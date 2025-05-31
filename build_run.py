@@ -2,6 +2,7 @@
 # USD Asset Viewer | Build and Run Script
 # TODO:
 # MACOS: Add support for building on macOS
+# LINUX: Add support for building USD via script on Linux
 #####################################################################################################################################
 # PYTHON
 import os
@@ -50,7 +51,7 @@ def run_python_command(command_list: list, venv: bool = True, cwd: str = None) -
         subprocess.run([batch_file], shell=True)
     else:
         os.chmod(batch_file, 0o755)
-        subprocess.run([batch_file], shell=True, cwd=cwd, env=capured_env, executable="/bin/bash")
+        subprocess.run([batch_file], shell=True, cwd=cwd, env=capured_env)
 
 
 def init_submodules() -> bool:
@@ -86,11 +87,10 @@ def build_usd_module() -> bool:
     """
     Build the USD module using the provided script.
     """
-    usd_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD")
     script_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD", "build_scripts", "build_usd.py")
     output_path = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_")
-    command_list = [f'{python_name} "{script_path}" --ptex --usd-imaging "{output_path}"\n']    
     if os_type == 'nt':
+        command_list = [f'{python_name} "{script_path}" --ptex --usd-imaging "{output_path}"\n']
         vs_path = find_vs_path()
         if not vs_path:
             print("Visual Studio not found. Please build OpenUSD manually.")
@@ -101,18 +101,12 @@ def build_usd_module() -> bool:
         run_python_command(command_list)
         build = True
     else:
-        command_list.insert(0, f'cd {usd_path}\n')        
-        command_list.insert(1, f'{sys.executable} -m venv {os.path.join(usd_path, ".venv")}\n')
-        command_list.insert(2, f'. {os.path.join(usd_path, ".venv", "bin", "activate")}\n')
-        command_list.insert(3, f'pip install PySide6 PyOpenGL')
-        command_list.append(f'rm -r .venv\n')
-        special_print("Building OpenUSD...")
-        run_python_command(command_list, venv=False, cwd=usd_path)
-        build = True
+        print("Linux warning: please build OpenUSD with the provided script.")
+        build = False
     if build:
         usd_built_flag = os.path.join(os.path.dirname(__file__), "external", "OpenUSD_.flag")
         with open(usd_built_flag, "w") as f:
-            f.write("USD build completed successfully.\n")   
+            f.write("USD build completed successfully.")   
 
 
 # WELP
@@ -189,12 +183,13 @@ def build_run():
         special_print("Submodules initialization failed. Please ensure git is installed and try again.")
         return
     if not check_usd_build(USD_PATH):
-        build_usd_module()
-    setup_virtual_environment()
-    install_python_dependencies()
-    create_build()
-    run_build_process()
-    run()
+        build = build_usd_module()
+    if build:
+        setup_virtual_environment()
+        install_python_dependencies()
+        create_build()
+        run_build_process()
+        run()
 
 
 def special_print(printable):
