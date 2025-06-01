@@ -144,8 +144,6 @@ def create_build():
     """
     Create the build directory and generate CMake files if they do not exist.
     """
-    if os.path.isfile(cmake_cache):
-        run_python_command([f"cmake --build {build_directory} --target clean"], venv=False)
     if not os.path.isfile(cmake_cache):
         special_print(f"Generating CMake files in directory: {build_directory}...")
         if not os.path.isdir(build_directory):
