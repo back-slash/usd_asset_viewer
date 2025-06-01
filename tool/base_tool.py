@@ -47,6 +47,12 @@ class USDAssetViewer(cbase.Frame):
         self._details_panel = tpd.DetailPanel(self)
         self._trackbar_panel = tpt.TrackbarPanel(self)
         self._viewport = tvp.ViewportPanel(self)
+        self._panel_list = [
+            self._outliner_panel,
+            self._details_panel,
+            self._trackbar_panel,
+            self._viewport
+        ]
 
     def _init_usd_stage(self, usd_path=None):
         """
@@ -152,3 +158,7 @@ class USDAssetViewer(cbase.Frame):
             stats_overlay_size = imgui.ImVec2(viewport_rect[2] - viewport_rect[0], viewport_rect[3] - viewport_rect[1])
             self._draw_stats_overlay(stats_overlay_position, stats_overlay_size)
 
+    def _shutdown(self, *args):
+        for panel in self._panel_list:
+            panel.shutdown()
+        super()._shutdown(*args)
