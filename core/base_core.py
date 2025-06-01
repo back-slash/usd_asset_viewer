@@ -1892,8 +1892,6 @@ class RenderContextManager:
             self.context_list.remove(context)
             imgui.set_current_context(context)
 
-
-
     def render(self, draw_data, context):
         """
         Render the ImGui context.
@@ -2024,6 +2022,7 @@ class GLFWOpenGLWindow:
         """
         imgui.backends.opengl3_shutdown()
         imgui.backends.glfw_shutdown()
+        imgui.destroy_context(imgui.get_current_context())
         glfw.destroy_window(self._window)
         glfw.terminate()
         sys.exit()      

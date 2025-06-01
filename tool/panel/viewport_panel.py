@@ -672,7 +672,7 @@ class ViewportPanel(cbase.Panel):
         imgui.set_next_window_size((self._panel_width, self._panel_height))
         imgui.set_next_window_pos(self._panel_position)
         imgui.begin(self._name, True, self._window_flags)
-        if self._stage:
+        if self._stage and self._hydra:
             self._hydra_render_loop()
         self._options_backdrop()
         self._draw_user_settings_dropdown()
@@ -680,6 +680,11 @@ class ViewportPanel(cbase.Panel):
         self._draw_up_axis_dropdown()
         self._draw_light_dropdown()
         self._draw_camera_dropdown()
+
+    def shutdown(self):
+        del self._hydra
+        self._hydra = None
+        super().shutdown()
 
     def get_user_cfg(self) -> dict:
         """
