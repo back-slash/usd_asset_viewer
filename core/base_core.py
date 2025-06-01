@@ -1869,7 +1869,7 @@ class RenderContextManager:
         self._glfw_window = self._glfw.get_window()
         self._glfw_window_address = self._glfw.get_window_address()
         imgui.backends.glfw_init_for_opengl(self._glfw_window_address, True)
-        imgui.backends.opengl3_init("#version 450")
+        imgui.backends.opengl3_init("#version 460")
 
     def _update_window_size(self):
         """ 
@@ -1891,9 +1891,7 @@ class RenderContextManager:
         if context in self.context_list:
             self.context_list.remove(context)
             imgui.set_current_context(context)
-            imgui.backends.glfw_shutdown()
-            imgui.backends.opengl3_shutdown()
-            imgui.destroy_context(context)
+
 
 
     def render(self, draw_data, context):
@@ -1973,15 +1971,15 @@ class GLFWOpenGLWindow:
         """
         if not glfw.init():
             raise RuntimeError("Failed to initialize GLFW")
-        if self._cfg_vsync:
-            glfw.swap_interval(1)
         if self._cfg_msaa > 0:
             glfw.window_hint(glfw.SAMPLES, self._cfg_msaa)      
-        self._window = glfw.create_window(self._cfg_width, self._cfg_height, self._cfg_title, None, None)
+        self._window = glfw.create_window(self._cfg_width, self._cfg_height, self._cfg_title, None, None)     
         if not self._window:
             glfw.terminate()
             raise RuntimeError("Failed to create GLFW window")
         glfw.make_context_current(self._window)
+        if self._cfg_vsync:
+            glfw.swap_interval(1)  
 
     def _render_loop(self):
         """
@@ -2024,6 +2022,8 @@ class GLFWOpenGLWindow:
         """
         Shutdown the GLFW window.
         """
+        imgui.backends.opengl3_shutdown()
+        imgui.backends.glfw_shutdown()
         glfw.destroy_window(self._window)
         glfw.terminate()
         sys.exit()      
