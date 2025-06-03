@@ -3,8 +3,8 @@
 
 ## Status
 - 1 Month Project
-- Day 30/31
-- WORK IN PROGRESS
+- Day 31/31
+- Month 1 Complete
 
 ## Current Screenshot
 ![USD Asset Viewer WIP Screenshot](docs/current_wip.png)
@@ -45,6 +45,7 @@
     - Subtract
     - Multiply
     - Mask
+- Convert to modern OGL
 
 ## Installation
 #### Compatibility:
