@@ -9,6 +9,7 @@ import subprocess
 import sys
 import argparse
 import tempfile
+import shutil
 #####################################################################################################################################
 USD_PATH = "" # Root directory for manually compiled OpenUSD
 #####################################################################################################################################
@@ -118,6 +119,29 @@ def build_usd_module() -> bool:
     return build
 
 
+def check_and_install(package):
+    if not shutil.which("apt"):
+        special_print("'apt' package manager not found.")
+        return
+    try:
+        special_print(f"Checking for {package}...")
+        subprocess.run(
+            ["dpkg", "-s", package],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        print(f"{package} is already installed.")
+    except:
+        print(f"{package} not found. Installing...")
+        subprocess.run(
+            ["sudo", "apt", "update"], check=True
+        )
+        subprocess.run(
+            ["sudo", "apt", "install", "-y", package], check=True
+        )
+
+
 # WELP
 def find_vs_path():
     """
@@ -175,6 +199,21 @@ def install_python_dependencies():
     special_print("Check/Install Python requirements...")
     run_python_command([f'{python_name} -m pip install -r "{requirements_file}"'])
 
+def install_dependencies():
+    """
+    Install system dependencies.
+    """
+    if os_type != 'nt':
+        check_and_install("git")
+        check_and_install("python3-dev")
+        check_and_install("python3-venv")
+        check_and_install("build-essential")
+        check_and_install("cmake")
+        check_and_install("libboost-all-dev")
+        check_and_install("libxt-dev")
+        check_and_install("libx11-dev")
+        check_and_install("libgl1-mesa-dev")
+        check_and_install("zlib1g-dev")
 
 def run():
     """
@@ -197,6 +236,7 @@ def build_run():
     """
     Main function to build and run the USD Asset Viewer.
     """
+    install_dependencies()
     if not init_submodules():
         special_print("Sub-module initialization failed. Please ensure git is installed.")
         return
