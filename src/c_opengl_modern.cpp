@@ -166,7 +166,7 @@ void c_draw_opengl_modern_bone(pybind11::list bone_list, pybind11::dict draw_dic
     const int MAX_LIGHTS = 8;
     while (light_dirs.size() < MAX_LIGHTS * 3) light_dirs.push_back(0.0f);
     while (light_colors.size() < MAX_LIGHTS * 3) light_colors.push_back(0.0f);
-    glUniform3fv(light_direction_id, MAX_LIGHTS, light_dirs.data()); // CHANGED: was glUniform3dv
+    glUniform3fv(light_direction_id, MAX_LIGHTS, light_dirs.data());
     glUniform3fv(light_color_id, MAX_LIGHTS, light_colors.data());
     int hydra_x_min = draw_dict["hydra_x_min"].cast<int>();
     int hydra_y_min = draw_dict["hydra_y_min"].cast<int>();
@@ -184,7 +184,7 @@ void c_draw_opengl_modern_bone(pybind11::list bone_list, pybind11::dict draw_dic
         }
     }
     GLint mvp_id = glGetUniformLocation(shader_program, "mvp");    
-    glUniformMatrix4fv(mvp_id, 1, GL_FALSE, mvp_matrix); // CHANGED: was glUniformMatrix4dv
+    glUniformMatrix4fv(mvp_id, 1, GL_FALSE, mvp_matrix);
     glBindVertexArray(vao);
 
     std::vector<vertex> axis_vertices;
