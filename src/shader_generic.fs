@@ -1,4 +1,3 @@
-// Fragment Shader
 #version 450 core
 
 #define MAX_LIGHTS 8

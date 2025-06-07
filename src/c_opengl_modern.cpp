@@ -30,17 +30,14 @@
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/sdf/path.h>
 
-
-
 // OpenGL
 #include <glad/glad.h>
-
-#undef min
-#undef max
 
 // Project
 #include "c_utils.cpp"
 
+#undef min
+#undef max
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -75,7 +72,7 @@ GLuint create_program() {
 }
 
 struct vertex {
-    double pos[3];
+    double position[3];
     double normal[3];
     float color[4];
 };
@@ -112,13 +109,13 @@ void c_draw_opengl_modern_bone(pybind11::list bone_list, pybind11::dict draw_dic
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
         glEnableVertexAttribArray(0); // position
-        glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, sizeof(vertex), (void*)0);
+        glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, position));
 
         glEnableVertexAttribArray(1); // normal
-        glVertexAttribPointer(1, 3, GL_DOUBLE, GL_FALSE, sizeof(vertex), (void*)(3 * sizeof(double)));
+        glVertexAttribPointer(1, 3, GL_DOUBLE, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, normal));
 
         glEnableVertexAttribArray(2); // color
-        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(6 * sizeof(double)));
+        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, color));
 
         glBindVertexArray(0);
     }
@@ -248,16 +245,9 @@ void c_draw_opengl_modern_bone(pybind11::list bone_list, pybind11::dict draw_dic
         auto add_tri = [&](const pxr::GfVec3d& a, const pxr::GfVec3d& b, const pxr::GfVec3d& c) {
             pxr::GfVec3d normal = pxr::GfCross(b - a, b - c).GetNormalized();
             std::array<float, 3> n = {normal[0], normal[1], normal[2]};
-            vertex v1, v2, v3;
-            v1.pos[0] = a[0]; v1.pos[1] = a[1]; v1.pos[2] = a[2];
-            v2.pos[0] = b[0]; v2.pos[1] = b[1]; v2.pos[2] = b[2];
-            v3.pos[0] = c[0]; v3.pos[1] = c[1]; v3.pos[2] = c[2];
-            v1.normal[0] = n[0]; v1.normal[1] = n[1]; v1.normal[2] = n[2];
-            v2.normal[0] = n[0]; v2.normal[1] = n[1]; v2.normal[2] = n[2];
-            v3.normal[0] = n[0]; v3.normal[1] = n[1]; v3.normal[2] = n[2];
-            v1.color[0] = face_color[0]; v1.color[1] = face_color[1]; v1.color[2] = face_color[2]; v1.color[3] = face_color[3];
-            v2.color[0] = face_color[0]; v2.color[1] = face_color[1]; v2.color[2] = face_color[2]; v2.color[3] = face_color[3];
-            v3.color[0] = face_color[0]; v3.color[1] = face_color[1]; v3.color[2] = face_color[2]; v3.color[3] = face_color[3];
+            vertex v1{{a[0], a[1], a[2]}, {n[0], n[1], n[2]}, {face_color[0], face_color[1], face_color[2], face_color[3]}};
+            vertex v2{{b[0], b[1], b[2]}, {n[0], n[1], n[2]}, {face_color[0], face_color[1], face_color[2], face_color[3]}};
+            vertex v3{{c[0], c[1], c[2]}, {n[0], n[1], n[2]}, {face_color[0], face_color[1], face_color[2], face_color[3]}};
             tri_vertices.push_back(v1);
             tri_vertices.push_back(v2);
             tri_vertices.push_back(v3);
@@ -317,19 +307,16 @@ void c_draw_opengl_modern_bone(pybind11::list bone_list, pybind11::dict draw_dic
         }
     }
 
-    // Upload and draw triangles
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     if (!tri_vertices.empty()) {
         glBufferData(GL_ARRAY_BUFFER, tri_vertices.size() * sizeof(vertex), tri_vertices.data(), GL_DYNAMIC_DRAW);
         glDrawArrays(GL_TRIANGLES, 0, tri_vertices.size());
     }
-    // Upload and draw lines
     if (!line_vertices.empty()) {
         glBufferData(GL_ARRAY_BUFFER, line_vertices.size() * sizeof(vertex), line_vertices.data(), GL_DYNAMIC_DRAW);
         glLineWidth(line_width);
         glDrawArrays(GL_LINES, 0, line_vertices.size());
     }
-    // Upload and draw axes
     if (!axis_vertices.empty()) {
         glBufferData(GL_ARRAY_BUFFER, axis_vertices.size() * sizeof(vertex), axis_vertices.data(), GL_DYNAMIC_DRAW);
         glLineWidth(1.0f);
