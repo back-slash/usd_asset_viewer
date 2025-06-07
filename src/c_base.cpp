@@ -28,6 +28,7 @@
 
 // Project
 #include "c_opengl_draw.cpp"
+#include "c_opengl_modern.cpp"
 #include "c_utils.cpp"
 
 
@@ -60,4 +61,7 @@ PYBIND11_MODULE(c_base, m) {
                   pybind11::arg("mouse_y"),
                   pybind11::arg("bone_list"),
                   pybind11::arg("draw_dict"));
+      m.def("c_draw_opengl_modern_bone", &c_draw_opengl_modern_bone, "Draw OpenGL Bone Visualization",
+            pybind11::arg("bone_list"),
+            pybind11::arg("draw_dict"));
 }

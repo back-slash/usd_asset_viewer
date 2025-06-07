@@ -91,6 +91,28 @@ def c_draw_opengl_bone(bone_list: List[Any], draw_dict: Dict[str, Any]) -> None:
             - up_axis: str
     """
 
+def c_draw_opengl_modern_bone(bone_list: List[Any], draw_dict: Dict[str, Any]) -> None:
+    """
+    Draw bones using OpenGL.
+
+    Args:
+        bone_list: List of bone objects (Python objects with get_data_object()).
+        draw_dict: Drawing parameters:
+            - hydra_x_min: int
+            - hydra_y_min: int
+            - panel_width: int
+            - panel_height: int
+            - fov: float
+            - near_z: float
+            - far_z: float
+            - camera_matrix: pxr.GfMatrix4d
+            - up_matrix: pxr.GfMatrix4d
+            - grid_density: int
+            - scene_bbox_size: pxr.GfVec3d
+            - grid_color: List[float]
+            - up_axis: str
+    """
+
 def c_draw_opengl_grid(draw_dict: Dict[str, Any]) -> None:
     """
     Draw a grid using OpenGL.

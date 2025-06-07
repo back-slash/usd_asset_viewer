@@ -359,6 +359,7 @@ class ViewportPanel(cbase.Panel):
         draw_dict["grid_density"] = self._cfg["viewport"]["grid_density"]
         draw_dict["grid_color"] = self._cfg["viewport"]["grid_color"]
         draw_dict["up_axis"] = self._sm.get_up_axis()
+        draw_dict["light_dict"] = self._sm.create_light_dict()
         return draw_dict 
 
     def _update_selected_list(self, clear=False) -> None:
@@ -420,7 +421,7 @@ class ViewportPanel(cbase.Panel):
                                         local_mouse_pos[1], 
                                         self._sm.get_data_node_list_by_type(cbase.Bone),
                                         self._create_c_opengl_draw_dict())
-            cdraw.c_draw_opengl_bone(self._sm.get_data_node_list_by_type(cbase.Bone), self._create_c_opengl_draw_dict())
+            cdraw.c_draw_opengl_modern_bone(self._sm.get_data_node_list_by_type(cbase.Bone), self._create_c_opengl_draw_dict())
         if self._user_cfg["show"]["xray"]:
             cdraw.c_draw_opengl_bone_xray(self._sm.get_data_node_list_by_type(cbase.Bone), self._create_c_opengl_draw_dict())
 
