@@ -108,13 +108,13 @@ void c_draw_opengl_modern_bone(pybind11::list bone_list, pybind11::dict draw_dic
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-        glEnableVertexAttribArray(0); // position
+        glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, position));
 
-        glEnableVertexAttribArray(1); // normal
+        glEnableVertexAttribArray(1);
         glVertexAttribPointer(1, 3, GL_DOUBLE, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, normal));
 
-        glEnableVertexAttribArray(2); // color
+        glEnableVertexAttribArray(2);
         glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, color));
 
         glBindVertexArray(0);
@@ -175,11 +175,22 @@ void c_draw_opengl_modern_bone(pybind11::list bone_list, pybind11::dict draw_dic
     pxr::GfMatrix4d camera_matrix = draw_dict["camera_matrix"].cast<pxr::GfMatrix4d>().GetInverse();
     pxr::GfMatrix4d mvp = camera_matrix * projection;
     float mvp_matrix[16];
-    for (int row = 0; row < 4; ++row) {
-        for (int col = 0; col < 4; ++col) {
-            mvp_matrix[row * 4 + col] = mvp[row][col];
-        }
-    }
+    mvp_matrix[0]  = mvp[0][0];
+    mvp_matrix[1]  = mvp[0][1];
+    mvp_matrix[2]  = mvp[0][2];
+    mvp_matrix[3]  = mvp[0][3];
+    mvp_matrix[4]  = mvp[1][0];
+    mvp_matrix[5]  = mvp[1][1];
+    mvp_matrix[6]  = mvp[1][2];
+    mvp_matrix[7]  = mvp[1][3];
+    mvp_matrix[8]  = mvp[2][0];
+    mvp_matrix[9]  = mvp[2][1];
+    mvp_matrix[10] = mvp[2][2];
+    mvp_matrix[11] = mvp[2][3];
+    mvp_matrix[12] = mvp[3][0];
+    mvp_matrix[13] = mvp[3][1];
+    mvp_matrix[14] = mvp[3][2];
+    mvp_matrix[15] = mvp[3][3];
     GLint mvp_id = glGetUniformLocation(shader_program, "mvp");    
     glUniformMatrix4fv(mvp_id, 1, GL_FALSE, mvp_matrix);
     glBindVertexArray(vao);
@@ -322,8 +333,10 @@ void c_draw_opengl_modern_bone(pybind11::list bone_list, pybind11::dict draw_dic
         glLineWidth(1.0f);
         glDrawArrays(GL_LINES, 0, axis_vertices.size());
     }
+
     glBindVertexArray(0);
     glUseProgram(0);
+    
     c_check_opengl_error();
 }
 
