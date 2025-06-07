@@ -61,30 +61,22 @@ GLuint create_shader(GLenum type, const char* src) {
 }
 
 GLuint create_program() {
-    std::string vertex_shader_src = load_shader_source("src/shader_bones.vs");
-    std::string fragment_shader_src = load_shader_source("src/shader_bones.fs");
+    std::string vertex_shader_src = load_shader_source("src/shader_generic.vs");
+    std::string fragment_shader_src = load_shader_source("src/shader_generic.fs");
     GLuint vs = create_shader(GL_VERTEX_SHADER, vertex_shader_src.c_str());
     GLuint fs = create_shader(GL_FRAGMENT_SHADER, fragment_shader_src.c_str());
     GLuint program_id = glCreateProgram();
     glAttachShader(program_id, vs);
     glAttachShader(program_id, fs);
     glLinkProgram(program_id);
-    // Check for linking errors
-    GLint linkStatus = 0;
-    glGetProgramiv(program_id, GL_LINK_STATUS, &linkStatus);
-    if (!linkStatus) {
-        char infoLog[1024];
-        glGetProgramInfoLog(program_id, 1024, nullptr, infoLog);
-        std::cerr << "Shader program link error: " << infoLog << std::endl;
-    }
     glDeleteShader(vs);
     glDeleteShader(fs);
     return program_id;
 }
 
 struct vertex {
-    float pos[3];
-    float normal[3];
+    double pos[3];
+    double normal[3];
     float color[4];
 };
 
@@ -120,23 +112,23 @@ void c_draw_opengl_modern_bone(pybind11::list bone_list, pybind11::dict draw_dic
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
         glEnableVertexAttribArray(0); // position
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)0);
+        glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, sizeof(vertex), (void*)0);
 
         glEnableVertexAttribArray(1); // normal
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(3 * sizeof(float)));
+        glVertexAttribPointer(1, 3, GL_DOUBLE, GL_FALSE, sizeof(vertex), (void*)(3 * sizeof(double)));
 
         glEnableVertexAttribArray(2); // color
-        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(6 * sizeof(float)));
+        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)(6 * sizeof(double)));
 
         glBindVertexArray(0);
     }
     glUseProgram(shader_program);
-
-    struct LightInfo {
+    float line_width = 3.0f;
+    struct light_struct {
         std::array<float, 3> color;
         pxr::GfMatrix4d matrix;
     };
-    std::vector<LightInfo> lights;
+    std::vector<light_struct> lights;
 
     pybind11::dict light_dict = draw_dict["light_dict"].cast<pybind11::dict>();
     int light_idx = 0;
@@ -162,9 +154,9 @@ void c_draw_opengl_modern_bone(pybind11::list bone_list, pybind11::dict draw_dic
         pxr::GfVec3d light_direction_position = light_rotation_matrix.Transform(pxr::GfVec3d(0, 0, -1));
         pxr::GfVec3d light_normal = light_position - light_direction_position;
         light_normal = light_normal.GetNormalized();
-        light_dirs.push_back(static_cast<float>(light_normal[0]));
-        light_dirs.push_back(static_cast<float>(light_normal[1]));
-        light_dirs.push_back(static_cast<float>(light_normal[2]));
+        light_dirs.push_back(light_normal[0]);
+        light_dirs.push_back(light_normal[1]);
+        light_dirs.push_back(light_normal[2]);
         light_colors.push_back(light.color[0]);
         light_colors.push_back(light.color[1]);
         light_colors.push_back(light.color[2]);
@@ -174,7 +166,7 @@ void c_draw_opengl_modern_bone(pybind11::list bone_list, pybind11::dict draw_dic
     const int MAX_LIGHTS = 8;
     while (light_dirs.size() < MAX_LIGHTS * 3) light_dirs.push_back(0.0f);
     while (light_colors.size() < MAX_LIGHTS * 3) light_colors.push_back(0.0f);
-    glUniform3fv(light_direction_id, MAX_LIGHTS, light_dirs.data());
+    glUniform3fv(light_direction_id, MAX_LIGHTS, light_dirs.data()); // CHANGED: was glUniform3dv
     glUniform3fv(light_color_id, MAX_LIGHTS, light_colors.data());
     int hydra_x_min = draw_dict["hydra_x_min"].cast<int>();
     int hydra_y_min = draw_dict["hydra_y_min"].cast<int>();
@@ -185,20 +177,20 @@ void c_draw_opengl_modern_bone(pybind11::list bone_list, pybind11::dict draw_dic
     auto projection = c_create_projection_matrix(draw_dict);
     pxr::GfMatrix4d camera_matrix = draw_dict["camera_matrix"].cast<pxr::GfMatrix4d>().GetInverse();
     pxr::GfMatrix4d mvp = camera_matrix * projection;
-    float mvp_matrix[16];  // CONVERT TO DOUBLE
+    float mvp_matrix[16]; // CHANGED: was double
     for (int row = 0; row < 4; ++row) {
         for (int col = 0; col < 4; ++col) {
-            mvp_matrix[row * 4 + col] = static_cast<GLfloat>(mvp[row][col]);
+            mvp_matrix[row * 4 + col] = mvp[row][col];
         }
     }
     GLint mvp_id = glGetUniformLocation(shader_program, "mvp");    
-    glUniformMatrix4fv(mvp_id, 1, GL_FALSE, mvp_matrix);
+    glUniformMatrix4fv(mvp_id, 1, GL_FALSE, mvp_matrix); // CHANGED: was glUniformMatrix4dv
     glBindVertexArray(vao);
 
     std::vector<vertex> axis_vertices;
     std::vector<vertex> tri_vertices;
     std::vector<vertex> line_vertices;
-    float line_width = 2.0f;
+    
 
     for (auto bone : bone_list) {
         bool selected = bone.attr("get_selected")().cast<bool>();
@@ -220,46 +212,46 @@ void c_draw_opengl_modern_bone(pybind11::list bone_list, pybind11::dict draw_dic
             pxr::GfVec3d x_axis = bone_matrix.Transform(pxr::GfVec3d(1.0, 0.0, 0.0));
             pxr::GfVec3d y_axis = bone_matrix.Transform(pxr::GfVec3d(0.0, 1.0, 0.0));
             pxr::GfVec3d z_axis = bone_matrix.Transform(pxr::GfVec3d(0.0, 0.0, 1.0));
-            
+
             axis_vertices.push_back({
-                {(float)root_vert[0], (float)root_vert[1], (float)root_vert[2]},
-                {(float)normal[0], (float)normal[1], (float)normal[2]},
+                {root_vert[0], root_vert[1], root_vert[2]},
+                {normal[0], normal[1], normal[2]},
                 {1.0f, 0.0f, 0.0f, 1.0f}
             });
             axis_vertices.push_back({
-                {(float)x_axis[0], (float)x_axis[1], (float)x_axis[2]},
-                {(float)normal[0], (float)normal[1], (float)normal[2]},
+                {x_axis[0], x_axis[1], x_axis[2]},
+                {normal[0], normal[1], normal[2]},
                 {1.0f, 0.0f, 0.0f, 1.0f}
             });
             axis_vertices.push_back({
-                {(float)root_vert[0], (float)root_vert[1], (float)root_vert[2]},
-                {(float)normal[0], (float)normal[1], (float)normal[2]},
+                {root_vert[0], root_vert[1], root_vert[2]},
+                {normal[0], normal[1], normal[2]},
                 {0.0f, 1.0f, 0.0f, 1.0f}
             });
             axis_vertices.push_back({
-                {(float)y_axis[0], (float)y_axis[1], (float)y_axis[2]},
-                {(float)normal[0], (float)normal[1], (float)normal[2]},
+                {y_axis[0], y_axis[1], y_axis[2]},
+                {normal[0], normal[1], normal[2]},
                 {0.0f, 1.0f, 0.0f, 1.0f}
             });
             axis_vertices.push_back({
-                {(float)root_vert[0], (float)root_vert[1], (float)root_vert[2]},
-                {(float)normal[0], (float)normal[1], (float)normal[2]},
+                {root_vert[0], root_vert[1], root_vert[2]},
+                {normal[0], normal[1], normal[2]},
                 {0.0f, 0.0f, 1.0f, 1.0f}
             });
             axis_vertices.push_back({
-                {(float)z_axis[0], (float)z_axis[1], (float)z_axis[2]},
-                {(float)normal[0], (float)normal[1], (float)normal[2]},
+                {z_axis[0], z_axis[1], z_axis[2]},
+                {normal[0], normal[1], normal[2]},
                 {0.0f, 0.0f, 1.0f, 1.0f}
             });
         }
 
         auto add_tri = [&](const pxr::GfVec3d& a, const pxr::GfVec3d& b, const pxr::GfVec3d& c) {
             pxr::GfVec3d normal = pxr::GfCross(b - a, b - c).GetNormalized();
-            std::array<float, 3> n = {(float)normal[0], (float)normal[1], (float)normal[2]};
+            std::array<float, 3> n = {normal[0], normal[1], normal[2]};
             vertex v1, v2, v3;
-            v1.pos[0] = (float)a[0]; v1.pos[1] = (float)a[1]; v1.pos[2] = (float)a[2];
-            v2.pos[0] = (float)b[0]; v2.pos[1] = (float)b[1]; v2.pos[2] = (float)b[2];
-            v3.pos[0] = (float)c[0]; v3.pos[1] = (float)c[1]; v3.pos[2] = (float)c[2];
+            v1.pos[0] = a[0]; v1.pos[1] = a[1]; v1.pos[2] = a[2];
+            v2.pos[0] = b[0]; v2.pos[1] = b[1]; v2.pos[2] = b[2];
+            v3.pos[0] = c[0]; v3.pos[1] = c[1]; v3.pos[2] = c[2];
             v1.normal[0] = n[0]; v1.normal[1] = n[1]; v1.normal[2] = n[2];
             v2.normal[0] = n[0]; v2.normal[1] = n[1]; v2.normal[2] = n[2];
             v3.normal[0] = n[0]; v3.normal[1] = n[1]; v3.normal[2] = n[2];
@@ -270,25 +262,6 @@ void c_draw_opengl_modern_bone(pybind11::list bone_list, pybind11::dict draw_dic
             tri_vertices.push_back(v2);
             tri_vertices.push_back(v3);
         };        
-        auto add_line = [&](const pxr::GfVec3d& a, const pxr::GfVec3d& b) {
-            pxr::GfVec3d camera_normal = pxr::GfVec3d(0.0, 0.0, -1.0);
-            pxr::GfVec3d camera_position = camera_matrix.ExtractTranslation();
-            pxr::GfMatrix4d camera_rotation_matrix = camera_matrix.SetTranslateOnly(pxr::GfVec3d(0.0, 0.0, 0.0));
-            pxr::GfVec3d camera_z_position = camera_rotation_matrix.Transform(camera_normal);
-            pxr::GfVec3d normal = camera_z_position - camera_position;
-            normal = normal.GetNormalized();
-            std::array<float, 3> n = {(float)normal[0], (float)normal[1], (float)normal[2]};
-            line_vertices.push_back({
-                {(float)a[0], (float)a[1], (float)a[2]},
-                {n[0], n[1], n[2]},
-                {line_color[0], line_color[1], line_color[2], line_color[3]}
-            });
-            line_vertices.push_back({
-                {(float)b[0], (float)b[1], (float)b[2]},
-                {n[0], n[1], n[2]},
-                {line_color[0], line_color[1], line_color[2], line_color[3]}
-            });
-        };
 
         if (bone_children.size() == 0) {
             pxr::GfVec3d end_bone_start_vert = bone_matrix.Transform(pxr::GfVec3d(-1.0, 0.0, 0.0));
