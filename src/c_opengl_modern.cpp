@@ -177,7 +177,7 @@ void c_draw_opengl_modern_bone(pybind11::list bone_list, pybind11::dict draw_dic
     auto projection = c_create_projection_matrix(draw_dict);
     pxr::GfMatrix4d camera_matrix = draw_dict["camera_matrix"].cast<pxr::GfMatrix4d>().GetInverse();
     pxr::GfMatrix4d mvp = camera_matrix * projection;
-    float mvp_matrix[16]; // CHANGED: was double
+    float mvp_matrix[16];
     for (int row = 0; row < 4; ++row) {
         for (int col = 0; col < 4; ++col) {
             mvp_matrix[row * 4 + col] = mvp[row][col];
