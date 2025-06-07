@@ -161,8 +161,6 @@ void c_draw_opengl_modern_bone(pybind11::list bone_list, pybind11::dict draw_dic
     GLint light_direction_id = glGetUniformLocation(shader_program, "light_direction");
     GLint light_color_id = glGetUniformLocation(shader_program, "light_color");
     const int MAX_LIGHTS = 8;
-    while (light_dirs.size() < MAX_LIGHTS * 3) light_dirs.push_back(0.0f);
-    while (light_colors.size() < MAX_LIGHTS * 3) light_colors.push_back(0.0f);
     glUniform3fv(light_direction_id, MAX_LIGHTS, light_dirs.data());
     glUniform3fv(light_color_id, MAX_LIGHTS, light_colors.data());
     int hydra_x_min = draw_dict["hydra_x_min"].cast<int>();

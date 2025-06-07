@@ -18,8 +18,6 @@ void main() {
     }
     color *= vert_color.rgb;
 
-    color = pow(clamp(color, 0.0, 1.0), vec3(1.0 / 2.2));
-
     frag_color = vec4(color, vert_color.a);
 }
 
