@@ -9,14 +9,9 @@ import os
 import ctypes
 import sys
 import pprint as pp
-import math
-import threading
-
-# USD
 
 # ADDONS
 from imgui_bundle import imgui
-import numpy as np
 import pxr.Usd as pusd
 import pxr.Gf as pgf
 import pxr.Sdf as psdf
